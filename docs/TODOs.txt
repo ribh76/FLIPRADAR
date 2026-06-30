@@ -1,0 +1,259 @@
+ROOT
+README.md
+[ ] Write FLIPRADAR project overview
+[ ] Define core value prop: LEGO buy/sell intelligence
+[ ] Explain supported marketplaces: eBay and BrickLink
+[ ] Explain buyer workflow
+[ ] Explain seller workflow
+[ ] Explain hold/sell recommendation workflow
+[ ] Document FastAPI backend architecture
+[ ] Add local setup instructions
+[ ] Add environment variable setup
+[ ] Add API endpoint documentation
+[ ] Add roadmap
+requirements.txt
+[ ] Add FastAPI
+[ ] Add Uvicorn
+[ ] Add SQLAlchemy
+[ ] Add Alembic
+[ ] Add PostgreSQL driver
+[ ] Add Redis client
+[ ] Add requests/httpx
+[ ] Add pydantic-settings
+[ ] Add python-dotenv
+[ ] Add rapidfuzz
+[ ] Add pytest
+[ ] Freeze versions before deployment
+config.py
+[ ] Add Settings class using pydantic-settings
+[ ] Add database URL
+[ ] Add Redis URL
+[ ] Add eBay API credentials
+[ ] Add BrickLink API credentials
+[ ] Add marketplace fee estimates
+[ ] Add shipping estimate defaults
+[ ] Add deal score thresholds
+[ ] Add environment variable validation
+run.py
+[ ] Import FastAPI app
+[ ] Configure uvicorn startup
+[ ] Add host configuration
+[ ] Add port configuration
+[ ] Add reload option for development
+APP LAYER
+app/main.py
+[ ] Create FastAPI app
+[ ] Add app title and version
+[ ] Register health routes
+[ ] Register LEGO routes
+[ ] Register deal routes
+[ ] Register pricing routes
+[ ] Register recommendation routes
+[ ] Add CORS middleware
+[ ] Add global error handling
+app/routes/health_routes.py
+[ ] Add GET /health
+[ ] Return API status
+[ ] Return version
+[ ] Return database connection status
+app/routes/lego_routes.py
+[ ] Add GET /lego/{set_number}
+[ ] Validate LEGO set number
+[ ] Fetch LEGO set metadata
+[ ] Return set name, theme, year, retirement status if available
+app/routes/deal_routes.py
+[ ] Add GET /deals/buy/{set_number}
+[ ] Fetch active eBay listings
+[ ] Fetch active BrickLink listings
+[ ] Normalize listings
+[ ] Score listings
+[ ] Return ranked buy deals
+app/routes/pricing_routes.py
+[ ] Add GET /pricing/sell/{set_number}
+[ ] Fetch recent sold eBay comps
+[ ] Fetch BrickLink pricing data
+[ ] Estimate fair market price
+[ ] Return low/median/high price range
+app/routes/recommendation_routes.py
+[ ] Add GET /recommendations/hold-sell/{set_number}
+[ ] Add POST /recommendations/buy-decision
+[ ] Return recommendation label
+[ ] Return reasoning
+[ ] Return confidence score
+APIs
+apis/ebay_api.py
+[ ] Load eBay credentials
+[ ] Implement OAuth token flow
+[ ] Search active listings by set number
+[ ] Search sold/completed listings if available
+[ ] Extract title
+[ ] Extract price
+[ ] Extract shipping cost
+[ ] Extract condition
+[ ] Extract seller rating
+[ ] Extract listing URL
+[ ] Normalize to Listing model
+[ ] Handle rate limits
+[ ] Handle API errors
+apis/bricklink_api.py
+[ ] Load BrickLink credentials
+[ ] Implement authenticated requests
+[ ] Fetch catalog item by set number
+[ ] Fetch current listings
+[ ] Fetch price guide data
+[ ] Extract new/used pricing
+[ ] Extract quantity available
+[ ] Extract condition
+[ ] Normalize to Listing model
+[ ] Handle API errors
+ENGINE
+engine/deal_finder.py
+[ ] Accept normalized listings
+[ ] Remove duplicate listings
+[ ] Filter irrelevant results
+[ ] Rank by total cost
+[ ] Include shipping in total price
+[ ] Penalize incomplete sets
+[ ] Penalize poor title match
+[ ] Return best buy deals
+engine/price_estimator.py
+[ ] Accept sold comps and BrickLink price data
+[ ] Calculate low price
+[ ] Calculate median price
+[ ] Calculate high price
+[ ] Calculate fast-sale price
+[ ] Calculate fair-market price
+[ ] Calculate premium listing price
+[ ] Return pricing recommendation
+engine/hold_sell_engine.py
+[ ] Accept set number
+[ ] Analyze current market value
+[ ] Analyze price trend
+[ ] Analyze listing supply
+[ ] Analyze demand proxy
+[ ] Return hold/sell/watch recommendation
+engine/buy_decision_engine.py
+[ ] Accept listing price and set number
+[ ] Compare listing price to fair value
+[ ] Calculate discount percentage
+[ ] Detect risk flags
+[ ] Return buy/wait/pass recommendation
+engine/product_matcher.py
+[ ] Normalize LEGO set titles
+[ ] Extract set number from title
+[ ] Match listing to set number
+[ ] Detect wrong-set false positives
+[ ] Detect partial/incomplete listings
+[ ] Detect minifig-only listings
+[ ] Detect box-only/manual-only listings
+engine/scoring_engine.py
+[ ] Create deal score from 0–100
+[ ] Score price discount
+[ ] Score condition
+[ ] Score title confidence
+[ ] Score seller quality
+[ ] Score marketplace reliability
+[ ] Return score and explanation
+MODELS
+models/lego_set.py
+[ ] Add set_number
+[ ] Add name
+[ ] Add theme
+[ ] Add subtheme
+[ ] Add release_year
+[ ] Add retirement_year
+[ ] Add piece_count
+[ ] Add minifig_count
+models/listing.py
+[ ] Add listing_id
+[ ] Add set_number
+[ ] Add title
+[ ] Add marketplace
+[ ] Add price
+[ ] Add shipping_price
+[ ] Add total_price
+[ ] Add condition
+[ ] Add is_complete
+[ ] Add is_sealed
+[ ] Add url
+[ ] Add seller_rating
+[ ] Add timestamp
+models/price_snapshot.py
+[ ] Add set_number
+[ ] Add marketplace
+[ ] Add new_low_price
+[ ] Add new_median_price
+[ ] Add used_low_price
+[ ] Add used_median_price
+[ ] Add sold_median_price
+[ ] Add timestamp
+models/watchlist.py
+[ ] Add user_id
+[ ] Add set_number
+[ ] Add target_price
+[ ] Add desired_condition
+[ ] Add alert_enabled
+SERVICES
+services/deal_service.py
+[ ] Accept set number
+[ ] Query eBay active listings
+[ ] Query BrickLink active listings
+[ ] Normalize listings
+[ ] Match listings to LEGO set
+[ ] Score deals
+[ ] Return ranked deal list
+services/pricing_service.py
+[ ] Accept set number
+[ ] Query eBay sold comps
+[ ] Query BrickLink price guide
+[ ] Remove outliers
+[ ] Estimate sell price
+[ ] Return pricing bands
+services/recommendation_service.py
+[ ] Generate buy/pass recommendation
+[ ] Generate hold/sell recommendation
+[ ] Attach explanation
+[ ] Attach confidence score
+services/watchlist_service.py
+[ ] Add set to user watchlist
+[ ] Remove set from watchlist
+[ ] Fetch user watchlist
+[ ] Check target price against current listings
+DATABASE
+database/db.py
+[ ] Create SQLAlchemy engine
+[ ] Create session factory
+[ ] Add database dependency for FastAPI
+[ ] Add connection test helper
+Alembic migrations
+[ ] Initialize Alembic
+[ ] Create users table
+[ ] Create lego_sets table
+[ ] Create listings table
+[ ] Create price_snapshots table
+[ ] Create watchlists table
+[ ] Create saved_searches table
+[ ] Add indexes on set_number
+[ ] Add indexes on marketplace
+[ ] Add indexes on timestamp
+UTILITIES
+utils/lego_utils.py
+[ ] Validate LEGO set number
+[ ] Extract set number from listing title
+[ ] Detect retired set keywords
+[ ] Detect sealed/new keywords
+[ ] Detect used/complete keywords
+[ ] Detect incomplete listing keywords
+utils/price_utils.py
+[ ] Parse price strings
+[ ] Add price + shipping
+[ ] Remove outliers
+[ ] Calculate median
+[ ] Calculate percentile pricing
+[ ] Calculate discount percentage
+utils/text_cleaning.py
+[ ] Lowercase text
+[ ] Remove punctuation
+[ ] Normalize LEGO-specific words
+[ ] Remove marketplace noise words
+[ ] Normalize UCS, NISB, BNIB, used, complete, sealed
