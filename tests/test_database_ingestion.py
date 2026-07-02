@@ -25,6 +25,8 @@ from models import (
     Recommendation,
 )
 from services.pricing_service import get_latest_price_snapshot_by_set_number
+from services import marketplace_service
+from services.listing_normalizer import normalize
 
 logger = logging.getLogger(__name__)
 
@@ -307,3 +309,141 @@ async def test_repository_functions_fetch_snapshots_and_create_recommendation(
     saved_recommendation = await db_session.get(Recommendation, recommendation.id)
     assert saved_recommendation is not None
     assert saved_recommendation.market_summary["source"] == "repository-test"
+
+
+def test_listing_normalizer_handles_marketplace_payload_shapes():
+    listings = normalize(
+        [
+            {
+                "marketplace": "ebay",
+                "id": "ebay-1",
+                "price": "149.995",
+                "shipping": "12.5",
+                "condition": "Pre-Owned",
+                "title": "LEGO test eBay listing",
+                "listing_url": "https://www.ebay.com/itm/ebay-1",
+                "seller": "ebay-seller",
+            },
+            {
+                "marketplace": "bricklink",
+                "listing_id": "bricklink-1",
+                "unit_price": 140,
+                "shipping_price": 10,
+                "condition": "N",
+                "item_name": "LEGO test BrickLink listing",
+                "url": "https://www.bricklink.com/test",
+                "seller_name": "bricklink-seller",
+                "currency_code": "usd",
+            },
+        ]
+    )
+
+    assert listings == [
+        {
+            "marketplace": "ebay",
+            "external_listing_id": "ebay-1",
+            "price": Decimal("150.00"),
+            "shipping_price": Decimal("12.50"),
+            "condition": "used",
+            "title": "LEGO test eBay listing",
+            "listing_url": "https://www.ebay.com/itm/ebay-1",
+            "seller": "ebay-seller",
+            "currency": "USD",
+            "raw_payload": {
+                "marketplace": "ebay",
+                "id": "ebay-1",
+                "price": "149.995",
+                "shipping": "12.5",
+                "condition": "Pre-Owned",
+                "title": "LEGO test eBay listing",
+                "listing_url": "https://www.ebay.com/itm/ebay-1",
+                "seller": "ebay-seller",
+            },
+        },
+        {
+            "marketplace": "bricklink",
+            "external_listing_id": "bricklink-1",
+            "price": Decimal("140.00"),
+            "shipping_price": Decimal("10.00"),
+            "condition": "new",
+            "title": "LEGO test BrickLink listing",
+            "listing_url": "https://www.bricklink.com/test",
+            "seller": "bricklink-seller",
+            "currency": "USD",
+            "raw_payload": {
+                "marketplace": "bricklink",
+                "listing_id": "bricklink-1",
+                "unit_price": 140,
+                "shipping_price": 10,
+                "condition": "N",
+                "item_name": "LEGO test BrickLink listing",
+                "url": "https://www.bricklink.com/test",
+                "seller_name": "bricklink-seller",
+                "currency_code": "usd",
+            },
+        },
+    ]
+
+
+@pytest.mark.asyncio
+async def test_marketplace_service_updates_listings_and_snapshot(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+):
+    lego_set = make_random_lego_set()
+    db_session.add(lego_set)
+    await db_session.flush()
+
+    monkeypatch.setattr(
+        marketplace_service.ebay_client,
+        "fetch",
+        lambda set_number: [
+            {
+                "id": f"ebay-{index}",
+                "price": 100 + index,
+                "shipping": 10,
+                "condition": "New",
+                "title": f"LEGO {set_number} eBay listing {index}",
+                "listing_url": f"https://www.ebay.com/itm/{index}",
+                "seller": "ebay-test-seller",
+                "currency": "USD",
+            }
+            for index in range(6)
+        ],
+    )
+    monkeypatch.setattr(
+        marketplace_service.bricklink_client,
+        "fetch",
+        lambda set_number: [
+            {
+                "listing_id": f"bricklink-{index}",
+                "unit_price": 120 + index,
+                "shipping_price": 5,
+                "condition": "U",
+                "item_name": f"LEGO {set_number} BrickLink listing {index}",
+                "url": f"https://www.bricklink.com/{index}",
+                "seller_name": "bricklink-test-seller",
+                "currency_code": "USD",
+            }
+            for index in range(6)
+        ],
+    )
+
+    snapshot = await marketplace_service.update_marketplace_data(
+        lego_set.set_number, db=db_session
+    )
+
+    saved_listings = await db_session.execute(
+        select(MarketplaceListing).where(MarketplaceListing.lego_set_id == lego_set.id)
+    )
+    listings = list(saved_listings.scalars())
+
+    assert len(listings) == 12
+    assert snapshot.id is not None
+    assert snapshot.listing_count == 12
+    assert snapshot.condition == "mixed"
+    assert snapshot.low_price == Decimal("110.00")
+    assert snapshot.high_price == Decimal("130.00")
+    assert snapshot.average_price == Decimal("120.00")
+    assert snapshot.median_price == Decimal("120.00")
+    assert snapshot.fair_market_value == Decimal("120.00")
+    assert snapshot.source_payload["marketplaces"] == ["bricklink", "ebay"]
