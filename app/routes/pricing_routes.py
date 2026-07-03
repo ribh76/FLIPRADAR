@@ -9,7 +9,7 @@ from app.schemas import PriceSnapshotCreate, PriceSnapshotResponse
 from models import LegoSet, Marketplace, PriceSnapshot
 from services.pricing_service import get_latest_price_snapshot_by_set_number
 
-router = APIRouter(tags=["price snapshots"])
+router = APIRouter(tags=["Marketplace/Internal"])
 logger = logging.getLogger(__name__)
 
 
@@ -76,6 +76,8 @@ async def _list_snapshots_for_set(
     "/snapshots",
     response_model=PriceSnapshotResponse,
     status_code=status.HTTP_201_CREATED,
+    summary="Create price snapshot",
+    description="Internal/development helper for storing a price snapshot.",
 )
 async def create_price_snapshot(
     payload: PriceSnapshotCreate, db: AsyncSession = Depends(get_db_session)
@@ -106,7 +108,12 @@ async def create_price_snapshot(
 
 
 # Lists snapshots for a set. It accepts a set number and returns historical snapshot rows.
-@router.get("/snapshots/{set_number}", response_model=list[PriceSnapshotResponse])
+@router.get(
+    "/snapshots/{set_number}",
+    response_model=list[PriceSnapshotResponse],
+    summary="List price snapshots",
+    description="Internal/development helper for listing stored snapshot history.",
+)
 async def list_price_snapshots(
     set_number: str, db: AsyncSession = Depends(get_db_session)
 ) -> list[PriceSnapshot]:
@@ -122,7 +129,12 @@ async def list_price_snapshots(
 
 
 # Fetches the latest snapshot for a set. It accepts a set number and returns the newest pricing snapshot.
-@router.get("/snapshots/{set_number}/latest", response_model=PriceSnapshotResponse)
+@router.get(
+    "/snapshots/{set_number}/latest",
+    response_model=PriceSnapshotResponse,
+    summary="Get latest price snapshot",
+    description="Internal/development helper for fetching the latest stored snapshot.",
+)
 async def get_latest_price_snapshot(
     set_number: str, db: AsyncSession = Depends(get_db_session)
 ) -> PriceSnapshot:

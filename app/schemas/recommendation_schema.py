@@ -35,6 +35,7 @@ class AnalyzeRequest(BaseModel):
     set_number: str = Field(..., min_length=1)
     user_goal: UserGoal
     asking_price: Decimal | None = Field(default=None, ge=0, decimal_places=2)
+    condition: str = Field(default="unknown", pattern=r"^(new|used|sealed|unknown)$")
 
     @field_validator("set_number", mode="before")
     @classmethod
@@ -51,6 +52,9 @@ class AnalyzeResponse(BaseModel):
     recommendation: RecommendationDecision
     confidence: ConfidenceBand
     reasoning: str
+    market_low: float | None = None
+    market_high: float | None = None
+    listing_count: int | None = None
 
 
 class RecommendationResponse(BaseModel):

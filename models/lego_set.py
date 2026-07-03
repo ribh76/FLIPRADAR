@@ -60,3 +60,4 @@ class LegoSet(Base):
     recommendations = relationship(
         "Recommendation", back_populates="lego_set", cascade="all, delete-orphan"
     )
+    portfolio_items = relationship("PortfolioItem", back_populates="lego_set")

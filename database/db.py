@@ -39,8 +39,10 @@ async def create_database_tables() -> None:
         LegoSet,
         Marketplace,
         MarketplaceListing,
+        PortfolioItem,
         PriceSnapshot,
         Recommendation,
+        User,
     )
 
     async with engine.begin() as connection:

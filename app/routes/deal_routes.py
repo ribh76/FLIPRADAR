@@ -9,7 +9,7 @@ from database import get_db_session
 from app.schemas import ListingCreate, ListingResponse
 from models import LegoSet, Marketplace, MarketplaceListing
 
-router = APIRouter(tags=["marketplace listings"])
+router = APIRouter(tags=["Marketplace/Internal"])
 logger = logging.getLogger(__name__)
 
 
@@ -94,6 +94,8 @@ async def _latest_listing_for_set(
     "/listings",
     response_model=ListingResponse,
     status_code=status.HTTP_201_CREATED,
+    summary="Create marketplace listing",
+    description="Internal/development helper for storing a marketplace listing.",
 )
 async def create_marketplace_listing(
     payload: ListingCreate, db: AsyncSession = Depends(get_db_session)
@@ -133,7 +135,12 @@ async def create_marketplace_listing(
 
 
 # Lists marketplace listings for a set. It accepts a set number path parameter and returns matching listings.
-@router.get("/listings/{set_number}", response_model=list[ListingResponse])
+@router.get(
+    "/listings/{set_number}",
+    response_model=list[ListingResponse],
+    summary="List set listings",
+    description="Supporting backend data route for listings tied to a LEGO set number.",
+)
 async def list_marketplace_listings(
     set_number: str, db: AsyncSession = Depends(get_db_session)
 ) -> list[MarketplaceListing]:
@@ -149,7 +156,12 @@ async def list_marketplace_listings(
 
 
 # Compatibility listing route. It accepts a set number and returns listing data for that set.
-@router.get("/sets/{set_number}/listings", response_model=list[ListingResponse])
+@router.get(
+    "/sets/{set_number}/listings",
+    response_model=list[ListingResponse],
+    summary="List set listings by set path",
+    description="Supporting backend data route for listings tied to a LEGO set number.",
+)
 async def list_marketplace_listings_by_set_path(
     set_number: str, db: AsyncSession = Depends(get_db_session)
 ) -> list[MarketplaceListing]:
@@ -166,26 +178,13 @@ async def list_marketplace_listings_by_set_path(
     return listings
 
 
-# Compatibility listing route. It accepts a set number and returns listing data for that set.
-@router.get("/sets/{set_number}", response_model=list[ListingResponse])
-async def list_marketplace_listings_by_exact_set_path(
-    set_number: str, db: AsyncSession = Depends(get_db_session)
-) -> list[MarketplaceListing]:
-    """List marketplace listings using the exact set-oriented path from the API plan."""
-    logger.info(
-        "request started route=list_marketplace_listings_by_exact_set_path set_number=%s",
-        set_number,
-    )
-    listings = await _list_listings_for_set(db, set_number)
-    logger.info(
-        "request finished route=list_marketplace_listings_by_exact_set_path set_number=%s",
-        set_number,
-    )
-    return listings
-
-
 # Fetches the latest listing for a set. It accepts a set number and returns the newest listing by last_seen_at.
-@router.get("/listings/{set_number}/latest", response_model=ListingResponse)
+@router.get(
+    "/listings/{set_number}/latest",
+    response_model=ListingResponse,
+    summary="Get latest listing",
+    description="Internal/development helper for fetching the newest stored listing.",
+)
 async def get_latest_marketplace_listing(
     set_number: str, db: AsyncSession = Depends(get_db_session)
 ) -> MarketplaceListing:

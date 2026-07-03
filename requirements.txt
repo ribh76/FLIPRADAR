@@ -8,6 +8,10 @@ aiosqlite
 python-dotenv
 pydantic
 pydantic-settings
+email-validator
+passlib[bcrypt]
+bcrypt<5
+PyJWT
 requests
 beautifulsoup4
 lxml

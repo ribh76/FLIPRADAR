@@ -172,6 +172,9 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
             "recommendation": decision.recommendation,
             "confidence": estimate["confidence"],
             "reasoning": decision.reasoning,
+            "market_low": _money(estimate["market_low"]),
+            "market_high": _money(estimate["market_high"]),
+            "listing_count": estimate["listing_count"],
         }
     except RecommendationServiceError:
         raise

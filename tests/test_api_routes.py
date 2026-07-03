@@ -161,7 +161,8 @@ def test_get_set_endpoint(client: TestClient):
 
     logger.info(f"API TEST: GET /set/{{set_number}} status={response.status_code}")
     assert response.status_code == 200
-    assert response.json()["id"] == lego_set["id"]
+    assert response.json()["set_number"] == lego_set["set_number"]
+    assert response.json()["valuation_status"] == "missing_market_data"
 
 
 def test_list_sets_endpoint(client: TestClient):
@@ -197,12 +198,24 @@ def test_listings_by_set_endpoint(client: TestClient):
 
 def test_listings_by_exact_sets_set_number_endpoint(client: TestClient):
     lego_set = create_lego_set(client)
-    listing = client.post(
-        "/listings", json=create_listing_payload(lego_set["set_number"])
-    ).json()
     response = client.get(f"/sets/{lego_set['set_number']}")
 
     logger.info(f"API TEST: GET /sets/{{set_number}} status={response.status_code}")
+    assert response.status_code == 200
+    assert response.json()["set_number"] == lego_set["set_number"]
+    assert response.json()["latest_snapshot"] is None
+
+
+def test_listings_by_sets_set_number_listings_endpoint(client: TestClient):
+    lego_set = create_lego_set(client)
+    listing = client.post(
+        "/listings", json=create_listing_payload(lego_set["set_number"])
+    ).json()
+    response = client.get(f"/sets/{lego_set['set_number']}/listings")
+
+    logger.info(
+        f"API TEST: GET /sets/{{set_number}}/listings status={response.status_code}"
+    )
     assert response.status_code == 200
     assert any(item["id"] == listing["id"] for item in response.json())
 
@@ -257,6 +270,205 @@ def test_latest_snapshot_endpoint(client: TestClient):
     )
     assert response.status_code == 200
     assert response.json()["id"] == snapshot["id"]
+
+
+def auth_headers(client: TestClient, username: str | None = None) -> dict:
+    resolved_username = username or f"user-{uuid4().hex[:8]}"
+    response = client.post(
+        "/auth/register",
+        json={
+            "username": resolved_username,
+            "email": f"{resolved_username}@example.com",
+            "password": "correct-horse-battery",
+        },
+    )
+    assert response.status_code == 201, response.text
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_register_success(client: TestClient):
+    response = client.post(
+        "/auth/register",
+        json={
+            "username": "collector",
+            "email": "collector@example.com",
+            "password": "correct-horse-battery",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["token_type"] == "bearer"
+    assert body["access_token"]
+    assert body["user"]["username"] == "collector"
+
+
+def test_duplicate_register_fails(client: TestClient):
+    payload = {
+        "username": "duplicate",
+        "email": "duplicate@example.com",
+        "password": "correct-horse-battery",
+    }
+    assert client.post("/auth/register", json=payload).status_code == 201
+    response = client.post("/auth/register", json=payload)
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "User already exists"
+
+
+def test_login_success(client: TestClient):
+    client.post(
+        "/auth/register",
+        json={
+            "username": "loginuser",
+            "email": "loginuser@example.com",
+            "password": "correct-horse-battery",
+        },
+    )
+    response = client.post(
+        "/auth/login",
+        json={
+            "username_or_email": "loginuser",
+            "password": "correct-horse-battery",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["access_token"]
+
+
+def test_login_bad_password_fails(client: TestClient):
+    client.post(
+        "/auth/register",
+        json={
+            "username": "badlogin",
+            "email": "badlogin@example.com",
+            "password": "correct-horse-battery",
+        },
+    )
+    response = client.post(
+        "/auth/login",
+        json={"username_or_email": "badlogin", "password": "wrong-password"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid credentials"
+
+
+def test_auth_me_works_with_token(client: TestClient):
+    headers = auth_headers(client, "profileuser")
+    response = client.get("/auth/me", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["username"] == "profileuser"
+
+
+def test_portfolio_requires_token(client: TestClient):
+    response = client.get("/portfolio")
+
+    assert response.status_code == 401
+
+
+def test_portfolio_add_list_summary_delete(client: TestClient):
+    lego_set = create_lego_set(client, "75192")
+    snapshot_payload = create_snapshot_payload("75192", fair_value="625.00")
+    snapshot_payload.update({"median_price": "625.00", "listing_count": 22})
+    client.post("/snapshots", json=snapshot_payload)
+    headers = auth_headers(client, "portfolio-user")
+
+    add_response = client.post(
+        "/portfolio/items",
+        headers=headers,
+        json={
+            "set_number": lego_set["set_number"],
+            "quantity": 2,
+            "purchase_price": "500.00",
+            "condition": "sealed",
+            "notes": "Demo holding",
+        },
+    )
+
+    assert add_response.status_code == 201, add_response.text
+    item = add_response.json()
+    assert item["set_number"] == "75192"
+    assert item["valuation_status"] == "valued"
+    assert item["current_total_value"] == "1250.00"
+
+    list_response = client.get("/portfolio", headers=headers)
+    assert list_response.status_code == 200
+    assert len(list_response.json()) == 1
+
+    summary_response = client.get("/portfolio/summary", headers=headers)
+    assert summary_response.status_code == 200
+    summary = summary_response.json()
+    assert summary["total_items"] == 1
+    assert summary["total_sets"] == 1
+    assert summary["total_quantity"] == 2
+    assert summary["total_cost_basis"] == "1000.00"
+    assert summary["estimated_current_value"] == "1250.00"
+
+    delete_response = client.delete(f"/portfolio/items/{item['id']}", headers=headers)
+    assert delete_response.status_code == 204
+    assert client.get("/portfolio", headers=headers).json() == []
+
+
+def test_portfolio_summary_missing_snapshot_does_not_crash(client: TestClient):
+    lego_set = create_lego_set(client, "42071")
+    headers = auth_headers(client, "missing-market-user")
+    response = client.post(
+        "/portfolio/items",
+        headers=headers,
+        json={
+            "set_number": lego_set["set_number"],
+            "quantity": 1,
+            "purchase_price": "100.00",
+            "condition": "used",
+        },
+    )
+    assert response.status_code == 201
+
+    summary_response = client.get("/portfolio/summary", headers=headers)
+    assert summary_response.status_code == 200
+    summary = summary_response.json()
+    assert summary["estimated_current_value"] == "0.00"
+    assert summary["holdings"][0]["valuation_status"] == "missing_market_data"
+
+
+def test_set_detail_returns_metadata_and_latest_snapshot(client: TestClient):
+    lego_set = create_lego_set(client, "75313")
+    snapshot = client.post(
+        "/snapshots", json=create_snapshot_payload("75313", fair_value="700.00")
+    ).json()
+
+    response = client.get(f"/sets/{lego_set['set_number']}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["set_number"] == "75313"
+    assert body["latest_snapshot"]["id"] == snapshot["id"]
+    assert body["fair_value"] == "150.00"
+    assert body["market_low"] == "120.00"
+    assert body["market_high"] == "190.00"
+    assert body["valuation_status"] == "valued"
+
+
+def test_set_detail_missing_snapshot_returns_null_valuation(client: TestClient):
+    create_lego_set(client, "42071")
+    response = client.get("/sets/42071")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["latest_snapshot"] is None
+    assert body["fair_value"] is None
+    assert body["valuation_status"] == "missing_market_data"
+
+
+def test_set_detail_missing_set_returns_404(client: TestClient):
+    response = client.get("/sets/00000")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "LEGO set not found"
 
 
 def test_analyze_endpoint(client: TestClient):
@@ -380,7 +592,8 @@ def test_analyze_endpoint_accepts_buy_goal(client: TestClient):
 
     logger.info(f"API TEST: POST /analyze buy goal status={response.status_code}")
     assert response.status_code == 201
-    assert response.json() == {
+    body = response.json()
+    assert body == {
         "set_number": "75192",
         "user_goal": "buy",
         "asking_price": 550.0,
@@ -392,6 +605,9 @@ def test_analyze_endpoint_accepts_buy_goal(client: TestClient):
             "Asking price is 12.0% below estimated market value; "
             "deal strength is strong."
         ),
+        "market_low": 590.0,
+        "market_high": 700.0,
+        "listing_count": 22,
     }
 
 

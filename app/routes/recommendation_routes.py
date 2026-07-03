@@ -17,7 +17,7 @@ from app.schemas import (
 from models import LegoSet, Recommendation
 from services import recommendation_service
 
-router = APIRouter(tags=["recommendations"])
+router = APIRouter(tags=["Analyze"])
 logger = logging.getLogger(__name__)
 
 
@@ -66,6 +66,8 @@ async def _latest_recommendation_for_set(
     "/analyze",
     response_model=AnalyzeResponse,
     status_code=status.HTTP_201_CREATED,
+    summary="Analyze a set decision",
+    description="Return BUY/PASS/WATCH/SELL/HOLD advice using stored market snapshots.",
 )
 async def analyze_set(
     payload: AnalyzeRequest, db: AsyncSession = Depends(get_db_session)
@@ -94,7 +96,12 @@ async def analyze_set(
 
 
 # Fetches the latest recommendation for a set. It accepts a set number and returns the newest recommendation.
-@router.get("/recommendation/{set_number}", response_model=RecommendationResponse)
+@router.get(
+    "/recommendations/{set_number}",
+    response_model=RecommendationResponse,
+    summary="Get latest set recommendation",
+    description="Return the latest saved recommendation for one LEGO set number.",
+)
 async def get_latest_recommendation(
     set_number: str, db: AsyncSession = Depends(get_db_session)
 ) -> dict:
@@ -119,3 +126,16 @@ async def get_latest_recommendation(
         recommendation.get("confidence"),
     )
     return recommendation
+
+
+@router.get(
+    "/recommendation/{set_number}",
+    response_model=RecommendationResponse,
+    deprecated=True,
+    summary="Deprecated latest recommendation route",
+    description="Deprecated compatibility route. Use GET /recommendations/{set_number}.",
+)
+async def get_latest_recommendation_deprecated(
+    set_number: str, db: AsyncSession = Depends(get_db_session)
+) -> dict:
+    return await get_latest_recommendation(set_number, db)

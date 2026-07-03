@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     bricklink_api_configured: bool = Field(
         default=False, alias="BRICKLINK_API_CONFIGURED"
     )
+    jwt_secret_key: str = Field(
+        default="change-me-in-production-use-a-real-secret",
+        alias="JWT_SECRET_KEY",
+    )
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    access_token_expire_minutes: int = Field(
+        default=60, ge=1, alias="ACCESS_TOKEN_EXPIRE_MINUTES"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
