@@ -11,6 +11,7 @@ class Marketplace(Base):
     __tablename__ = "marketplaces"
     __table_args__ = (
         CheckConstraint("name = lower(name)", name="name_lowercase"),
+        CheckConstraint("name IN ('ebay', 'bricklink')", name="name_allowed"),
         CheckConstraint(
             "fee_percent >= 0 AND fee_percent <= 100", name="fee_percent_valid"
         ),

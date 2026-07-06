@@ -25,6 +25,9 @@ class MarketplaceListing(Base):
         CheckConstraint("price >= 0", name="price_non_negative"),
         CheckConstraint("shipping_price >= 0", name="shipping_price_non_negative"),
         CheckConstraint("total_price >= 0", name="total_price_non_negative"),
+        CheckConstraint(
+            "total_price = price + shipping_price", name="total_price_matches_parts"
+        ),
         CheckConstraint("currency = upper(currency)", name="currency_uppercase"),
         CheckConstraint(
             "condition IN ('new', 'used', 'unknown')", name="condition_allowed"

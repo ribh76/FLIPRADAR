@@ -14,6 +14,7 @@ from app.schemas import (
     RecommendationResponse,
     UserGoal,
 )
+from app.schemas.validation import normalize_set_number
 from models import LegoSet, Recommendation
 from services import recommendation_service
 
@@ -32,10 +33,11 @@ def _confidence_band(score: Decimal) -> ConfidenceBand:
 async def _latest_recommendation_for_set(
     db: AsyncSession, set_number: str
 ) -> dict | None:
+    normalized_set_number = normalize_set_number(set_number)
     result = await db.execute(
         select(Recommendation)
         .join(LegoSet)
-        .where(LegoSet.set_number == set_number)
+        .where(LegoSet.set_number == normalized_set_number)
         .order_by(Recommendation.created_at.desc())
         .limit(1)
     )
@@ -48,7 +50,7 @@ async def _latest_recommendation_for_set(
     return {
         "id": recommendation.id,
         "lego_set_id": recommendation.lego_set_id,
-        "set_number": lego_set.set_number if lego_set else set_number,
+        "set_number": lego_set.set_number if lego_set else normalized_set_number,
         "user_goal": UserGoal(recommendation.goal),
         "recommendation": RecommendationDecision(recommendation.decision),
         "fair_value": int(fair_value.quantize(Decimal("1"), rounding=ROUND_HALF_UP)),

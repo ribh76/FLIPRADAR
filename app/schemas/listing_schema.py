@@ -2,14 +2,23 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
+
+from app.schemas.validation import (
+    ListingConditionValue,
+    LowerText,
+    MarketplaceValue,
+    Money,
+    OptionalMoney,
+    SetNumber,
+)
 
 
 class MarketplaceCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=80, pattern=r"^[a-z0-9_-]+$")
+    name: MarketplaceValue
     display_name: str = Field(..., min_length=1, max_length=120)
     base_url: HttpUrl | None = None
-    fee_percent: Decimal = Field(default=Decimal("0.00"), ge=0, le=100)
+    fee_percent: Money = Field(default=Decimal("0.00"), ge=0, le=100, decimal_places=2)
 
 
 class MarketplaceResponse(MarketplaceCreate):
@@ -21,27 +30,34 @@ class MarketplaceResponse(MarketplaceCreate):
 
 
 class ListingCreate(BaseModel):
-    set_number: str = Field(..., min_length=1, max_length=32)
-    marketplace_name: str = Field(..., min_length=1, max_length=80)
+    set_number: SetNumber = Field(..., min_length=1, max_length=32)
+    marketplace_name: MarketplaceValue
     external_listing_id: str = Field(..., min_length=1, max_length=160)
     title: str = Field(..., min_length=1, max_length=500)
     url: HttpUrl
-    price: Decimal = Field(..., ge=0, decimal_places=2)
-    shipping_price: Decimal = Field(default=Decimal("0.00"), ge=0, decimal_places=2)
-    total_price: Decimal = Field(..., ge=0, decimal_places=2)
+    price: Money = Field(..., ge=0, decimal_places=2)
+    shipping_price: Money = Field(default=Decimal("0.00"), ge=0, decimal_places=2)
+    total_price: Money = Field(..., ge=0, decimal_places=2)
     currency: str = Field(
         default="USD", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$"
     )
-    condition: str = Field(default="unknown", pattern=r"^(new|used|unknown)$")
-    listing_status: str = Field(
+    condition: ListingConditionValue = "unknown"
+    listing_status: LowerText = Field(
         default="active", pattern=r"^(active|sold|ended|removed)$"
     )
     seller_name: str | None = Field(default=None, max_length=255)
-    seller_rating: Decimal | None = Field(default=None, ge=0, le=100)
+    seller_rating: OptionalMoney = Field(default=None, ge=0, le=100, decimal_places=2)
     is_complete: bool | None = None
     is_sealed: bool | None = None
-    match_confidence: Decimal | None = Field(default=None, ge=0, le=100)
+    match_confidence: OptionalMoney = Field(default=None, ge=0, le=100, decimal_places=2)
     raw_payload: dict | None = None
+
+    @model_validator(mode="after")
+    def validate_total_price(self):
+        expected_total = self.price + self.shipping_price
+        if self.total_price != expected_total:
+            raise ValueError("total_price must equal price plus shipping_price")
+        return self
 
 
 class ListingResponse(BaseModel):

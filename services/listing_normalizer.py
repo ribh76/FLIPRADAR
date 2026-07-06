@@ -20,7 +20,7 @@ def normalize_listing(raw_listing: RawListing) -> NormalizedListing | None:
         return _normalize_ebay_listing(raw_listing)
     if marketplace == "bricklink":
         return _normalize_bricklink_listing(raw_listing)
-    return _normalize_generic_listing(raw_listing)
+    return None
 
 
 def _normalize_ebay_listing(raw_listing: RawListing) -> NormalizedListing | None:
@@ -45,25 +45,6 @@ def _normalize_ebay_listing(raw_listing: RawListing) -> NormalizedListing | None
 def _normalize_bricklink_listing(raw_listing: RawListing) -> NormalizedListing | None:
     return _build_listing(
         marketplace="bricklink",
-        external_listing_id=raw_listing.get("external_listing_id")
-        or raw_listing.get("listing_id")
-        or raw_listing.get("id"),
-        price=raw_listing.get("price") or raw_listing.get("unit_price"),
-        shipping_price=raw_listing.get("shipping_price")
-        or raw_listing.get("shipping")
-        or 0,
-        condition=raw_listing.get("condition"),
-        title=raw_listing.get("title") or raw_listing.get("item_name"),
-        listing_url=raw_listing.get("listing_url") or raw_listing.get("url"),
-        seller=raw_listing.get("seller") or raw_listing.get("seller_name"),
-        currency=raw_listing.get("currency") or raw_listing.get("currency_code"),
-        raw_payload=raw_listing,
-    )
-
-
-def _normalize_generic_listing(raw_listing: RawListing) -> NormalizedListing | None:
-    return _build_listing(
-        marketplace=raw_listing.get("marketplace"),
         external_listing_id=raw_listing.get("external_listing_id")
         or raw_listing.get("listing_id")
         or raw_listing.get("id"),

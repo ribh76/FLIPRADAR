@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.schemas.validation import normalize_set_number
 from models import LegoSet, PriceSnapshot
 
 logger = logging.getLogger(__name__)
@@ -12,10 +13,11 @@ logger = logging.getLogger(__name__)
 async def get_latest_price_snapshot_by_set_number(
     db: AsyncSession, set_number: str
 ) -> PriceSnapshot | None:
+    normalized_set_number = normalize_set_number(set_number)
     statement = (
         select(PriceSnapshot)
         .join(LegoSet)
-        .where(LegoSet.set_number == set_number)
+        .where(LegoSet.set_number == normalized_set_number)
         .order_by(PriceSnapshot.snapshot_at.desc(), PriceSnapshot.created_at.desc())
         .limit(1)
     )

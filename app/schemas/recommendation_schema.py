@@ -3,8 +3,9 @@ from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.validation import Money, OptionalMoney, PortfolioConditionValue, SetNumber
 
 class UserGoal(StrEnum):
     BUY = "buy"
@@ -32,21 +33,16 @@ class ConfidenceBand(StrEnum):
 
 
 class AnalyzeRequest(BaseModel):
-    set_number: str = Field(..., min_length=1)
+    set_number: SetNumber = Field(..., min_length=1, max_length=32)
     user_goal: UserGoal
-    asking_price: Decimal | None = Field(default=None, ge=0, decimal_places=2)
-    condition: str = Field(default="unknown", pattern=r"^(new|used|sealed|unknown)$")
-    shipping_price: Decimal = Field(default=Decimal("0.00"), ge=0, decimal_places=2)
+    asking_price: OptionalMoney = Field(default=None, ge=0, decimal_places=2)
+    condition: PortfolioConditionValue = "unknown"
+    shipping_price: Money = Field(default=Decimal("0.00"), ge=0, decimal_places=2)
     marketplace_fee_pct: Decimal = Field(default=Decimal("0.13"), ge=0, le=1)
     target_margin_pct: Decimal = Field(default=Decimal("0.15"), ge=0, le=1)
-    purchase_price: Decimal | None = Field(default=None, ge=0, decimal_places=2)
+    purchase_price: OptionalMoney = Field(default=None, ge=0, decimal_places=2)
     quantity: int = Field(default=1, gt=0)
     target_profit_pct: Decimal = Field(default=Decimal("0.25"), ge=0, le=10)
-
-    @field_validator("set_number", mode="before")
-    @classmethod
-    def normalize_set_number(cls, value: object) -> str:
-        return str(value).strip()
 
 
 class AnalyzeResponse(BaseModel):

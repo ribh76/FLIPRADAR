@@ -22,6 +22,9 @@ from database.base import Base
 class PortfolioItem(Base):
     __tablename__ = "portfolio_items"
     __table_args__ = (
+        CheckConstraint(
+            "set_number = upper(trim(set_number))", name="set_number_canonical"
+        ),
         CheckConstraint("quantity > 0", name="quantity_positive"),
         CheckConstraint("purchase_price >= 0", name="purchase_price_non_negative"),
         CheckConstraint(

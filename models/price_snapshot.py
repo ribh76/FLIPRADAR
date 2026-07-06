@@ -42,6 +42,34 @@ class PriceSnapshot(Base):
             name="fair_market_value_non_negative",
         ),
         CheckConstraint("listing_count >= 0", name="listing_count_non_negative"),
+        CheckConstraint(
+            "low_price IS NULL OR high_price IS NULL OR low_price <= high_price",
+            name="price_range_ordered",
+        ),
+        CheckConstraint(
+            "low_price IS NULL OR median_price IS NULL OR low_price <= median_price",
+            name="median_price_above_low",
+        ),
+        CheckConstraint(
+            "high_price IS NULL OR median_price IS NULL OR median_price <= high_price",
+            name="median_price_below_high",
+        ),
+        CheckConstraint(
+            "low_price IS NULL OR average_price IS NULL OR low_price <= average_price",
+            name="average_price_above_low",
+        ),
+        CheckConstraint(
+            "high_price IS NULL OR average_price IS NULL OR average_price <= high_price",
+            name="average_price_below_high",
+        ),
+        CheckConstraint(
+            "low_price IS NULL OR fair_market_value IS NULL OR low_price <= fair_market_value",
+            name="fair_market_value_above_low",
+        ),
+        CheckConstraint(
+            "high_price IS NULL OR fair_market_value IS NULL OR fair_market_value <= high_price",
+            name="fair_market_value_below_high",
+        ),
         CheckConstraint("currency = upper(currency)", name="currency_uppercase"),
         CheckConstraint(
             "condition IN ('new', 'used', 'mixed', 'unknown')", name="condition_allowed"

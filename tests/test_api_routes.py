@@ -119,15 +119,20 @@ def create_listing_payload(set_number: str) -> dict:
 
 
 def create_snapshot_payload(set_number: str, fair_value: str = "152.00") -> dict:
+    fair_value_decimal = Decimal(fair_value)
+    low_price = max(
+        Decimal("0.00"), min(Decimal("120.00"), fair_value_decimal - Decimal("32.00"))
+    )
+    high_price = max(Decimal("1000.00"), fair_value_decimal + Decimal("38.00"))
     return {
         "set_number": set_number,
         "marketplace_name": "ebay",
         "condition": "new",
         "currency": "USD",
-        "low_price": "120.00",
+        "low_price": str(low_price),
         "median_price": "150.00",
         "average_price": "151.25",
-        "high_price": "190.00",
+        "high_price": str(high_price),
         "fair_market_value": fair_value,
         "listing_count": 12,
         "source_payload": {"source": "pytest-api"},
@@ -319,6 +324,102 @@ def test_latest_snapshot_endpoint(client: TestClient):
     )
     assert response.status_code == 200
     assert response.json()["id"] == snapshot["id"]
+
+
+def test_set_number_marketplace_and_condition_values_are_normalized(
+    client: TestClient,
+):
+    set_response = client.post("/sets", json=create_set_payload("  abc123-1 "))
+    assert set_response.status_code == 201, set_response.text
+    assert set_response.json()["set_number"] == "ABC123-1"
+
+    listing_payload = create_listing_payload(" abc123-1 ")
+    listing_payload.update({"marketplace_name": " EBAY ", "condition": "New"})
+    listing_response = client.post("/listings", json=listing_payload)
+    assert listing_response.status_code == 201, listing_response.text
+    assert listing_response.json()["condition"] == "new"
+
+    snapshot_payload = create_snapshot_payload(" abc123-1 ")
+    snapshot_payload.update({"marketplace_name": " BRICKLINK ", "condition": "Used"})
+    snapshot_response = client.post("/snapshots", json=snapshot_payload)
+    assert snapshot_response.status_code == 201, snapshot_response.text
+    assert snapshot_response.json()["condition"] == "used"
+
+    detail_response = client.get("/sets/abc123-1")
+    assert detail_response.status_code == 200
+    assert detail_response.json()["set_number"] == "ABC123-1"
+
+
+def test_listing_validation_rejects_bad_money_marketplace_and_condition(
+    client: TestClient,
+):
+    lego_set = create_lego_set(client)
+    payload = create_listing_payload(lego_set["set_number"])
+
+    bad_price = {**payload, "price": "-1.00"}
+    assert client.post("/listings", json=bad_price).status_code == 422
+
+    bad_scale = {**payload, "price": "149.999"}
+    assert client.post("/listings", json=bad_scale).status_code == 422
+
+    bad_total = {**payload, "total_price": "999.00"}
+    assert client.post("/listings", json=bad_total).status_code == 422
+
+    bad_marketplace = {**payload, "marketplace_name": "amazon"}
+    assert client.post("/listings", json=bad_marketplace).status_code == 422
+
+    bad_condition = {**payload, "condition": "sealed"}
+    assert client.post("/listings", json=bad_condition).status_code == 422
+
+
+def test_snapshot_validation_rejects_bad_values_and_marketplace(
+    client: TestClient,
+):
+    lego_set = create_lego_set(client)
+    payload = create_snapshot_payload(lego_set["set_number"])
+
+    bad_range = {**payload, "low_price": "200.00", "high_price": "100.00"}
+    assert client.post("/snapshots", json=bad_range).status_code == 422
+
+    bad_median = {**payload, "median_price": "2000.00"}
+    assert client.post("/snapshots", json=bad_median).status_code == 422
+
+    bad_scale = {**payload, "fair_market_value": "152.999"}
+    assert client.post("/snapshots", json=bad_scale).status_code == 422
+
+    bad_marketplace = {**payload, "marketplace_name": "amazon"}
+    assert client.post("/snapshots", json=bad_marketplace).status_code == 422
+
+
+def test_portfolio_validation_rejects_bad_quantity_money_and_condition(
+    client: TestClient,
+):
+    lego_set = create_lego_set(client)
+    headers = auth_headers(client, "validation-portfolio-user")
+    payload = {
+        "set_number": lego_set["set_number"],
+        "quantity": 1,
+        "purchase_price": "100.00",
+        "condition": "used",
+    }
+
+    bad_quantity = {**payload, "quantity": 0}
+    assert (
+        client.post("/portfolio/items", headers=headers, json=bad_quantity).status_code
+        == 422
+    )
+
+    bad_money = {**payload, "purchase_price": "100.999"}
+    assert (
+        client.post("/portfolio/items", headers=headers, json=bad_money).status_code
+        == 422
+    )
+
+    bad_condition = {**payload, "condition": "damaged"}
+    assert (
+        client.post("/portfolio/items", headers=headers, json=bad_condition).status_code
+        == 422
+    )
 
 
 def auth_headers(client: TestClient, username: str | None = None) -> dict:
@@ -833,7 +934,7 @@ def test_set_detail_returns_metadata_and_latest_snapshot(client: TestClient):
     assert body["latest_snapshot"]["id"] == snapshot["id"]
     assert body["fair_value"] == "150.00"
     assert body["market_low"] == "120.00"
-    assert body["market_high"] == "190.00"
+    assert body["market_high"] == "1000.00"
     assert body["valuation_status"] == "valued"
 
 

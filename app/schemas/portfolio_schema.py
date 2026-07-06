@@ -4,21 +4,28 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.validation import (
+    Money,
+    OptionalMoney,
+    PortfolioConditionValue,
+    SetNumber,
+)
+
 
 class PortfolioItemCreate(BaseModel):
-    set_number: str = Field(..., min_length=1, max_length=32)
+    set_number: SetNumber = Field(..., min_length=1, max_length=32)
     quantity: int = Field(default=1, gt=0)
-    purchase_price: Decimal = Field(..., ge=0, decimal_places=2)
-    condition: str = Field(default="unknown", pattern=r"^(new|used|sealed|unknown)$")
+    purchase_price: Money = Field(..., ge=0, decimal_places=2)
+    condition: PortfolioConditionValue = "unknown"
     acquired_at: datetime | None = None
     notes: str | None = Field(default=None, max_length=2000)
 
 
 class PortfolioItemUpdate(BaseModel):
-    set_number: str | None = Field(default=None, min_length=1, max_length=32)
+    set_number: SetNumber | None = Field(default=None, min_length=1, max_length=32)
     quantity: int | None = Field(default=None, gt=0)
-    purchase_price: Decimal | None = Field(default=None, ge=0, decimal_places=2)
-    condition: str | None = Field(default=None, pattern=r"^(new|used|sealed|unknown)$")
+    purchase_price: OptionalMoney = Field(default=None, ge=0, decimal_places=2)
+    condition: PortfolioConditionValue | None = None
     acquired_at: datetime | None = None
     notes: str | None = Field(default=None, max_length=2000)
 

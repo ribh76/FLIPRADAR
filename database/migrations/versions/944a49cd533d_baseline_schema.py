@@ -46,6 +46,10 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.CheckConstraint(
+            "set_number = upper(trim(set_number))",
+            name=op.f("ck_lego_sets_set_number_canonical"),
+        ),
+        sa.CheckConstraint(
             "minifig_count IS NULL OR minifig_count >= 0",
             name=op.f("ck_lego_sets_minifig_count_non_negative"),
         ),
@@ -96,6 +100,10 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint(
             "name = lower(name)", name=op.f("ck_marketplaces_name_lowercase")
+        ),
+        sa.CheckConstraint(
+            "name IN ('ebay', 'bricklink')",
+            name=op.f("ck_marketplaces_name_allowed"),
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_marketplaces")),
     )
@@ -209,6 +217,10 @@ def upgrade() -> None:
             "total_price >= 0",
             name=op.f("ck_marketplace_listings_total_price_non_negative"),
         ),
+        sa.CheckConstraint(
+            "total_price = price + shipping_price",
+            name=op.f("ck_marketplace_listings_total_price_matches_parts"),
+        ),
         sa.ForeignKeyConstraint(
             ["lego_set_id"],
             ["lego_sets.id"],
@@ -265,6 +277,10 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "condition IN ('new', 'used', 'sealed', 'unknown')",
             name=op.f("ck_portfolio_items_condition_allowed"),
+        ),
+        sa.CheckConstraint(
+            "set_number = upper(trim(set_number))",
+            name=op.f("ck_portfolio_items_set_number_canonical"),
         ),
         sa.CheckConstraint(
             "purchase_price >= 0",
@@ -353,6 +369,34 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "listing_count >= 0",
             name=op.f("ck_price_snapshots_listing_count_non_negative"),
+        ),
+        sa.CheckConstraint(
+            "low_price IS NULL OR high_price IS NULL OR low_price <= high_price",
+            name=op.f("ck_price_snapshots_price_range_ordered"),
+        ),
+        sa.CheckConstraint(
+            "low_price IS NULL OR median_price IS NULL OR low_price <= median_price",
+            name=op.f("ck_price_snapshots_median_price_above_low"),
+        ),
+        sa.CheckConstraint(
+            "high_price IS NULL OR median_price IS NULL OR median_price <= high_price",
+            name=op.f("ck_price_snapshots_median_price_below_high"),
+        ),
+        sa.CheckConstraint(
+            "low_price IS NULL OR average_price IS NULL OR low_price <= average_price",
+            name=op.f("ck_price_snapshots_average_price_above_low"),
+        ),
+        sa.CheckConstraint(
+            "high_price IS NULL OR average_price IS NULL OR average_price <= high_price",
+            name=op.f("ck_price_snapshots_average_price_below_high"),
+        ),
+        sa.CheckConstraint(
+            "low_price IS NULL OR fair_market_value IS NULL OR low_price <= fair_market_value",
+            name=op.f("ck_price_snapshots_fair_market_value_above_low"),
+        ),
+        sa.CheckConstraint(
+            "high_price IS NULL OR fair_market_value IS NULL OR fair_market_value <= high_price",
+            name=op.f("ck_price_snapshots_fair_market_value_below_high"),
         ),
         sa.CheckConstraint(
             "low_price IS NULL OR low_price >= 0",

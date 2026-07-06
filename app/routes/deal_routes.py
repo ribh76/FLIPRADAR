@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db_session
 from app.schemas import ListingCreate, ListingResponse
+from app.schemas.validation import MarketplaceName, normalize_set_number
 from models import LegoSet, Marketplace, MarketplaceListing
 
 router = APIRouter(tags=["Marketplace/Internal"])
@@ -17,6 +18,8 @@ async def _get_or_create_marketplace(
     db: AsyncSession, marketplace_name: str
 ) -> Marketplace:
     normalized_name = marketplace_name.lower()
+    if normalized_name not in {marketplace.value for marketplace in MarketplaceName}:
+        raise ValueError("Unsupported marketplace")
     result = await db.execute(
         select(Marketplace).where(Marketplace.name == normalized_name)
     )
@@ -26,7 +29,7 @@ async def _get_or_create_marketplace(
 
     marketplace = Marketplace(
         name=normalized_name,
-        display_name=marketplace_name,
+        display_name=normalized_name.title(),
         fee_percent=0,
     )
     db.add(marketplace)
@@ -65,10 +68,11 @@ async def _create_listing(
 async def _list_listings_for_set(
     db: AsyncSession, set_number: str
 ) -> list[MarketplaceListing]:
+    normalized_set_number = normalize_set_number(set_number)
     result = await db.execute(
         select(MarketplaceListing)
         .join(LegoSet)
-        .where(LegoSet.set_number == set_number)
+        .where(LegoSet.set_number == normalized_set_number)
         .order_by(MarketplaceListing.last_seen_at.desc())
     )
     return list(result.scalars())
@@ -77,10 +81,11 @@ async def _list_listings_for_set(
 async def _latest_listing_for_set(
     db: AsyncSession, set_number: str
 ) -> MarketplaceListing | None:
+    normalized_set_number = normalize_set_number(set_number)
     result = await db.execute(
         select(MarketplaceListing)
         .join(LegoSet)
-        .where(LegoSet.set_number == set_number)
+        .where(LegoSet.set_number == normalized_set_number)
         .order_by(
             MarketplaceListing.last_seen_at.desc(), MarketplaceListing.created_at.desc()
         )
@@ -123,9 +128,12 @@ async def create_marketplace_listing(
             payload.set_number,
             payload.marketplace_name,
         )
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
-        ) from exc
+        status_code = (
+            status.HTTP_400_BAD_REQUEST
+            if str(exc) == "Unsupported marketplace"
+            else status.HTTP_409_CONFLICT
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     logger.info(
         "request finished route=create_marketplace_listing set_number=%s marketplace=%s",
         payload.set_number,

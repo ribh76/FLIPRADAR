@@ -11,6 +11,9 @@ class LegoSet(Base):
     __tablename__ = "lego_sets"
     __table_args__ = (
         CheckConstraint(
+            "set_number = upper(trim(set_number))", name="set_number_canonical"
+        ),
+        CheckConstraint(
             "piece_count IS NULL OR piece_count >= 0", name="piece_count_non_negative"
         ),
         CheckConstraint(

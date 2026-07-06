@@ -65,7 +65,7 @@ async def db_session():
 def make_random_lego_set() -> LegoSet:
     random_suffix = uuid4().hex[:8]
     return LegoSet(
-        set_number=f"{random_suffix[:5]}-{random_suffix[5:]}",
+        set_number=f"{random_suffix[:5]}-{random_suffix[5:]}".upper(),
         name=f"Random Test Set {random_suffix}",
         theme="Icons",
         subtheme="Database Tests",
@@ -77,8 +77,9 @@ def make_random_lego_set() -> LegoSet:
 
 
 def make_marketplace(name_suffix: str = "") -> Marketplace:
+    del name_suffix
     return Marketplace(
-        name=f"ebay{name_suffix}",
+        name="ebay",
         display_name="eBay",
         base_url="https://www.ebay.com",
         fee_percent=Decimal("13.25"),
@@ -439,11 +440,18 @@ async def test_marketplace_service_updates_listings_and_snapshot(
 
     assert len(listings) == 12
     assert snapshot.id is not None
-    assert snapshot.listing_count == 12
-    assert snapshot.condition == "mixed"
-    assert snapshot.low_price == Decimal("110.00")
+    assert snapshot.listing_count == 6
+    assert snapshot.condition == "used"
+    assert snapshot.low_price == Decimal("125.00")
     assert snapshot.high_price == Decimal("130.00")
-    assert snapshot.average_price == Decimal("120.00")
-    assert snapshot.median_price == Decimal("120.00")
-    assert snapshot.fair_market_value == Decimal("120.00")
-    assert snapshot.source_payload["marketplaces"] == ["bricklink", "ebay"]
+    assert snapshot.average_price == Decimal("127.50")
+    assert snapshot.median_price == Decimal("127.50")
+    assert snapshot.fair_market_value == Decimal("127.50")
+    assert snapshot.source_payload["marketplaces"] == ["bricklink"]
+
+    saved_snapshots = await db_session.execute(
+        select(PriceSnapshot).where(PriceSnapshot.lego_set_id == lego_set.id)
+    )
+    snapshots = list(saved_snapshots.scalars())
+    assert len(snapshots) == 2
+    assert sum(item.listing_count for item in snapshots) == 12

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db_session
 from app.schemas import PriceSnapshotCreate, PriceSnapshotResponse
+from app.schemas.validation import MarketplaceName, normalize_set_number
 from models import LegoSet, Marketplace, PriceSnapshot
 from services.pricing_service import get_latest_price_snapshot_by_set_number
 
@@ -17,6 +18,8 @@ async def _get_or_create_marketplace(
     db: AsyncSession, marketplace_name: str
 ) -> Marketplace:
     normalized_name = marketplace_name.lower()
+    if normalized_name not in {marketplace.value for marketplace in MarketplaceName}:
+        raise ValueError("Unsupported marketplace")
     result = await db.execute(
         select(Marketplace).where(Marketplace.name == normalized_name)
     )
@@ -26,7 +29,7 @@ async def _get_or_create_marketplace(
 
     marketplace = Marketplace(
         name=normalized_name,
-        display_name=marketplace_name,
+        display_name=normalized_name.title(),
         fee_percent=0,
     )
     db.add(marketplace)
@@ -62,10 +65,11 @@ async def _create_snapshot(
 async def _list_snapshots_for_set(
     db: AsyncSession, set_number: str
 ) -> list[PriceSnapshot]:
+    normalized_set_number = normalize_set_number(set_number)
     result = await db.execute(
         select(PriceSnapshot)
         .join(LegoSet)
-        .where(LegoSet.set_number == set_number)
+        .where(LegoSet.set_number == normalized_set_number)
         .order_by(PriceSnapshot.snapshot_at.desc())
     )
     return list(result.scalars())
@@ -98,6 +102,15 @@ async def create_price_snapshot(
         )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except ValueError as exc:
+        logger.warning(
+            "major validation failure route=create_price_snapshot set_number=%s marketplace=%s",
+            payload.set_number,
+            payload.marketplace_name,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
     logger.info(
         "request finished route=create_price_snapshot set_number=%s marketplace=%s",

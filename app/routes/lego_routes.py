@@ -11,6 +11,7 @@ from app.schemas import (
     PriceSnapshotResponse,
     SetDetailResponse,
 )
+from app.schemas.validation import normalize_set_number
 from database import get_db_session
 from models import LegoSet
 from services import set_detail_service
@@ -32,7 +33,10 @@ async def _create_lego_set(db: AsyncSession, payload: LegoSetCreate) -> LegoSet:
 
 
 async def _get_lego_set(db: AsyncSession, set_number: str) -> LegoSet | None:
-    result = await db.execute(select(LegoSet).where(LegoSet.set_number == set_number))
+    normalized_set_number = normalize_set_number(set_number)
+    result = await db.execute(
+        select(LegoSet).where(LegoSet.set_number == normalized_set_number)
+    )
     return result.scalar_one_or_none()
 
 

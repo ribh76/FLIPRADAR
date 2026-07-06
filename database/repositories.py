@@ -9,14 +9,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from models import LegoSet, PortfolioItem, PriceSnapshot, Recommendation, User
+from app.schemas.validation import normalize_set_number
 
 logger = logging.getLogger(__name__)
 
 
 async def get_set_by_number(db: AsyncSession, set_number: str) -> LegoSet | None:
+    normalized_set_number = normalize_set_number(set_number)
     try:
         result = await db.execute(
-            select(LegoSet).where(LegoSet.set_number == str(set_number))
+            select(LegoSet).where(LegoSet.set_number == normalized_set_number)
         )
         lego_set = result.scalar_one_or_none()
     except SQLAlchemyError:
@@ -32,8 +34,9 @@ async def get_set_by_number(db: AsyncSession, set_number: str) -> LegoSet | None
 async def get_latest_snapshots_by_set_number(
     db: AsyncSession, set_number: str
 ) -> list[PriceSnapshot]:
+    normalized_set_number = normalize_set_number(set_number)
     recent_snapshots = await get_recent_snapshots_by_set_number(
-        db, set_number, limit=50
+        db, normalized_set_number, limit=50
     )
     latest_by_marketplace = {}
     for snapshot in recent_snapshots:
@@ -50,11 +53,12 @@ async def get_latest_snapshots_by_set_number(
 async def get_recent_snapshots_by_set_number(
     db: AsyncSession, set_number: str, limit: int = 10
 ) -> list[PriceSnapshot]:
+    normalized_set_number = normalize_set_number(set_number)
     statement = (
         select(PriceSnapshot)
         .options(selectinload(PriceSnapshot.marketplace))
         .join(LegoSet)
-        .where(LegoSet.set_number == str(set_number))
+        .where(LegoSet.set_number == normalized_set_number)
         .order_by(PriceSnapshot.snapshot_at.desc(), PriceSnapshot.created_at.desc())
         .limit(limit)
     )

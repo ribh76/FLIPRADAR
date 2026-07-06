@@ -1,9 +1,11 @@
 import logging
+from collections import defaultdict
 from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.schemas.validation import MarketplaceName, normalize_set_number
 from database.session import SessionLocal
 from models import LegoSet, Marketplace, MarketplaceListing, PriceSnapshot
 from services import bricklink_client, ebay_client, listing_normalizer, snapshot_builder
@@ -14,17 +16,18 @@ logger = logging.getLogger(__name__)
 async def update_marketplace_data(
     set_number: str, db: AsyncSession | None = None
 ) -> PriceSnapshot:
+    normalized_set_number = normalize_set_number(set_number)
     if db is None:
         async with SessionLocal() as session:
             try:
-                snapshot = await _update_marketplace_data(session, set_number)
+                snapshot = await _update_marketplace_data(session, normalized_set_number)
                 await session.commit()
             except Exception:
                 await session.rollback()
                 raise
             return snapshot
 
-    return await _update_marketplace_data(db, set_number)
+    return await _update_marketplace_data(db, normalized_set_number)
 
 
 async def _update_marketplace_data(db: AsyncSession, set_number: str) -> PriceSnapshot:
@@ -49,9 +52,10 @@ async def _update_marketplace_data(db: AsyncSession, set_number: str) -> PriceSn
         )
 
     await _save_listings(db, lego_set, normalized_listings)
-    snapshot_data = snapshot_builder.build(normalized_listings)
-    snapshot = await _save_snapshot(db, lego_set, snapshot_data)
-    return snapshot
+    snapshots = await _save_snapshots_by_marketplace(db, lego_set, normalized_listings)
+    if not snapshots:
+        raise LookupError("No valid marketplace listings found")
+    return snapshots[0]
 
 
 def _with_marketplace(marketplace_name: str, listings: list[dict]) -> list[dict]:
@@ -59,8 +63,9 @@ def _with_marketplace(marketplace_name: str, listings: list[dict]) -> list[dict]
 
 
 async def _get_lego_set(db: AsyncSession, set_number: str) -> LegoSet | None:
+    normalized_set_number = normalize_set_number(set_number)
     result = await db.execute(
-        select(LegoSet).where(LegoSet.set_number == str(set_number))
+        select(LegoSet).where(LegoSet.set_number == normalized_set_number)
     )
     return result.scalar_one_or_none()
 
@@ -69,6 +74,10 @@ async def _get_or_create_marketplace(
     db: AsyncSession, marketplace_name: str
 ) -> Marketplace:
     normalized_name = marketplace_name.lower()
+    allowed_marketplaces = {marketplace.value for marketplace in MarketplaceName}
+    if normalized_name not in allowed_marketplaces:
+        raise ValueError("Unsupported marketplace")
+
     result = await db.execute(
         select(Marketplace).where(Marketplace.name == normalized_name)
     )
@@ -133,10 +142,28 @@ async def _save_listings(
     return saved_listings
 
 
+async def _save_snapshots_by_marketplace(
+    db: AsyncSession, lego_set: LegoSet, listings: list[dict]
+) -> list[PriceSnapshot]:
+    listings_by_marketplace = defaultdict(list)
+    for listing in listings:
+        listings_by_marketplace[listing["marketplace"]].append(listing)
+
+    snapshots = []
+    for marketplace_name in sorted(listings_by_marketplace):
+        marketplace = await _get_or_create_marketplace(db, marketplace_name)
+        snapshot_data = snapshot_builder.build(listings_by_marketplace[marketplace_name])
+        snapshot = await _save_snapshot(db, lego_set, marketplace, snapshot_data)
+        snapshots.append(snapshot)
+    return snapshots
+
+
 async def _save_snapshot(
-    db: AsyncSession, lego_set: LegoSet, snapshot_data: dict
+    db: AsyncSession,
+    lego_set: LegoSet,
+    marketplace: Marketplace,
+    snapshot_data: dict,
 ) -> PriceSnapshot:
-    marketplace = await _get_or_create_marketplace(db, "aggregate")
     snapshot = PriceSnapshot(
         lego_set_id=lego_set.id,
         marketplace_id=marketplace.id,
@@ -149,9 +176,9 @@ async def _save_snapshot(
 
 
 def _marketplace_base_url(marketplace_name: str) -> str | None:
-    if marketplace_name == "ebay":
+    if marketplace_name == MarketplaceName.EBAY.value:
         return "https://www.ebay.com"
-    if marketplace_name == "bricklink":
+    if marketplace_name == MarketplaceName.BRICKLINK.value:
         return "https://www.bricklink.com"
     return None
 

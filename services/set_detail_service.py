@@ -3,6 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.schemas.validation import normalize_set_number
 from database.repositories import get_latest_snapshots_by_set_number, get_set_by_number
 from engine import price_estimator
 from services import bricklink_client
@@ -59,16 +60,19 @@ def _mock_bricklink_detail(
 
 
 async def get_set_detail(db: AsyncSession, set_number: str) -> dict:
-    lego_set = await get_set_by_number(db, set_number)
+    normalized_set_number = normalize_set_number(set_number)
+    lego_set = await get_set_by_number(db, normalized_set_number)
     if lego_set is None:
-        return _mock_bricklink_detail(set_number)
+        return _mock_bricklink_detail(normalized_set_number)
 
     metadata = _metadata_from_lego_set(lego_set)
-    snapshots = await get_latest_snapshots_by_set_number(db, set_number)
+    snapshots = await get_latest_snapshots_by_set_number(db, normalized_set_number)
     latest_snapshot = snapshots[0] if snapshots else None
     if not snapshots:
         try:
-            return _mock_bricklink_detail(set_number, metadata_override=metadata)
+            return _mock_bricklink_detail(
+                normalized_set_number, metadata_override=metadata
+            )
         except HTTPException:
             return _detail_response(
                 metadata,
