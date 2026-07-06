@@ -12,8 +12,8 @@ FlipRadar lets LEGO collectors analyze set decisions, track portfolio value, and
 ## Setup
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 ```
@@ -28,6 +28,12 @@ Required environment variables:
 
 ```bash
 python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Equivalent shortcut:
+
+```bash
+python3 run.py
 ```
 
 Swagger UI is available after startup:
@@ -47,6 +53,13 @@ Demo sets include `42071`, `75192`, and `75313`.
 
 ## Tests
 
+Use the project virtual environment first:
+
+```bash
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
 ```bash
 python3 -m black .
 python3 -m ruff check .
@@ -58,6 +71,53 @@ Run a single test file:
 ```bash
 python3 -m pytest tests/test_api_routes.py
 ```
+
+## Database Migrations
+
+FlipRadar uses Alembic for schema migrations. All ORM models share the same
+SQLAlchemy metadata through `database.base.Base`, and Alembic imports that
+metadata from `database/migrations/env.py`.
+
+Check Alembic is installed:
+
+```bash
+venv/bin/python -m alembic --version
+```
+
+Create a new migration after a model/schema change:
+
+```bash
+venv/bin/python -m alembic revision --autogenerate -m "describe change"
+```
+
+Before applying a migration to Postgres, test it against a temporary SQLite
+database:
+
+```bash
+ALEMBIC_DATABASE_URL=sqlite:////private/tmp/flipradar_alembic_test.db venv/bin/python -m alembic upgrade head
+ALEMBIC_DATABASE_URL=sqlite:////private/tmp/flipradar_alembic_test.db venv/bin/python -m alembic check
+rm -f /private/tmp/flipradar_alembic_test.db
+```
+
+Apply migrations to the configured Postgres database:
+
+```bash
+venv/bin/python -m alembic upgrade head
+```
+
+If Postgres reports `role "flipradar_app" does not exist`, create the role and
+database locally or update `.env` to use credentials that already exist before
+rerunning Alembic.
+
+If the schema already exists in Postgres but Alembic has not been introduced
+yet, stamp the database at the baseline revision instead of recreating tables:
+
+```bash
+venv/bin/python -m alembic stamp head
+```
+
+Use `ALEMBIC_DATABASE_URL` to point Alembic at a different database without
+changing `.env`.
 
 ## V1 API Overview
 

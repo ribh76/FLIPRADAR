@@ -4,7 +4,7 @@ from uuid import UUID as PyUUID, uuid4
 from sqlalchemy import CheckConstraint, DateTime, Index, Integer, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database.db import Base
+from database.base import Base
 
 
 class LegoSet(Base):

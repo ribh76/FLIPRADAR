@@ -14,7 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database.db import Base
+from database.base import Base
 from database.types import JsonDocument
 
 
