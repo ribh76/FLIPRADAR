@@ -115,6 +115,7 @@ async def create_portfolio_item(
     db.add(item)
     try:
         await db.flush()
+        await db.refresh(item)
         await db.refresh(item, attribute_names=["lego_set"])
     except SQLAlchemyError:
         logger.exception("unexpected DB failure while creating portfolio item")
@@ -143,6 +144,24 @@ async def get_portfolio_item_by_id(
         .where(PortfolioItem.id == item_id, PortfolioItem.user_id == user_id)
     )
     return result.scalar_one_or_none()
+
+
+async def update_portfolio_item(
+    db: AsyncSession, item_id: UUID, user_id: UUID, item_data: dict[str, Any]
+) -> PortfolioItem | None:
+    item = await get_portfolio_item_by_id(db, item_id, user_id)
+    if item is None:
+        return None
+
+    for field_name, value in item_data.items():
+        setattr(item, field_name, value)
+
+    try:
+        await db.flush()
+    except SQLAlchemyError:
+        logger.exception("unexpected DB failure while updating portfolio item")
+        raise
+    return await get_portfolio_item_by_id(db, item_id, user_id)
 
 
 async def delete_portfolio_item(db: AsyncSession, item_id: UUID, user_id: UUID) -> bool:

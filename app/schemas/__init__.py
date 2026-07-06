@@ -11,6 +11,7 @@ from app.schemas.portfolio_schema import (
     PortfolioHoldingSummary,
     PortfolioItemCreate,
     PortfolioItemResponse,
+    PortfolioItemUpdate,
     PortfolioSummaryResponse,
 )
 from app.schemas.recommendation_schema import (
@@ -37,6 +38,7 @@ __all__ = [
     "PortfolioHoldingSummary",
     "PortfolioItemCreate",
     "PortfolioItemResponse",
+    "PortfolioItemUpdate",
     "PortfolioSummaryResponse",
     "PriceSnapshotCreate",
     "PriceSnapshotResponse",

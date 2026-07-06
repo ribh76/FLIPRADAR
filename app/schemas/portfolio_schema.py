@@ -14,6 +14,15 @@ class PortfolioItemCreate(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
 
 
+class PortfolioItemUpdate(BaseModel):
+    set_number: str | None = Field(default=None, min_length=1, max_length=32)
+    quantity: int | None = Field(default=None, gt=0)
+    purchase_price: Decimal | None = Field(default=None, ge=0, decimal_places=2)
+    condition: str | None = Field(default=None, pattern=r"^(new|used|sealed|unknown)$")
+    acquired_at: datetime | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+
+
 class PortfolioItemResponse(BaseModel):
     id: UUID
     user_id: UUID
@@ -38,6 +47,7 @@ class PortfolioItemResponse(BaseModel):
 class PortfolioHoldingSummary(BaseModel):
     set_number: str
     set_name: str | None
+    condition: str
     quantity: int
     cost_basis: Decimal
     estimated_current_value: Decimal | None

@@ -8,6 +8,7 @@ from app.auth import get_current_user
 from app.schemas import (
     PortfolioItemCreate,
     PortfolioItemResponse,
+    PortfolioItemUpdate,
     PortfolioSummaryResponse,
 )
 from database import get_db_session
@@ -56,6 +57,40 @@ async def add_portfolio_item(
         "request finished route=add_portfolio_item user_id=%s set_number=%s",
         current_user.id,
         payload.set_number,
+    )
+    return item
+
+
+@router.put(
+    "/items/{item_id}",
+    response_model=PortfolioItemResponse,
+    summary="Update portfolio item",
+    description="Update one owned portfolio item for the authenticated user.",
+)
+@router.patch(
+    "/items/{item_id}",
+    response_model=PortfolioItemResponse,
+    summary="Patch portfolio item",
+    description="Partially update one owned portfolio item for the authenticated user.",
+)
+async def update_portfolio_item(
+    item_id: UUID,
+    payload: PortfolioItemUpdate,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    logger.info(
+        "request started route=update_portfolio_item user_id=%s item_id=%s",
+        current_user.id,
+        item_id,
+    )
+    item = await portfolio_service.update_user_portfolio_item(
+        db, current_user.id, item_id, payload
+    )
+    logger.info(
+        "request finished route=update_portfolio_item user_id=%s item_id=%s",
+        current_user.id,
+        item_id,
     )
     return item
 

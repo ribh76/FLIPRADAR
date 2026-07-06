@@ -535,6 +535,144 @@ def test_portfolio_add_list_summary_delete(client: TestClient):
     assert client.get("/portfolio", headers=headers).json() == []
 
 
+def test_portfolio_update_item_with_patch_and_put(client: TestClient):
+    create_lego_set(client, "10305")
+    create_lego_set(client, "21325")
+    client.post(
+        "/snapshots",
+        json={
+            **create_snapshot_payload("21325", fair_value="240.00"),
+            "median_price": "240.00",
+            "listing_count": 10,
+        },
+    )
+    headers = auth_headers(client, "portfolio-update-user")
+    item = client.post(
+        "/portfolio/items",
+        headers=headers,
+        json={
+            "set_number": "10305",
+            "quantity": 1,
+            "purchase_price": "150.00",
+            "condition": "used",
+            "notes": "Original",
+        },
+    ).json()
+
+    patch_response = client.patch(
+        f"/portfolio/items/{item['id']}",
+        headers=headers,
+        json={"quantity": 2, "purchase_price": "175.00", "notes": "Patched"},
+    )
+    assert patch_response.status_code == 200, patch_response.text
+    patched = patch_response.json()
+    assert patched["quantity"] == 2
+    assert patched["purchase_price"] == "175.00"
+    assert patched["notes"] == "Patched"
+    assert patched["cost_basis"] == "350.00"
+
+    put_response = client.put(
+        f"/portfolio/items/{item['id']}",
+        headers=headers,
+        json={
+            "set_number": "21325",
+            "quantity": 3,
+            "purchase_price": "200.00",
+            "condition": "new",
+            "notes": "Moved to another set",
+        },
+    )
+    assert put_response.status_code == 200, put_response.text
+    updated = put_response.json()
+    assert updated["set_number"] == "21325"
+    assert updated["quantity"] == 3
+    assert updated["condition"] == "new"
+    assert updated["current_total_value"] == "720.00"
+    assert updated["unrealized_gain_loss"] == "120.00"
+
+
+def test_portfolio_item_access_is_user_scoped(client: TestClient):
+    create_lego_set(client, "10497")
+    owner_headers = auth_headers(client, "portfolio-owner")
+    other_headers = auth_headers(client, "portfolio-other")
+    item = client.post(
+        "/portfolio/items",
+        headers=owner_headers,
+        json={
+            "set_number": "10497",
+            "quantity": 1,
+            "purchase_price": "90.00",
+            "condition": "used",
+        },
+    ).json()
+
+    other_list = client.get("/portfolio", headers=other_headers)
+    assert other_list.status_code == 200
+    assert other_list.json() == []
+
+    other_patch = client.patch(
+        f"/portfolio/items/{item['id']}",
+        headers=other_headers,
+        json={"quantity": 5},
+    )
+    assert other_patch.status_code == 404
+    assert other_patch.json()["detail"] == "Portfolio item not found"
+
+    owner_list = client.get("/portfolio", headers=owner_headers).json()
+    assert len(owner_list) == 1
+    assert owner_list[0]["id"] == item["id"]
+    assert owner_list[0]["quantity"] == 1
+
+
+def test_portfolio_delete_is_ownership_protected(client: TestClient):
+    create_lego_set(client, "10295")
+    owner_headers = auth_headers(client, "portfolio-delete-owner")
+    other_headers = auth_headers(client, "portfolio-delete-other")
+    item = client.post(
+        "/portfolio/items",
+        headers=owner_headers,
+        json={
+            "set_number": "10295",
+            "quantity": 1,
+            "purchase_price": "120.00",
+            "condition": "sealed",
+        },
+    ).json()
+
+    other_delete = client.delete(
+        f"/portfolio/items/{item['id']}", headers=other_headers
+    )
+    assert other_delete.status_code == 404
+    assert other_delete.json()["detail"] == "Portfolio item not found"
+
+    owner_list = client.get("/portfolio", headers=owner_headers)
+    assert owner_list.status_code == 200
+    assert [owned_item["id"] for owned_item in owner_list.json()] == [item["id"]]
+
+    owner_delete = client.delete(
+        f"/portfolio/items/{item['id']}", headers=owner_headers
+    )
+    assert owner_delete.status_code == 204
+
+
+def test_portfolio_summary_empty_portfolio(client: TestClient):
+    headers = auth_headers(client, "empty-portfolio-user")
+
+    response = client.get("/portfolio/summary", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "total_items": 0,
+        "total_sets": 0,
+        "total_quantity": 0,
+        "total_cost_basis": "0.00",
+        "estimated_current_value": "0.00",
+        "unrealized_gain_loss": "0.00",
+        "unrealized_gain_loss_percent": None,
+        "holdings": [],
+    }
+
+
 def test_portfolio_summary_missing_snapshot_does_not_crash(client: TestClient):
     lego_set = create_lego_set(client, "42071")
     headers = auth_headers(client, "missing-market-user")
@@ -554,7 +692,85 @@ def test_portfolio_summary_missing_snapshot_does_not_crash(client: TestClient):
     assert summary_response.status_code == 200
     summary = summary_response.json()
     assert summary["estimated_current_value"] == "0.00"
+    assert summary["unrealized_gain_loss"] == "0.00"
+    assert summary["unrealized_gain_loss_percent"] is None
     assert summary["holdings"][0]["valuation_status"] == "missing_market_data"
+
+
+def test_portfolio_summary_handles_quantities_prices_and_conditions(
+    client: TestClient,
+):
+    create_lego_set(client, "10316")
+    new_snapshot = create_snapshot_payload("10316", fair_value="200.00")
+    new_snapshot.update(
+        {
+            "marketplace_name": "ebay",
+            "condition": "new",
+            "median_price": "200.00",
+            "average_price": "200.00",
+            "listing_count": 12,
+        }
+    )
+    used_snapshot = create_snapshot_payload("10316", fair_value="100.00")
+    used_snapshot.update(
+        {
+            "marketplace_name": "bricklink",
+            "condition": "used",
+            "median_price": "100.00",
+            "average_price": "100.00",
+            "listing_count": 8,
+        }
+    )
+    assert client.post("/snapshots", json=new_snapshot).status_code == 201
+    assert client.post("/snapshots", json=used_snapshot).status_code == 201
+    headers = auth_headers(client, "portfolio-summary-user")
+
+    for payload in [
+        {
+            "set_number": "10316",
+            "quantity": 2,
+            "purchase_price": "150.00",
+            "condition": "new",
+        },
+        {
+            "set_number": "10316",
+            "quantity": 1,
+            "purchase_price": "160.00",
+            "condition": "new",
+        },
+        {
+            "set_number": "10316",
+            "quantity": 3,
+            "purchase_price": "80.00",
+            "condition": "used",
+        },
+    ]:
+        response = client.post("/portfolio/items", headers=headers, json=payload)
+        assert response.status_code == 201, response.text
+
+    response = client.get("/portfolio/summary", headers=headers)
+
+    assert response.status_code == 200
+    summary = response.json()
+    assert summary["total_items"] == 3
+    assert summary["total_sets"] == 1
+    assert summary["total_quantity"] == 6
+    assert summary["total_cost_basis"] == "700.00"
+    assert summary["estimated_current_value"] == "900.00"
+    assert summary["unrealized_gain_loss"] == "200.00"
+    assert summary["unrealized_gain_loss_percent"] == "28.57"
+
+    holdings_by_condition = {
+        holding["condition"]: holding for holding in summary["holdings"]
+    }
+    assert holdings_by_condition["new"]["quantity"] == 3
+    assert holdings_by_condition["new"]["cost_basis"] == "460.00"
+    assert holdings_by_condition["new"]["estimated_current_value"] == "600.00"
+    assert holdings_by_condition["new"]["unrealized_gain_loss"] == "140.00"
+    assert holdings_by_condition["used"]["quantity"] == 3
+    assert holdings_by_condition["used"]["cost_basis"] == "240.00"
+    assert holdings_by_condition["used"]["estimated_current_value"] == "300.00"
+    assert holdings_by_condition["used"]["unrealized_gain_loss"] == "60.00"
 
 
 def test_set_detail_returns_metadata_and_latest_snapshot(client: TestClient):

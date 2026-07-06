@@ -6,13 +6,15 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas import PortfolioItemCreate
+from app.schemas import PortfolioItemCreate, PortfolioItemUpdate
 from database.repositories import (
     create_portfolio_item,
     delete_portfolio_item,
     get_latest_snapshots_by_set_number,
     get_portfolio_items_for_user,
+    get_recent_snapshots_by_set_number,
     get_set_by_number,
+    update_portfolio_item,
 )
 from engine import price_estimator
 
@@ -48,6 +50,25 @@ async def list_user_portfolio(db: AsyncSession, user_id: UUID) -> list[dict]:
     return [await _portfolio_item_response(db, item) for item in items]
 
 
+async def update_user_portfolio_item(
+    db: AsyncSession, user_id: UUID, item_id: UUID, payload: PortfolioItemUpdate
+) -> dict:
+    update_data = payload.model_dump(exclude_unset=True)
+    if "set_number" in update_data:
+        lego_set = await get_set_by_number(db, update_data["set_number"])
+        if lego_set is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="LEGO set not found"
+            )
+
+    item = await update_portfolio_item(db, item_id, user_id, update_data)
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found"
+        )
+    return await _portfolio_item_response(db, item)
+
+
 async def delete_user_portfolio_item(
     db: AsyncSession, user_id: UUID, item_id: UUID
 ) -> None:
@@ -63,19 +84,21 @@ async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
     holdings = []
     total_quantity = 0
     total_cost_basis = Decimal("0.00")
+    valued_cost_basis = Decimal("0.00")
     estimated_current_value = Decimal("0.00")
+    unrealized_gain_loss = Decimal("0.00")
 
     grouped = defaultdict(list)
     for item in items:
-        grouped[item.set_number].append(item)
+        grouped[(item.set_number, item.condition)].append(item)
 
-    for set_number, grouped_items in grouped.items():
+    for (set_number, condition), grouped_items in grouped.items():
         quantity = sum(item.quantity for item in grouped_items)
         cost_basis = sum(item.purchase_price * item.quantity for item in grouped_items)
         total_quantity += quantity
         total_cost_basis += cost_basis
 
-        unit_value, status = await _current_unit_value(db, set_number)
+        unit_value, status = await _current_unit_value(db, set_number, condition)
         set_name = getattr(grouped_items[0].lego_set, "name", None)
         if unit_value is None:
             current_value = None
@@ -84,11 +107,14 @@ async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
             current_value = _money(unit_value * quantity)
             gain_loss = _money(current_value - cost_basis)
             estimated_current_value += current_value
+            valued_cost_basis += cost_basis
+            unrealized_gain_loss += gain_loss
 
         holdings.append(
             {
                 "set_number": set_number,
                 "set_name": set_name,
+                "condition": condition,
                 "quantity": quantity,
                 "cost_basis": _money(cost_basis),
                 "estimated_current_value": current_value,
@@ -97,25 +123,24 @@ async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
             }
         )
 
-    gain_loss_total = _money(estimated_current_value - total_cost_basis)
     gain_loss_percent = None
-    if total_cost_basis > 0:
-        gain_loss_percent = _money((gain_loss_total / total_cost_basis) * 100)
+    if valued_cost_basis > 0:
+        gain_loss_percent = _money((unrealized_gain_loss / valued_cost_basis) * 100)
 
     return {
         "total_items": len(items),
-        "total_sets": len(grouped),
+        "total_sets": len({item.set_number for item in items}),
         "total_quantity": total_quantity,
         "total_cost_basis": _money(total_cost_basis),
         "estimated_current_value": _money(estimated_current_value),
-        "unrealized_gain_loss": gain_loss_total,
+        "unrealized_gain_loss": _money(unrealized_gain_loss),
         "unrealized_gain_loss_percent": gain_loss_percent,
         "holdings": holdings,
     }
 
 
 async def _portfolio_item_response(db: AsyncSession, item) -> dict:
-    unit_value, status = await _current_unit_value(db, item.set_number)
+    unit_value, status = await _current_unit_value(db, item.set_number, item.condition)
     cost_basis = _money(item.purchase_price * item.quantity)
     current_total_value = _money(unit_value * item.quantity) if unit_value else None
     gain_loss = (
@@ -144,9 +169,19 @@ async def _portfolio_item_response(db: AsyncSession, item) -> dict:
 
 
 async def _current_unit_value(
-    db: AsyncSession, set_number: str
+    db: AsyncSession, set_number: str, condition: str = "unknown"
 ) -> tuple[Decimal | None, str]:
-    snapshots = await get_latest_snapshots_by_set_number(db, set_number)
+    snapshot_condition = _snapshot_condition(condition)
+    if snapshot_condition is None:
+        snapshots = await get_latest_snapshots_by_set_number(db, set_number)
+    else:
+        snapshots = [
+            snapshot
+            for snapshot in await get_recent_snapshots_by_set_number(
+                db, set_number, limit=50
+            )
+            if snapshot.condition == snapshot_condition
+        ]
     if not snapshots:
         return None, "missing_market_data"
     estimate = price_estimator.estimate_fair_value(snapshots)
@@ -154,3 +189,11 @@ async def _current_unit_value(
     if fair_value <= 0:
         return None, "missing_market_data"
     return _money(fair_value), "valued"
+
+
+def _snapshot_condition(condition: str) -> str | None:
+    if condition in {"new", "sealed"}:
+        return "new"
+    if condition == "used":
+        return "used"
+    return None
