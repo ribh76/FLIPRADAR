@@ -21,7 +21,21 @@ class LatestSnapshotSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SetMetadataSummary(BaseModel):
+    set_number: str
+    name: str
+    theme: str | None
+    subtheme: str | None
+    release_year: int | None
+    retirement_year: int | None
+    piece_count: int | None
+    minifig_count: int | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SetDetailResponse(BaseModel):
+    metadata: SetMetadataSummary
     set_number: str
     name: str
     theme: str | None

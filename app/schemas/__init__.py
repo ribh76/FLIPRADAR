@@ -22,7 +22,11 @@ from app.schemas.recommendation_schema import (
     RecommendationResponse,
     UserGoal,
 )
-from app.schemas.set_detail_schema import LatestSnapshotSummary, SetDetailResponse
+from app.schemas.set_detail_schema import (
+    LatestSnapshotSummary,
+    SetDetailResponse,
+    SetMetadataSummary,
+)
 
 __all__ = [
     "AnalyzeRequest",
@@ -45,6 +49,7 @@ __all__ = [
     "RecommendationDecision",
     "RecommendationResponse",
     "SetDetailResponse",
+    "SetMetadataSummary",
     "TokenResponse",
     "UserCreate",
     "UserGoal",

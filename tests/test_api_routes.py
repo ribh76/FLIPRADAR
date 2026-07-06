@@ -169,6 +169,51 @@ def test_get_set_endpoint(client: TestClient):
     assert response.json()["valuation_status"] == "missing_market_data"
 
 
+def test_get_set_endpoint_returns_bricklink_mock_detail(client: TestClient):
+    response = client.get("/set/75192")
+
+    logger.info(
+        f"API TEST: GET /set/{{set_number}} BrickLink mock status={response.status_code}"
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["metadata"]["set_number"] == "75192"
+    assert body["metadata"]["name"] == "Millennium Falcon"
+    assert body["latest_snapshot"]["listing_count"] == 18
+    assert body["fair_value"] == "725.00"
+    assert body["market_low"] == "610.00"
+    assert body["market_high"] == "880.00"
+    assert body["listing_count"] == 18
+    assert body["valuation_status"] == "valued"
+
+
+def test_get_set_endpoint_with_snapshot_does_not_crash(client: TestClient):
+    lego_set = create_lego_set(client)
+    snapshot = client.post(
+        "/snapshots", json=create_snapshot_payload(lego_set["set_number"])
+    ).json()
+    response = client.get(f"/set/{lego_set['set_number']}")
+
+    logger.info(
+        f"API TEST: GET /set/{{set_number}} with snapshot status={response.status_code}"
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["latest_snapshot"]["id"] == snapshot["id"]
+    assert body["valuation_status"] == "valued"
+    assert body["listing_count"] == snapshot["listing_count"]
+
+
+def test_get_set_endpoint_missing_set_returns_404(client: TestClient):
+    response = client.get("/set/not-a-mock-set")
+
+    logger.info(
+        f"API TEST: GET /set/{{set_number}} missing status={response.status_code}"
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "LEGO set not found"
+
+
 def test_list_sets_endpoint(client: TestClient):
     lego_set = create_lego_set(client)
     response = client.get("/sets")
