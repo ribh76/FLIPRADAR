@@ -78,8 +78,11 @@ async def analyze_set(
         response = await recommendation_service.analyze_set(db, payload)
     except recommendation_service.RecommendationServiceError as exc:
         logger.warning(
-            "major validation failure route=analyze_set set_number=%s",
+            "major validation failure route=analyze_set set_number=%s status_code=%s error_type=%s detail=%s",
             payload.set_number,
+            exc.status_code,
+            type(exc).__name__,
+            str(exc),
         )
         raise HTTPException(
             status_code=exc.status_code,

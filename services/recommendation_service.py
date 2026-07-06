@@ -12,9 +12,15 @@ from app.schemas import (
 from database.repositories import (
     create_recommendation,
     get_latest_snapshots_by_set_number,
+    get_recent_snapshots_by_set_number,
     get_set_by_number,
 )
-from engine import decision_engine, price_estimator, scoring_engine
+from engine import (
+    buy_decision_engine,
+    decision_engine,
+    hold_sell_engine,
+    price_estimator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +39,12 @@ class RecommendationNotFoundError(RecommendationServiceError):
     """Raised when required recommendation inputs are missing."""
 
     status_code = 404
+
+
+class RecommendationValidationError(RecommendationServiceError):
+    """Raised when analyze input is valid JSON but incomplete for the goal."""
+
+    status_code = 422
 
 
 def _stored_goal(user_goal: UserGoal) -> UserGoal:
@@ -65,6 +77,123 @@ async def _get_lego_set(db: AsyncSession, set_number: str):
         logger.info("missing set set_number=%s", set_number)
         raise RecommendationNotFoundError("LEGO set not found.")
     return lego_set
+
+
+def _requires_asking_price(user_goal: UserGoal) -> bool:
+    return user_goal in {UserGoal.BUY, UserGoal.BUY_SET, UserGoal.BUY_VS_PASS}
+
+
+def _is_buy_goal(user_goal: UserGoal) -> bool:
+    return user_goal in {UserGoal.BUY, UserGoal.BUY_SET, UserGoal.BUY_VS_PASS}
+
+
+def _is_sell_or_hold_goal(user_goal: UserGoal) -> bool:
+    return user_goal in {
+        UserGoal.SELL,
+        UserGoal.SELL_SET,
+        UserGoal.HOLD,
+        UserGoal.HOLD_OR_SELL,
+        UserGoal.HOLD_VS_SELL,
+    }
+
+
+def _validate_required_inputs(payload: AnalyzeRequest) -> None:
+    if _requires_asking_price(payload.user_goal) and payload.asking_price is None:
+        logger.warning(
+            "missing required asking price set_number=%s user_goal=%s",
+            payload.set_number,
+            payload.user_goal.value,
+        )
+        raise RecommendationValidationError(
+            "asking_price is required for buy analysis."
+        )
+
+
+def _buy_score_result(buy_result: dict) -> dict:
+    return {
+        "score": buy_result["score"],
+        "margin_percent": Decimal(str(buy_result.get("discount_pct", 0))).quantize(
+            Decimal("0.01")
+        ),
+        "deal_band": _deal_band_from_reason_codes(buy_result["reason_codes"]),
+        "reason_codes": buy_result["reason_codes"],
+    }
+
+
+def _deal_band_from_reason_codes(reason_codes: list[str]) -> str:
+    if "deep_discount" in reason_codes or "excellent_discount" in reason_codes:
+        return "excellent"
+    if "strong_discount" in reason_codes:
+        return "strong"
+    if "modest_discount" in reason_codes or "near_fair_value" in reason_codes:
+        return "fair"
+    if "above_fair_value" in reason_codes:
+        return "weak"
+    return "bad"
+
+
+def _buy_response_details(buy_result: dict) -> dict:
+    return {
+        "reason_codes": buy_result.get("reason_codes"),
+        "all_in_price": buy_result.get("all_in_price"),
+        "discount_pct": buy_result.get("discount_pct"),
+        "estimated_profit": buy_result.get("estimated_profit"),
+        "estimated_roi_pct": buy_result.get("estimated_roi_pct"),
+        "target_buy_price": buy_result.get("target_buy_price"),
+    }
+
+
+def _hold_sell_score_result(hold_sell_result: dict) -> dict:
+    return {
+        "score": hold_sell_result["score"],
+        "margin_percent": Decimal(str(hold_sell_result.get("profit_pct") or 0)),
+        "deal_band": _hold_sell_band_from_reason_codes(
+            hold_sell_result["reason_codes"]
+        ),
+        "reason_codes": hold_sell_result["reason_codes"],
+    }
+
+
+def _hold_sell_band_from_reason_codes(reason_codes: list[str]) -> str:
+    if "very_strong_profit" in reason_codes or "strong_profit" in reason_codes:
+        return "excellent"
+    if "target_profit_met" in reason_codes:
+        return "strong"
+    if "small_profit" in reason_codes or "near_break_even" in reason_codes:
+        return "fair"
+    if "estimated_loss" in reason_codes:
+        return "bad"
+    return "unknown"
+
+
+def _hold_sell_response_details(hold_sell_result: dict) -> dict:
+    return {
+        "reason_codes": hold_sell_result.get("reason_codes"),
+        "estimated_net_sell_value": hold_sell_result.get("estimated_net_sell_value"),
+        "total_estimated_net_value": hold_sell_result.get("total_estimated_net_value"),
+        "cost_basis": hold_sell_result.get("cost_basis"),
+        "profit": hold_sell_result.get("profit"),
+        "profit_pct": hold_sell_result.get("profit_pct"),
+        "trend_pct": hold_sell_result.get("trend_pct"),
+        "trend_label": hold_sell_result.get("trend_label"),
+        "target_sell_price": hold_sell_result.get("target_sell_price"),
+    }
+
+
+def _snapshot_price(snapshot) -> Decimal | None:
+    return snapshot.median_price or snapshot.average_price or snapshot.fair_market_value
+
+
+async def _recent_fair_values(db: AsyncSession, set_number: str) -> list[float]:
+    recent_snapshots = await get_recent_snapshots_by_set_number(
+        db, set_number, limit=10
+    )
+    values = [
+        _snapshot_price(snapshot)
+        for snapshot in reversed(recent_snapshots)
+        if _snapshot_price(snapshot) is not None
+    ]
+    return [float(value) for value in values]
 
 
 async def _save_recommendation(
@@ -115,24 +244,76 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
 
     try:
         lego_set = await _get_lego_set(db, set_number)
+        _validate_required_inputs(payload)
         snapshots = await get_latest_snapshots_by_set_number(db, set_number)
         if not snapshots:
             logger.info("missing snapshots set_number=%s snapshot_count=0", set_number)
         estimate = price_estimator.estimate_fair_value(snapshots)
         fair_value = estimate["fair_value"]
-        score_result = scoring_engine.score_recommendation(
-            payload.asking_price,
-            fair_value,
-            estimate["confidence"],
-            estimate["listing_count"],
-        )
-        decision = decision_engine.decide(
-            score_result,
-            payload.user_goal,
-            payload.asking_price,
-            fair_value,
-            has_snapshots=bool(snapshots),
-        )
+        analysis_details = {}
+        if _is_buy_goal(payload.user_goal):
+            buy_result = buy_decision_engine.decide_buy_or_pass(
+                set_number=set_number,
+                asking_price=float(payload.asking_price or Decimal("0.00")),
+                fair_value=float(fair_value) if fair_value > 0 else None,
+                market_low=(
+                    float(estimate["market_low"])
+                    if estimate["market_low"] > 0
+                    else None
+                ),
+                market_high=(
+                    float(estimate["market_high"])
+                    if estimate["market_high"] > 0
+                    else None
+                ),
+                listing_count=estimate["listing_count"],
+                confidence=estimate["confidence"],
+                condition=payload.condition,
+                shipping_price=float(payload.shipping_price),
+                marketplace_fee_pct=float(payload.marketplace_fee_pct),
+                target_margin_pct=float(payload.target_margin_pct),
+            )
+            score_result = _buy_score_result(buy_result)
+            decision = decision_engine.DecisionResult(
+                recommendation=RecommendationDecision(buy_result["verdict"]),
+                reasoning=buy_result["reasoning"],
+            )
+            analysis_details = _buy_response_details(buy_result)
+        elif _is_sell_or_hold_goal(payload.user_goal):
+            hold_sell_result = hold_sell_engine.decide_sell_or_hold(
+                set_number=set_number,
+                fair_value=float(fair_value) if fair_value > 0 else None,
+                market_low=(
+                    float(estimate["market_low"])
+                    if estimate["market_low"] > 0
+                    else None
+                ),
+                market_high=(
+                    float(estimate["market_high"])
+                    if estimate["market_high"] > 0
+                    else None
+                ),
+                listing_count=estimate["listing_count"],
+                confidence=estimate["confidence"],
+                purchase_price=(
+                    float(payload.purchase_price)
+                    if payload.purchase_price is not None
+                    else None
+                ),
+                quantity=payload.quantity,
+                condition=payload.condition,
+                recent_fair_values=await _recent_fair_values(db, set_number),
+                marketplace_fee_pct=float(payload.marketplace_fee_pct),
+                target_profit_pct=float(payload.target_profit_pct),
+            )
+            score_result = _hold_sell_score_result(hold_sell_result)
+            decision = decision_engine.DecisionResult(
+                recommendation=RecommendationDecision(hold_sell_result["verdict"]),
+                reasoning=hold_sell_result["reasoning"],
+            )
+            analysis_details = _hold_sell_response_details(hold_sell_result)
+        else:
+            raise RecommendationValidationError("Unsupported user goal.")
         logger.info(
             "recommendation generated set_number=%s recommendation=%s score=%s confidence=%s snapshot_count=%s",
             set_number,
@@ -158,8 +339,16 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
                 "confidence": estimate["confidence"],
                 "reasoning": decision.reasoning,
                 "snapshot_found": bool(snapshots),
+                "condition": payload.condition,
+                "shipping_price": _money(payload.shipping_price),
+                "marketplace_fee_pct": _money(payload.marketplace_fee_pct),
+                "target_margin_pct": _money(payload.target_margin_pct),
+                "target_profit_pct": _money(payload.target_profit_pct),
+                "purchase_price": _money(payload.purchase_price),
+                "quantity": payload.quantity,
                 **_json_safe_estimate(estimate),
                 **_json_safe_estimate(score_result),
+                **analysis_details,
             },
         )
 
@@ -175,6 +364,7 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
             "market_low": _money(estimate["market_low"]),
             "market_high": _money(estimate["market_high"]),
             "listing_count": estimate["listing_count"],
+            **analysis_details,
         }
     except RecommendationServiceError:
         raise

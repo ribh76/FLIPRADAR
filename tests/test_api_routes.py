@@ -14,7 +14,8 @@ import models  # noqa: F401
 from app.main import app
 from config import get_settings
 from database import Base, get_db_session
-from engine import decision_engine, price_estimator, scoring_engine
+from engine import price_estimator
+from services import recommendation_service
 
 logger = logging.getLogger(__name__)
 
@@ -829,12 +830,20 @@ def test_analyze_endpoint(client: TestClient):
     assert body["asking_price"] == 125.0
     assert body["recommendation"] == "BUY"
     assert body["fair_value"] == 150.0
-    assert body["score"] == 82
+    assert body["score"] == 78
     assert body["confidence"] == "medium"
     assert (
         body["reasoning"]
-        == "Asking price is 16.7% below estimated market value; deal strength is strong."
+        == "The all-in price is $125.00, compared with an estimated fair value of "
+        "$150.00. This is a 16.7% discount to fair value, with an estimated ROI "
+        "of 4.4%."
     )
+    assert body["reason_codes"] == ["strong_discount", "medium_confidence_data"]
+    assert body["all_in_price"] == 125.0
+    assert body["discount_pct"] == 16.67
+    assert body["estimated_profit"] == 5.5
+    assert body["estimated_roi_pct"] == 4.4
+    assert body["target_buy_price"] == 127.5
 
 
 def test_post_analyze_returns_buy_when_asking_price_is_below_fair_value(
@@ -867,7 +876,7 @@ def test_post_analyze_returns_buy_when_asking_price_is_below_fair_value(
     body = response.json()
     assert body["recommendation"] == "BUY"
     assert body["fair_value"] == 200.0
-    assert body["score"] == 90
+    assert body["score"] == 98
     assert body["confidence"] == "high"
 
 
@@ -901,9 +910,14 @@ def test_post_analyze_returns_pass_when_asking_price_is_above_fair_value(
     body = response.json()
     assert body["recommendation"] == "PASS"
     assert body["fair_value"] == 150.0
-    assert body["score"] == 50
+    assert body["score"] == 18
     assert body["confidence"] == "high"
-    assert body["reasoning"] == "Asking price margin is -20.0%; deal strength is bad."
+    assert (
+        body["reasoning"]
+        == "The all-in price is $180.00, compared with an estimated fair value of "
+        "$150.00. This is a -20.0% discount to fair value, with an estimated ROI "
+        "of -27.5%."
+    )
 
 
 def test_analyze_endpoint_accepts_buy_goal(client: TestClient):
@@ -931,25 +945,39 @@ def test_analyze_endpoint_accepts_buy_goal(client: TestClient):
     logger.info(f"API TEST: POST /analyze buy goal status={response.status_code}")
     assert response.status_code == 201
     body = response.json()
-    assert body == {
-        "set_number": "75192",
-        "user_goal": "buy",
-        "asking_price": 550.0,
-        "fair_value": 625.0,
-        "score": 82,
-        "recommendation": "BUY",
-        "confidence": "high",
-        "reasoning": (
-            "Asking price is 12.0% below estimated market value; "
-            "deal strength is strong."
-        ),
-        "market_low": 590.0,
-        "market_high": 700.0,
-        "listing_count": 22,
-    }
+    assert body["set_number"] == "75192"
+    assert body["user_goal"] == "buy"
+    assert body["asking_price"] == 550.0
+    assert body["fair_value"] == 625.0
+    assert body["score"] == 81
+    assert body["recommendation"] == "BUY"
+    assert body["confidence"] == "high"
+    assert body["reasoning"] == (
+        "The all-in price is $550.00, compared with an estimated fair value of "
+        "$625.00. This is a 12.0% discount to fair value, with an estimated ROI "
+        "of -1.1%."
+    )
+    assert body["market_low"] == 590.0
+    assert body["market_high"] == 700.0
+    assert body["listing_count"] == 22
+    assert body["reason_codes"] == [
+        "strong_discount",
+        "negative_estimated_roi",
+        "below_market_low",
+        "high_confidence_data",
+        "strong_market_depth",
+    ]
+    assert body["all_in_price"] == 550.0
+    assert body["discount_pct"] == 12.0
+    assert body["estimated_profit"] == -6.25
+    assert body["estimated_roi_pct"] == -1.14
+    assert body["target_buy_price"] == 531.25
 
 
-def test_analyze_endpoint_returns_404_for_missing_set(client: TestClient):
+def test_analyze_endpoint_returns_404_for_missing_set(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+):
+    caplog.set_level(logging.INFO)
     response = client.post(
         "/analyze",
         json={
@@ -962,6 +990,8 @@ def test_analyze_endpoint_returns_404_for_missing_set(client: TestClient):
     logger.info(f"API TEST: POST /analyze missing set status={response.status_code}")
     assert response.status_code == 404
     assert response.json()["detail"] == "LEGO set not found."
+    assert "missing set set_number=999999" in caplog.text
+    assert "error_type=RecommendationNotFoundError" in caplog.text
 
 
 def test_post_analyze_returns_404_when_lego_set_does_not_exist(client: TestClient):
@@ -981,7 +1011,10 @@ def test_post_analyze_returns_404_when_lego_set_does_not_exist(client: TestClien
     assert response.json()["detail"] == "LEGO set not found."
 
 
-def test_analyze_endpoint_without_snapshots_returns_low_confidence(client: TestClient):
+def test_analyze_endpoint_without_snapshots_returns_low_confidence(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+):
+    caplog.set_level(logging.INFO)
     lego_set = create_lego_set(client)
     response = client.post(
         "/analyze",
@@ -997,10 +1030,106 @@ def test_analyze_endpoint_without_snapshots_returns_low_confidence(client: TestC
     body = response.json()
     assert body["set_number"] == lego_set["set_number"]
     assert body["fair_value"] == 0.0
-    assert body["score"] == 25
+    assert body["score"] == 40
     assert body["recommendation"] == "WATCH"
     assert body["confidence"] == "low"
-    assert body["reasoning"] == "No price snapshots found for this set."
+    assert body["reasoning"] == (
+        "Not enough market data is available to estimate fair value."
+    )
+    assert f"missing snapshots set_number={lego_set['set_number']}" in caplog.text
+    assert "snapshot_count=0" in caplog.text
+
+
+def test_analyze_endpoint_requires_asking_price_for_buy_goal(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+):
+    caplog.set_level(logging.INFO)
+    lego_set = create_lego_set(client)
+    client.post("/snapshots", json=create_snapshot_payload(lego_set["set_number"]))
+
+    response = client.post(
+        "/analyze",
+        json={
+            "set_number": lego_set["set_number"],
+            "user_goal": "buy",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "asking_price is required for buy analysis."
+    assert "missing required asking price" in caplog.text
+    assert "error_type=RecommendationValidationError" in caplog.text
+
+
+def test_analyze_endpoint_allows_sell_without_asking_price(client: TestClient):
+    lego_set = create_lego_set(client)
+    client.post("/snapshots", json=create_snapshot_payload(lego_set["set_number"]))
+
+    response = client.post(
+        "/analyze",
+        json={
+            "set_number": lego_set["set_number"],
+            "user_goal": "sell",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["recommendation"] == "WATCH"
+    assert body["reason_codes"] == [
+        "missing_purchase_price",
+        "insufficient_trend_data",
+        "moderate_market_depth",
+    ]
+    assert body["cost_basis"] is None
+    assert body["profit"] is None
+
+
+def test_analyze_endpoint_sell_goal_uses_hold_sell_engine(client: TestClient):
+    create_lego_set(client, "910023")
+    for days_ago, median_price in [(2, "150.00"), (1, "160.00"), (0, "200.00")]:
+        snapshot = create_snapshot_payload("910023", fair_value=median_price)
+        snapshot.update(
+            {
+                "marketplace_name": "ebay",
+                "condition": "new",
+                "low_price": "150.00",
+                "median_price": median_price,
+                "average_price": median_price,
+                "high_price": "210.00",
+                "listing_count": 24,
+                "snapshot_at": (
+                    datetime.now(UTC) - timedelta(days=days_ago)
+                ).isoformat(),
+            }
+        )
+        response = client.post("/snapshots", json=snapshot)
+        assert response.status_code == 201, response.text
+
+    response = client.post(
+        "/analyze",
+        json={
+            "set_number": "910023",
+            "user_goal": "sell",
+            "purchase_price": "80.00",
+            "quantity": 2,
+            "condition": "new",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["recommendation"] == "SELL"
+    assert body["score"] == 83
+    assert body["estimated_net_sell_value"] == 174.0
+    assert body["total_estimated_net_value"] == 348.0
+    assert body["cost_basis"] == 160.0
+    assert body["profit"] == 188.0
+    assert body["profit_pct"] == 117.5
+    assert body["trend_label"] == "rising"
+    assert body["trend_pct"] == 29.03
+    assert "very_strong_profit" in body["reason_codes"]
+    assert "price_trend_rising" in body["reason_codes"]
 
 
 def test_post_analyze_returns_low_confidence_result_when_no_snapshots_exist(
@@ -1024,7 +1153,7 @@ def test_post_analyze_returns_low_confidence_result_when_no_snapshots_exist(
     body = response.json()
     assert body["recommendation"] == "WATCH"
     assert body["confidence"] == "low"
-    assert body["score"] == 25
+    assert body["score"] == 40
 
 
 def test_post_analyze_saves_recommendation_to_db(client: TestClient):
@@ -1053,6 +1182,11 @@ def test_post_analyze_saves_recommendation_to_db(client: TestClient):
     assert saved["reason"] == analyzed["reasoning"]
     assert saved["market_summary"]["set_number"] == lego_set["set_number"]
     assert saved["market_summary"]["recommendation"] == "BUY"
+    assert saved["market_summary"]["reason_codes"] == [
+        "excellent_discount",
+        "high_confidence_data",
+        "strong_market_depth",
+    ]
 
 
 def test_analyze_endpoint_calls_engine_pipeline_in_order(
@@ -1074,33 +1208,35 @@ def test_analyze_endpoint_calls_engine_pipeline_in_order(
             "confidence": "medium",
         }
 
-    def score_recommendation(asking_price, fair_value, confidence, listing_count):
-        calls.append("scoring_engine")
-        assert asking_price == Decimal("125.00")
-        assert fair_value == Decimal("152.00")
-        assert confidence == "medium"
-        assert listing_count == 12
+    def decide_buy_or_pass(**kwargs):
+        calls.append("buy_decision_engine")
+        assert kwargs["set_number"] == lego_set["set_number"]
+        assert kwargs["asking_price"] == 125.00
+        assert kwargs["fair_value"] == 152.00
+        assert kwargs["market_low"] == 120.00
+        assert kwargs["market_high"] == 190.00
+        assert kwargs["listing_count"] == 12
+        assert kwargs["confidence"] == "medium"
         return {
+            "verdict": "BUY",
             "score": 87,
-            "margin_percent": Decimal("17.8"),
-            "deal_band": "strong",
+            "confidence": "medium",
+            "reasoning": "Buy/pass engine reasoning.",
+            "reason_codes": ["strong_discount"],
+            "all_in_price": 125.00,
+            "fair_value": 152.00,
+            "discount_pct": 17.76,
+            "estimated_profit": 7.24,
+            "estimated_roi_pct": 5.79,
+            "target_buy_price": 129.20,
         }
 
-    def decide(score_result, user_goal, asking_price, fair_value, *, has_snapshots):
-        calls.append("decision_engine")
-        assert score_result["score"] == 87
-        assert user_goal == "buy"
-        assert asking_price == Decimal("125.00")
-        assert fair_value == Decimal("152.00")
-        assert has_snapshots is True
-        return decision_engine.DecisionResult(
-            recommendation=decision_engine.RecommendationDecision.BUY,
-            reasoning="Asking price is 17.8% below estimated market value.",
-        )
-
     monkeypatch.setattr(price_estimator, "estimate_fair_value", estimate_fair_value)
-    monkeypatch.setattr(scoring_engine, "score_recommendation", score_recommendation)
-    monkeypatch.setattr(decision_engine, "decide", decide)
+    monkeypatch.setattr(
+        recommendation_service.buy_decision_engine,
+        "decide_buy_or_pass",
+        decide_buy_or_pass,
+    )
 
     response = client.post(
         "/analyze",
@@ -1113,7 +1249,7 @@ def test_analyze_endpoint_calls_engine_pipeline_in_order(
 
     logger.info(f"API TEST: POST /analyze pipeline status={response.status_code}")
     assert response.status_code == 201
-    assert calls == ["price_estimator", "scoring_engine", "decision_engine"]
+    assert calls == ["price_estimator", "buy_decision_engine"]
 
 
 def test_get_recommendation_endpoint(client: TestClient):

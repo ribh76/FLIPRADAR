@@ -36,6 +36,12 @@ class AnalyzeRequest(BaseModel):
     user_goal: UserGoal
     asking_price: Decimal | None = Field(default=None, ge=0, decimal_places=2)
     condition: str = Field(default="unknown", pattern=r"^(new|used|sealed|unknown)$")
+    shipping_price: Decimal = Field(default=Decimal("0.00"), ge=0, decimal_places=2)
+    marketplace_fee_pct: Decimal = Field(default=Decimal("0.13"), ge=0, le=1)
+    target_margin_pct: Decimal = Field(default=Decimal("0.15"), ge=0, le=1)
+    purchase_price: Decimal | None = Field(default=None, ge=0, decimal_places=2)
+    quantity: int = Field(default=1, gt=0)
+    target_profit_pct: Decimal = Field(default=Decimal("0.25"), ge=0, le=10)
 
     @field_validator("set_number", mode="before")
     @classmethod
@@ -55,6 +61,20 @@ class AnalyzeResponse(BaseModel):
     market_low: float | None = None
     market_high: float | None = None
     listing_count: int | None = None
+    reason_codes: list[str] | None = None
+    all_in_price: float | None = None
+    discount_pct: float | None = None
+    estimated_profit: float | None = None
+    estimated_roi_pct: float | None = None
+    target_buy_price: float | None = None
+    estimated_net_sell_value: float | None = None
+    total_estimated_net_value: float | None = None
+    cost_basis: float | None = None
+    profit: float | None = None
+    profit_pct: float | None = None
+    trend_pct: float | None = None
+    trend_label: str | None = None
+    target_sell_price: float | None = None
 
 
 class RecommendationResponse(BaseModel):
