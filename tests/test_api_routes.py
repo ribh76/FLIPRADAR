@@ -1,7 +1,9 @@
 import logging
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
+import jwt
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import event
@@ -10,6 +12,7 @@ from sqlalchemy.pool import StaticPool
 
 import models  # noqa: F401
 from app.main import app
+from config import get_settings
 from database import Base, get_db_session
 from engine import decision_engine, price_estimator, scoring_engine
 
@@ -302,6 +305,8 @@ def test_register_success(client: TestClient):
     assert body["token_type"] == "bearer"
     assert body["access_token"]
     assert body["user"]["username"] == "collector"
+    assert "hashed_password" not in body
+    assert "hashed_password" not in body["user"]
 
 
 def test_duplicate_register_fails(client: TestClient):
@@ -315,6 +320,91 @@ def test_duplicate_register_fails(client: TestClient):
 
     assert response.status_code == 409
     assert response.json()["detail"] == "User already exists"
+
+
+def test_duplicate_username_returns_409(client: TestClient):
+    assert (
+        client.post(
+            "/auth/register",
+            json={
+                "username": "sameuser",
+                "email": "sameuser@example.com",
+                "password": "correct-horse-battery",
+            },
+        ).status_code
+        == 201
+    )
+    response = client.post(
+        "/auth/register",
+        json={
+            "username": "sameuser",
+            "email": "different-email@example.com",
+            "password": "correct-horse-battery",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "User already exists"
+
+
+def test_duplicate_email_returns_409(client: TestClient):
+    assert (
+        client.post(
+            "/auth/register",
+            json={
+                "username": "emailowner",
+                "email": "shared-email@example.com",
+                "password": "correct-horse-battery",
+            },
+        ).status_code
+        == 201
+    )
+    response = client.post(
+        "/auth/register",
+        json={
+            "username": "differentuser",
+            "email": "shared-email@example.com",
+            "password": "correct-horse-battery",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "User already exists"
+
+
+def test_register_rejects_short_password(client: TestClient):
+    response = client.post(
+        "/auth/register",
+        json={
+            "username": "shortpass",
+            "email": "shortpass@example.com",
+            "password": "short",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_register_rejects_invalid_username_and_email(client: TestClient):
+    username_response = client.post(
+        "/auth/register",
+        json={
+            "username": "bad username!",
+            "email": "valid@example.com",
+            "password": "correct-horse-battery",
+        },
+    )
+    email_response = client.post(
+        "/auth/register",
+        json={
+            "username": "valid-user",
+            "email": "not-an-email",
+            "password": "correct-horse-battery",
+        },
+    )
+
+    assert username_response.status_code == 422
+    assert email_response.status_code == 422
 
 
 def test_login_success(client: TestClient):
@@ -335,7 +425,10 @@ def test_login_success(client: TestClient):
     )
 
     assert response.status_code == 200
-    assert response.json()["access_token"]
+    body = response.json()
+    assert body["access_token"]
+    assert "hashed_password" not in body
+    assert "hashed_password" not in body["user"]
 
 
 def test_login_bad_password_fails(client: TestClient):
@@ -356,12 +449,41 @@ def test_login_bad_password_fails(client: TestClient):
     assert response.json()["detail"] == "Invalid credentials"
 
 
+def test_bad_token_returns_401(client: TestClient):
+    response = client.get(
+        "/auth/me", headers={"Authorization": "Bearer not-a-valid-token"}
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+
+
+def test_expired_token_returns_401(client: TestClient):
+    settings = get_settings()
+    expired_token = jwt.encode(
+        {
+            "sub": str(uuid4()),
+            "exp": datetime.now(UTC) - timedelta(minutes=1),
+        },
+        settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+    )
+    response = client.get(
+        "/auth/me", headers={"Authorization": f"Bearer {expired_token}"}
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+
+
 def test_auth_me_works_with_token(client: TestClient):
     headers = auth_headers(client, "profileuser")
     response = client.get("/auth/me", headers=headers)
 
     assert response.status_code == 200
-    assert response.json()["username"] == "profileuser"
+    body = response.json()
+    assert body["username"] == "profileuser"
+    assert "hashed_password" not in body
 
 
 def test_portfolio_requires_token(client: TestClient):
