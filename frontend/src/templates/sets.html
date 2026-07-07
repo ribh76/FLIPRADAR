@@ -1,0 +1,17 @@
+<div>
+  <div class="mb-7">
+    <h1 class="text-3xl font-bold text-white">Set Detail Lookup</h1>
+    <p class="mt-2 text-blue-100">Search a LEGO set number to view metadata, valuation, and market status.</p>
+  </div>
+
+  <section class="page-card">
+    <form data-set-search-form class="flex flex-col gap-3 sm:flex-row">
+      <label class="flex-1">
+        <span class="sr-only">Set number</span>
+        <input name="set_number" class="field-input" placeholder="Enter set number, for example 75192-1" />
+      </label>
+      <button class="primary-button" type="submit">Search</button>
+    </form>
+    <p data-message class="mt-4 hidden text-sm font-semibold text-red-700"></p>
+  </section>
+</div>

@@ -1,0 +1,55 @@
+<main class="flex min-h-screen items-center justify-center bg-navy-950 px-4 py-8">
+  <section class="grid w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-soft lg:grid-cols-[0.95fr_1.05fr]">
+    <div class="bg-navy-900 p-8 text-white sm:p-10">
+      <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-md bg-blue-600 text-white shadow-sm">FR</div>
+        <div>
+          <div class="text-lg font-bold leading-none text-white">FlipRadar</div>
+          <div class="mt-1 text-xs font-medium text-blue-100">LEGO set decisions without the spreadsheet fog</div>
+        </div>
+      </div>
+      <div class="mt-20 max-w-sm">
+        <h1 class="text-4xl font-bold tracking-normal">Buy, pass, hold, or sell with cleaner signals.</h1>
+        <p class="mt-4 text-base leading-7 text-blue-100">
+          FlipRadar turns LEGO set metadata, asking price, and market snapshots into fast collector decisions.
+        </p>
+      </div>
+    </div>
+
+    <div class="p-8 sm:p-10">
+      <div class="mb-8">
+        <p class="text-sm font-semibold uppercase tracking-normal text-blue-700">Welcome back</p>
+        <h2 class="mt-2 text-3xl font-bold text-slate-950">Sign in to FlipRadar</h2>
+      </div>
+
+      <div class="mb-6 grid grid-cols-2 rounded-md bg-slate-100 p-1">
+        <button type="button" data-mode="login" class="h-10 rounded-md bg-white text-sm font-bold text-slate-950 shadow-sm">Login</button>
+        <button type="button" data-mode="register" class="h-10 rounded-md text-sm font-bold text-slate-500">Register</button>
+      </div>
+
+      <form data-login-form class="space-y-5">
+        <label class="block space-y-2">
+          <span class="field-label">Username or email</span>
+          <input name="username_or_email" class="field-input" autocomplete="username" />
+        </label>
+        <label class="block space-y-2">
+          <span class="field-label">Password</span>
+          <input name="password" class="field-input" type="password" autocomplete="current-password" />
+        </label>
+
+        <div data-error class="min-h-11 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600">
+          Errors and validation messages will appear here.
+        </div>
+
+        <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+          <div data-loading-bar class="h-full w-0 rounded-full bg-blue-600 transition-all duration-500"></div>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <button data-submit class="primary-button w-full" type="submit">Login</button>
+          <button data-dev-pass class="secondary-button h-11 w-full border-blue-200 bg-blue-50 text-blue-800" type="button">Dev Pass</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</main>
