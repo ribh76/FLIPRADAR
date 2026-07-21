@@ -155,9 +155,4 @@ Marketplace routes are supporting/internal data refresh helpers for V1, not the 
 
 - Social or community features
 - Instagram/community builder flows
-- Parts finder
-- Saved searches
-- Watchlists
-- Deal finder pages
-- OAuth, roles, email verification, password reset
 - Celery/Redis-driven background workflows unless a future V1 need requires them
