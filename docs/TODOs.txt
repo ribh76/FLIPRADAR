@@ -1,259 +1,1311 @@
-ROOT
-README.md
-[ ] Write FLIPRADAR project overview
-[ ] Define core value prop: LEGO buy/sell intelligence
-[ ] Explain supported marketplaces: eBay and BrickLink
-[ ] Explain buyer workflow
-[ ] Explain seller workflow
-[ ] Explain hold/sell recommendation workflow
-[ ] Document FastAPI backend architecture
-[ ] Add local setup instructions
-[ ] Add environment variable setup
-[ ] Add API endpoint documentation
-[ ] Add roadmap
-requirements.txt
-[ ] Add FastAPI
-[ ] Add Uvicorn
-[ ] Add SQLAlchemy
-[ ] Add Alembic
-[ ] Add PostgreSQL driver
-[ ] Add Redis client
-[ ] Add requests/httpx
-[ ] Add pydantic-settings
-[ ] Add python-dotenv
-[ ] Add rapidfuzz
-[ ] Add pytest
-[ ] Freeze versions before deployment
-config.py
-[ ] Add Settings class using pydantic-settings
-[ ] Add database URL
-[ ] Add Redis URL
-[ ] Add eBay API credentials
-[ ] Add BrickLink API credentials
-[ ] Add marketplace fee estimates
-[ ] Add shipping estimate defaults
-[ ] Add deal score thresholds
-[ ] Add environment variable validation
-run.py
-[ ] Import FastAPI app
-[ ] Configure uvicorn startup
-[ ] Add host configuration
-[ ] Add port configuration
-[ ] Add reload option for development
-APP LAYER
-app/main.py
-[ ] Create FastAPI app
-[ ] Add app title and version
-[ ] Register health routes
-[ ] Register LEGO routes
-[ ] Register deal routes
-[ ] Register pricing routes
-[ ] Register recommendation routes
-[ ] Add CORS middleware
-[ ] Add global error handling
-app/routes/health_routes.py
-[ ] Add GET /health
-[ ] Return API status
-[ ] Return version
-[ ] Return database connection status
-app/routes/lego_routes.py
-[ ] Add GET /lego/{set_number}
-[ ] Validate LEGO set number
-[ ] Fetch LEGO set metadata
-[ ] Return set name, theme, year, retirement status if available
-app/routes/deal_routes.py
-[ ] Add GET /deals/buy/{set_number}
-[ ] Fetch active eBay listings
-[ ] Fetch active BrickLink listings
-[ ] Normalize listings
-[ ] Score listings
-[ ] Return ranked buy deals
-app/routes/pricing_routes.py
-[ ] Add GET /pricing/sell/{set_number}
-[ ] Fetch recent sold eBay comps
-[ ] Fetch BrickLink pricing data
-[ ] Estimate fair market price
-[ ] Return low/median/high price range
-app/routes/recommendation_routes.py
-[ ] Add GET /recommendations/hold-sell/{set_number}
-[ ] Add POST /recommendations/buy-decision
-[ ] Return recommendation label
-[ ] Return reasoning
-[ ] Return confidence score
-APIs
-apis/ebay_api.py
-[ ] Load eBay credentials
-[ ] Implement OAuth token flow
-[ ] Search active listings by set number
-[ ] Search sold/completed listings if available
-[ ] Extract title
-[ ] Extract price
-[ ] Extract shipping cost
-[ ] Extract condition
-[ ] Extract seller rating
-[ ] Extract listing URL
-[ ] Normalize to Listing model
-[ ] Handle rate limits
-[ ] Handle API errors
-apis/bricklink_api.py
-[ ] Load BrickLink credentials
-[ ] Implement authenticated requests
-[ ] Fetch catalog item by set number
-[ ] Fetch current listings
-[ ] Fetch price guide data
-[ ] Extract new/used pricing
-[ ] Extract quantity available
-[ ] Extract condition
-[ ] Normalize to Listing model
-[ ] Handle API errors
-ENGINE
-engine/deal_finder.py
-[ ] Accept normalized listings
-[ ] Remove duplicate listings
-[ ] Filter irrelevant results
-[ ] Rank by total cost
-[ ] Include shipping in total price
-[ ] Penalize incomplete sets
-[ ] Penalize poor title match
-[ ] Return best buy deals
-engine/price_estimator.py
-[ ] Accept sold comps and BrickLink price data
-[ ] Calculate low price
-[ ] Calculate median price
-[ ] Calculate high price
-[ ] Calculate fast-sale price
-[ ] Calculate fair-market price
-[ ] Calculate premium listing price
-[ ] Return pricing recommendation
-engine/hold_sell_engine.py
-[ ] Accept set number
-[ ] Analyze current market value
-[ ] Analyze price trend
-[ ] Analyze listing supply
-[ ] Analyze demand proxy
-[ ] Return hold/sell/watch recommendation
-engine/buy_decision_engine.py
-[ ] Accept listing price and set number
-[ ] Compare listing price to fair value
-[ ] Calculate discount percentage
-[ ] Detect risk flags
-[ ] Return buy/wait/pass recommendation
-engine/product_matcher.py
-[ ] Normalize LEGO set titles
-[ ] Extract set number from title
-[ ] Match listing to set number
-[ ] Detect wrong-set false positives
-[ ] Detect partial/incomplete listings
-[ ] Detect minifig-only listings
-[ ] Detect box-only/manual-only listings
-engine/scoring_engine.py
-[ ] Create deal score from 0–100
-[ ] Score price discount
-[ ] Score condition
-[ ] Score title confidence
-[ ] Score seller quality
-[ ] Score marketplace reliability
-[ ] Return score and explanation
-MODELS
-models/lego_set.py
-[ ] Add set_number
-[ ] Add name
-[ ] Add theme
-[ ] Add subtheme
-[ ] Add release_year
-[ ] Add retirement_year
-[ ] Add piece_count
-[ ] Add minifig_count
-models/listing.py
-[ ] Add listing_id
-[ ] Add set_number
-[ ] Add title
-[ ] Add marketplace
-[ ] Add price
-[ ] Add shipping_price
-[ ] Add total_price
-[ ] Add condition
-[ ] Add is_complete
-[ ] Add is_sealed
-[ ] Add url
-[ ] Add seller_rating
-[ ] Add timestamp
-models/price_snapshot.py
-[ ] Add set_number
-[ ] Add marketplace
-[ ] Add new_low_price
-[ ] Add new_median_price
-[ ] Add used_low_price
-[ ] Add used_median_price
-[ ] Add sold_median_price
-[ ] Add timestamp
-models/watchlist.py
-[ ] Add user_id
-[ ] Add set_number
-[ ] Add target_price
-[ ] Add desired_condition
-[ ] Add alert_enabled
-SERVICES
-services/deal_service.py
-[ ] Accept set number
-[ ] Query eBay active listings
-[ ] Query BrickLink active listings
-[ ] Normalize listings
-[ ] Match listings to LEGO set
-[ ] Score deals
-[ ] Return ranked deal list
-services/pricing_service.py
-[ ] Accept set number
-[ ] Query eBay sold comps
-[ ] Query BrickLink price guide
-[ ] Remove outliers
-[ ] Estimate sell price
-[ ] Return pricing bands
-services/recommendation_service.py
-[ ] Generate buy/pass recommendation
-[ ] Generate hold/sell recommendation
-[ ] Attach explanation
-[ ] Attach confidence score
-services/watchlist_service.py
-[ ] Add set to user watchlist
-[ ] Remove set from watchlist
-[ ] Fetch user watchlist
-[ ] Check target price against current listings
-DATABASE
-database/db.py
-[ ] Create SQLAlchemy engine
-[ ] Create session factory
-[ ] Add database dependency for FastAPI
-[ ] Add connection test helper
-Alembic migrations
-[ ] Initialize Alembic
-[ ] Create users table
-[ ] Create lego_sets table
-[ ] Create listings table
-[ ] Create price_snapshots table
-[ ] Create watchlists table
-[ ] Create saved_searches table
-[ ] Add indexes on set_number
-[ ] Add indexes on marketplace
-[ ] Add indexes on timestamp
-UTILITIES
-utils/lego_utils.py
-[ ] Validate LEGO set number
-[ ] Extract set number from listing title
-[ ] Detect retired set keywords
-[ ] Detect sealed/new keywords
-[ ] Detect used/complete keywords
-[ ] Detect incomplete listing keywords
-utils/price_utils.py
-[ ] Parse price strings
-[ ] Add price + shipping
-[ ] Remove outliers
-[ ] Calculate median
-[ ] Calculate percentile pricing
-[ ] Calculate discount percentage
-utils/text_cleaning.py
-[ ] Lowercase text
-[ ] Remove punctuation
-[ ] Normalize LEGO-specific words
-[ ] Remove marketplace noise words
-[ ] Normalize UCS, NISB, BNIB, used, complete, sealed
+FLIPRADAR MASTER DEVELOPMENT PLAN
+
+ROADMAP CLASSIFICATION
+- MUST SHIP: Required before the first public release.
+- SHIP LATER: Planned V2 and post-launch functionality.
+- FOUNDATION: Technical work required to support both releases.
+
+==================================================
+PART I - PROJECT FOUNDATION
+==================================================
+
+PHASE 0: FILE RESTRUCTURING
+Classification: FOUNDATION
+
+1. Create root folders named backend, frontend, docs, scripts, and .github.
+2. Move all FastAPI code, database files, services, models, integrations, engines, tests, migrations, and backend scripts into backend.
+3. Move all React, TypeScript, Vite, Tailwind, public assets, and frontend configuration into frontend.
+4. Move planning notes, UML files, architecture references, feature specifications, and deployment guides into docs.
+5. Move shared setup, seed, migration, and automation scripts into scripts.
+6. Move alembic.ini into backend and update all migration paths.
+7. Update Python imports and startup commands for the new structure.
+8. Add a root README explaining the entire project and linking to the backend, frontend, and docs guides.
+9. Add backend/README.md with setup, environment, migration, testing, and startup instructions.
+10. Add frontend/README.md with installation, environment, testing, and build instructions.
+11. Add docs/README.md that indexes architecture, product, API, database, roadmap, and deployment documents.
+12. Remove empty, duplicated, or obsolete files and folders.
+13. Verify the backend starts, the frontend builds, migrations run, and tests are still discovered.
+
+PHASE 1: BACKEND PACKAGE STANDARDIZATION
+Classification: FOUNDATION
+
+1. Create one backend package namespace, such as flipradar.
+2. Move route files into flipradar/api/routes.
+3. Move request and response schemas into flipradar/api/schemas.
+4. Move authentication and shared dependencies into flipradar/api/dependencies.
+5. Move database models into flipradar/domain/models.
+6. Move business logic engines into flipradar/domain/engines.
+7. Move application services into flipradar/services.
+8. Move BrickLink, eBay, email, and LLM clients into flipradar/integrations.
+9. Move sessions, repositories, and migration helpers into flipradar/database.
+10. Move settings, logging, exceptions, constants, and utilities into flipradar/core.
+11. Replace vague file names with names that reflect their actual responsibilities.
+12. Remove duplicate or obsolete provider clients.
+13. Ensure route handlers call services instead of querying the database directly.
+14. Document allowed dependency directions between layers.
+
+PHASE 2: CONFIGURATION AND ENVIRONMENT MANAGEMENT
+Classification: FOUNDATION
+
+1. Replace scattered environment-variable access with one typed settings class.
+2. Define settings groups for application, database, authentication, email, marketplace APIs, LLM APIs, logging, and CORS.
+3. Create development, test, staging, and production environments.
+4. Add every supported variable to .env.example without real credentials.
+5. Provide safe defaults only for local development and tests.
+6. Require strong secrets and valid production settings in production mode.
+7. Remove settings validation and database engine creation from module import time.
+8. Add an application factory for building the FastAPI application.
+9. Configure CORS from explicit allowed frontend origins.
+10. Configure frontend API URLs through frontend environment variables.
+11. Add startup checks that clearly report missing required integrations.
+12. Let optional integrations disable themselves cleanly when credentials are missing.
+13. Create test-specific settings and fixtures.
+14. Verify tests run without production credentials or live external APIs.
+
+PHASE 3: LOCAL DEVELOPMENT ENVIRONMENT
+Classification: FOUNDATION
+
+1. Add docker-compose.yml for PostgreSQL and local supporting services.
+2. Add a backend Dockerfile.
+3. Add a frontend Dockerfile with development and production build stages.
+4. Add database health checks.
+5. Add backend health checks and database startup waiting.
+6. Add root scripts to start, stop, inspect, and reset the development stack.
+7. Add a setup script that installs backend and frontend dependencies.
+8. Add a migration and seed script.
+9. Add a database reset script with an explicit confirmation step.
+10. Add one command for running the complete local application.
+11. Document local URLs, ports, and required tool versions.
+12. Verify a clean clone can be started without manually creating database tables.
+
+PHASE 4: CODE QUALITY AND TESTING FOUNDATION
+Classification: FOUNDATION
+
+1. Configure Ruff for linting and import sorting.
+2. Configure backend formatting.
+3. Add backend type checking with MyPy or Pyright.
+4. Configure ESLint for React and TypeScript.
+5. Configure Prettier for frontend formatting.
+6. Add pre-commit hooks.
+7. Organize backend tests into unit, integration, and API test folders.
+8. Add reusable database, user, set, listing, portfolio, and watchlist fixtures.
+9. Add mocks for BrickLink, eBay, email, and LLM services.
+10. Make tests use an isolated disposable database or transactional sessions.
+11. Add frontend testing with Vitest and React Testing Library.
+12. Establish coverage requirements for critical business logic.
+13. Add one root command that runs formatting, linting, type checks, and all tests.
+14. Document test naming and organization conventions.
+
+PHASE 5: CONTINUOUS INTEGRATION
+Classification: FOUNDATION
+
+1. Add a GitHub Actions backend workflow.
+2. Install backend dependencies using caching.
+3. Start PostgreSQL inside CI.
+4. Run migrations against an empty CI database.
+5. Run backend linting, formatting, type checks, and tests.
+6. Add a GitHub Actions frontend workflow.
+7. Install frontend dependencies using the lockfile.
+8. Run frontend linting, type checks, tests, and production build.
+9. Add migration consistency checks.
+10. Add dependency, vulnerability, and secret scanning.
+11. Require passing CI checks before merging into main.
+12. Add CI badges to the root README.
+13. Add a manually triggered staging smoke-test workflow.
+
+==================================================
+PART II - CORE DATA AND API ARCHITECTURE
+==================================================
+
+PHASE 6: DATABASE MODEL CLEANUP
+Classification: MUST SHIP
+
+1. Review every model and document its purpose.
+2. Remove duplicate, unused, or incomplete models.
+3. Standardize primary keys, timestamps, foreign keys, and naming conventions.
+4. Add created_at and updated_at fields to user-managed records.
+5. Standardize enums for conditions, marketplaces, statuses, and recommendation types.
+6. Add uniqueness constraints for set numbers and marketplace identifiers.
+7. Add indexes for common searches and joins.
+8. Define delete behavior for users, holdings, watchlists, snapshots, and analyses.
+9. Replace floating-point money fields with decimal fields.
+10. Add currency fields to all relevant price records.
+11. Create forward migrations from the current schema.
+12. Test migrations against an empty database.
+13. Test migrations against representative existing data.
+14. Update seed data.
+15. Create an entity-relationship diagram in docs.
+
+PHASE 7: REPOSITORY AND TRANSACTION LAYER
+Classification: MUST SHIP
+
+1. Define repositories for users, sets, portfolios, prices, listings, watchlists, and recommendations.
+2. Move direct SQLAlchemy queries out of route handlers.
+3. Add shared pagination behavior.
+4. Add consistent filtering and ordering.
+5. Add transaction boundaries for multi-step actions.
+6. Add duplicate and conflict handling.
+7. Add bulk insert and snapshot repository methods.
+8. Add database exceptions that map to service-level errors.
+9. Make service logic testable with mocked repositories.
+10. Add rollback tests.
+11. Add duplicate-action and concurrency tests.
+12. Prevent N+1 queries in portfolio and set-detail endpoints.
+13. Document repository conventions.
+
+PHASE 8: API STANDARDS AND ERROR HANDLING
+Classification: MUST SHIP
+
+1. Version routes under /api/v1.
+2. Define a standard API error structure.
+3. Add centralized validation, authentication, authorization, database, integration, and unexpected-error handlers.
+4. Add request IDs to responses and logs.
+5. Add pagination metadata to collection responses.
+6. Standardize date, decimal, currency, and enum serialization.
+7. Add OpenAPI tags and descriptions.
+8. Add request and response examples.
+9. Prevent internal errors and stack traces from reaching users.
+10. Add request limits where appropriate.
+11. Add timeout handling for marketplace and LLM calls.
+12. Add readiness and liveness endpoints.
+13. Export the OpenAPI specification into docs.
+14. Add API contract tests.
+
+==================================================
+PART III - SECURITY AND ACCOUNTS
+==================================================
+
+PHASE 9: CORE ACCOUNT SYSTEM
+Classification: MUST SHIP
+
+1. Finalize the user model.
+2. Normalize emails and enforce case-insensitive uniqueness.
+3. Validate password length and strength.
+4. Hash passwords using Argon2 or another approved method.
+5. Implement account registration.
+6. Implement login.
+7. Issue short-lived access tokens.
+8. Issue refresh tokens using rotation.
+9. Store refresh-token sessions so they can be revoked.
+10. Add logout for the current session.
+11. Add logout from all devices.
+12. Add an authenticated /users/me endpoint.
+13. Add protected-route dependencies and ownership checks.
+14. Build login, registration, logout, and protected-route frontend flows.
+15. Add full account and authorization tests.
+
+PHASE 10: EMAIL VERIFICATION AND PASSWORD RESET
+Classification: MUST SHIP
+
+1. Select and configure an email provider.
+2. Create an email-service abstraction.
+3. Add a model for single-use verification and reset tokens.
+4. Generate secure expiring email-verification tokens.
+5. Send verification emails after registration.
+6. Add a verification endpoint and confirmation page.
+7. Add resend-verification with throttling.
+8. Generate password-reset tokens without exposing account existence.
+9. Send password-reset emails.
+10. Add reset-password frontend and backend flows.
+11. Invalidate tokens after successful use.
+12. Revoke sessions after password reset.
+13. Add verification, reset, and security email templates.
+14. Add mocks and tests for all email flows.
+
+PHASE 11: ACCOUNT SETTINGS AND EMAIL CHANGES
+Classification: MUST SHIP
+
+1. Build an account settings page.
+2. Allow display-name updates.
+3. Allow password changes after confirming the current password.
+4. Add an email-change request workflow.
+5. Send confirmation to the new email.
+6. Send a security notice to the old email.
+7. Keep the old email active until the new email is verified.
+8. Display recent active sessions.
+9. Allow users to revoke individual sessions.
+10. Add account deletion.
+11. Require reauthentication for sensitive actions.
+12. Define data deletion behavior.
+13. Add backend and frontend tests.
+
+PHASE 12: SECURITY HARDENING
+Classification: MUST SHIP
+
+1. Add rate limiting to authentication, reset, verification, listing evaluation, and LLM endpoints.
+2. Add account lockout or exponential delay after repeated login failures.
+3. Configure secure HTTP-only cookies if cookies are used.
+4. Configure SameSite and Secure cookie flags.
+5. Add CSRF protection where needed.
+6. Configure restrictive CORS.
+7. Add security headers.
+8. Validate and normalize all externally supplied URLs.
+9. Block local and private-network URL targets.
+10. Remove secrets from logs and telemetry.
+11. Add dependency and container vulnerability checks.
+12. Add audit logs for security-sensitive actions.
+13. Review authorization for every user-owned endpoint.
+14. Add a release security checklist.
+
+==================================================
+PART IV - FRONTEND FOUNDATION
+==================================================
+
+PHASE 13: REACT ARCHITECTURE REFACTOR
+Classification: MUST SHIP
+
+1. Remove manual HTML-template page rendering.
+2. Convert the application shell into normal React components.
+3. Add frontend routing.
+4. Create public, authenticated, and error layouts.
+5. Add a typed API-client layer.
+6. Add centralized authentication and token refresh.
+7. Add consistent server-state hooks or a server-state library.
+8. Add reusable loading, error, empty, and unauthorized states.
+9. Build reusable form controls and validation messages.
+10. Build reusable cards, tables, badges, modals, dropdowns, and confirmations.
+11. Organize code into features, components, hooks, services, types, and utilities.
+12. Remove querySelector, innerHTML, and manual event listeners.
+13. Add responsive navigation.
+14. Add global toast notifications.
+15. Add tests for routing and authentication state.
+
+PHASE 14: DESIGN SYSTEM AND RESPONSIVE SHELL
+Classification: MUST SHIP
+
+1. Define logo and brand usage.
+2. Define typography, spacing, borders, shadows, and radius rules.
+3. Define semantic colors for gains, losses, warnings, information, and neutral states.
+4. Add consistent theme support.
+5. Build desktop sidebar navigation.
+6. Build mobile navigation.
+7. Build page headers and breadcrumbs.
+8. Add skeleton loaders.
+9. Add empty states.
+10. Add responsive table and card behavior.
+11. Ensure forms and dialogs work on small screens.
+12. Add keyboard navigation and visible focus states.
+13. Verify accessibility contrast and labeling.
+14. Create a component showcase page.
+
+==================================================
+PART V - LEGO CATALOG AND PRICING
+==================================================
+
+PHASE 15: LEGO SET CATALOG MODEL
+Classification: MUST SHIP
+
+1. Finalize the LEGO set model.
+2. Store set number, name, theme, subtheme, release year, pieces, and minifigures.
+3. Store MSRP, original currency, and regional information.
+4. Store release and retirement information.
+5. Store image URLs and source attribution.
+6. Store provider-specific identifiers.
+7. Store retrieval timestamps.
+8. Add data-quality and completeness flags.
+9. Add unique and indexed set-number fields.
+10. Build catalog repository and service methods.
+11. Add safe upsert logic.
+12. Validate set-number formats.
+13. Add representative seed sets.
+14. Add model and service tests.
+
+PHASE 16: SET-NUMBER LOOKUP
+Classification: MUST SHIP
+
+1. Create a set-search endpoint for full and partial set numbers.
+2. Search the local catalog first.
+3. Retrieve missing set data from the selected provider.
+4. Normalize external set data.
+5. Cache retrieved records.
+6. Return useful not-found and incomplete-data responses.
+7. Create the set-search frontend page.
+8. Add autocomplete for known set numbers and names.
+9. Create the set-detail page.
+10. Display image, name, theme, year, pieces, minifigures, MSRP, and retirement status.
+11. Add actions to add the set to the portfolio or watchlist.
+12. Show source and last-updated details.
+13. Add loading, invalid-input, provider-error, and no-result states.
+14. Add backend and frontend tests.
+
+PHASE 17: MARKETPLACE NORMALIZATION
+Classification: MUST SHIP
+
+1. Finalize one normalized marketplace listing schema.
+2. Include marketplace, external ID, URL, title, price, shipping, currency, condition, and seller details.
+3. Include detected set number and match confidence.
+4. Include completeness flags.
+5. Include retrieval time and listing status.
+6. Define a marketplace adapter interface.
+7. Refactor BrickLink integration to use the adapter.
+8. Refactor eBay integration to use the adapter.
+9. Normalize currencies, conditions, and shipping values.
+10. Add retries, timeouts, and provider-error handling.
+11. Prevent duplicate listing records.
+12. Add stale-listing handling.
+13. Add mocked provider fixtures and contract tests.
+14. Document provider limitations.
+
+PHASE 18: PRODUCT MATCHING ENGINE
+Classification: MUST SHIP
+
+1. Normalize listing titles.
+2. Extract candidate LEGO set numbers.
+3. Match exact set numbers.
+4. Compare set-name and listing-title tokens.
+5. Detect instructions-only, box-only, minifigures-only, parts-only, and custom-build listings.
+6. Detect multi-set lots.
+7. Detect likely counterfeit or non-LEGO listings.
+8. Assign a match-confidence score.
+9. Define a minimum score for automated pricing use.
+10. Store match reasons and exclusion flags.
+11. Display uncertain matches without using them in calculations.
+12. Build a labeled match test dataset.
+13. Add ambiguity and misleading-title tests.
+14. Add developer-facing match explanations.
+
+PHASE 19: PRICE SNAPSHOT PIPELINE
+Classification: MUST SHIP
+
+1. Finalize the price snapshot model.
+2. Store set, marketplace, condition, currency, metric type, value, sample size, and retrieval time.
+3. Define supported pricing metrics.
+4. Separate new, used-complete, and incomplete pricing.
+5. Exclude low-confidence matches.
+6. Add outlier handling.
+7. Add currency conversion while preserving original prices.
+8. Build snapshot generation.
+9. Add idempotent refresh scripts.
+10. Add freshness thresholds.
+11. Add manual refresh support.
+12. Add retention rules.
+13. Add tests for empty, low-volume, and outlier-heavy markets.
+14. Expose source, sample size, and freshness.
+15. Document the valuation methodology.
+
+PHASE 20: PRICE ESTIMATION ENGINE
+Classification: MUST SHIP
+
+1. Define supported valuation conditions.
+2. Select eligible snapshots by set, condition, freshness, and confidence.
+3. Calculate robust market estimates.
+4. Weight sold data more heavily than active listings.
+5. Add sample-size weighting.
+6. Add marketplace weighting.
+7. Use outlier-resistant calculations.
+8. Produce low, expected, and high values.
+9. Produce confidence scores.
+10. Record the inputs used.
+11. Add insufficient-data fallback behavior.
+12. Support manual valuation overrides.
+13. Explain low-confidence estimates.
+14. Add full unit tests.
+15. Version the estimation methodology.
+
+==================================================
+PART VI - PORTFOLIO MANAGEMENT
+==================================================
+
+PHASE 21: PORTFOLIO CRUD
+Classification: MUST SHIP
+
+1. Finalize the portfolio-item model.
+2. Link each item to the user and catalog set.
+3. Store condition, quantity, purchase price, purchase date, currency, and notes.
+4. Store optional manual current valuation.
+5. Decide whether duplicate purchases are combined or stored separately.
+6. Add create, edit, delete, and retrieve operations.
+7. Add pagination.
+8. Add filtering by theme, condition, year, and performance.
+9. Add sorting by value, gain, purchase date, and set number.
+10. Add ownership checks.
+11. Build portfolio tables and mobile cards.
+12. Build add and edit forms.
+13. Add full backend and frontend tests.
+
+PHASE 22: PORTFOLIO VALUATION
+Classification: MUST SHIP
+
+1. Calculate cost basis for each holding.
+2. Retrieve estimated unit value by condition.
+3. Apply manual valuation overrides.
+4. Calculate total market value.
+5. Calculate unrealized gain or loss.
+6. Calculate percentage gain or loss.
+7. Calculate total portfolio cost basis.
+8. Calculate total portfolio value.
+9. Calculate total portfolio gain or loss.
+10. Include confidence and freshness.
+11. Mark holdings with insufficient pricing.
+12. Prevent missing values from silently becoming zero.
+13. Add portfolio summary endpoints.
+14. Add dashboard summary cards.
+15. Add valuation tests.
+
+PHASE 23: HISTORICAL PORTFOLIO SNAPSHOTS
+Classification: MUST SHIP
+
+1. Create a portfolio valuation snapshot model.
+2. Store user, cost basis, market value, gain or loss, currency, and timestamp.
+3. Create an item valuation snapshot model.
+4. Store item, unit value, total value, confidence, and timestamp.
+5. Create snapshots after portfolio changes.
+6. Create snapshots after pricing refreshes.
+7. Prevent duplicate snapshots in the same time window.
+8. Generate user snapshots transactionally.
+9. Add a scheduled snapshot script.
+10. Add historical API endpoints.
+11. Support one-month, three-month, one-year, and all-time ranges.
+12. Add fallback behavior for limited history.
+13. Add retention and aggregation rules.
+14. Add snapshot and history tests.
+15. Document when historical tracking begins.
+
+PHASE 24: PORTFOLIO DASHBOARD
+Classification: MUST SHIP
+
+1. Display total portfolio value.
+2. Display total cost basis.
+3. Display unrealized gain or loss.
+4. Display total item and unique-set counts.
+5. Add a portfolio-value history chart.
+6. Add cost-basis comparison.
+7. Add top-performing holdings.
+8. Add worst-performing holdings.
+9. Add recently added holdings.
+10. Add stale or low-confidence valuation warnings.
+11. Add theme and condition allocation.
+12. Add quick actions for portfolio, lookup, deals, and analysis.
+13. Add loading, empty, error, and partial-data states.
+14. Optimize dashboard queries.
+15. Add responsive and integration tests.
+
+PHASE 25: INDIVIDUAL HOLDING ANALYTICS
+Classification: MUST SHIP
+
+1. Create a holding-detail endpoint.
+2. Display purchase data.
+3. Display current estimated value.
+4. Display dollar and percentage gain or loss.
+5. Display confidence and freshness.
+6. Add a value-history chart.
+7. Display relevant marketplace snapshots.
+8. Compare condition pricing.
+9. Display the holding's share of total portfolio value.
+10. Display concentration-risk information.
+11. Allow manual valuation changes.
+12. Allow notes and purchase details to be edited.
+13. Add Find Deals and Analyze Holding shortcuts.
+14. Add backend and frontend tests.
+
+==================================================
+PART VII - DEAL DISCOVERY
+==================================================
+
+PHASE 26: DEAL SCORING ENGINE
+Classification: MUST SHIP
+
+1. Define scoring components and weights.
+2. Calculate total cost including shipping.
+3. Compare total cost with estimated fair value.
+4. Calculate discount or premium percentage.
+5. Include product-match confidence.
+6. Include valuation confidence.
+7. Include seller and marketplace trust signals.
+8. Include condition and completeness.
+9. Penalize unclear, incomplete, suspicious, or low-quality listings.
+10. Produce a normalized overall score.
+11. Classify deals as excellent, good, fair, risky, or poor.
+12. Store the score breakdown.
+13. Produce user-facing explanations.
+14. Version the scoring method.
+15. Add unit tests.
+
+PHASE 27: BASIC DEAL FINDER
+Classification: MUST SHIP
+
+1. Create a Deal Finder service.
+2. Select a manageable default set universe.
+3. Retrieve current listings.
+4. Normalize and match listings.
+5. Retrieve fair-value estimates.
+6. Score eligible listings.
+7. Exclude expired, duplicate, mismatched, and very low-confidence listings.
+8. Rank results.
+9. Create a paginated /deals endpoint.
+10. Return value, discount, score, confidence, and marketplace details.
+11. Build the Deal Finder frontend page.
+12. Add listing cards and direct external links.
+13. Add caching and refresh throttling.
+14. Add partial-results and provider-error states.
+15. Add service and UI tests.
+
+PHASE 28: PERSONALIZED DEAL FINDER FILTERS
+Classification: MUST SHIP
+
+1. Add minimum and maximum budget filters.
+2. Add theme and subtheme filters.
+3. Add release-year filters.
+4. Add age-range filters where data exists.
+5. Add condition filters.
+6. Add retirement-status filters.
+7. Add marketplace filters.
+8. Add minimum-discount filters.
+9. Add minimum-confidence filters.
+10. Add maximum-shipping filters.
+11. Validate filter combinations.
+12. Store active filters in the URL.
+13. Add filter chips and Clear All.
+14. Add sorting by score, discount, total price, and confidence.
+15. Add filtering and ordering tests.
+
+PHASE 29: SAVED SEARCHES
+Classification: SHIP LATER
+
+1. Finalize the saved-search model.
+2. Store a name and validated filter configuration.
+3. Add create, read, update, and delete operations.
+4. Add saved-search limits.
+5. Add Save Current Search.
+6. Add a saved-search selector.
+7. Add a default saved search.
+8. Allow duplication and editing.
+9. Add last-run timestamps.
+10. Add result counts.
+11. Add ownership checks.
+12. Add frontend management.
+13. Add filter-version migration support.
+14. Add tests.
+
+==================================================
+PART VIII - LISTING EVALUATION
+==================================================
+
+PHASE 30: LISTING URL INGESTION
+Classification: MUST SHIP
+
+1. Create a listing-evaluation request endpoint.
+2. Validate URL format.
+3. Allow only supported eBay and BrickLink domains.
+4. Reject local, private-network, malformed, and unsupported URLs.
+5. Normalize mobile, tracking, shortened, and regional URLs.
+6. Extract provider-specific listing IDs.
+7. Query the official provider API.
+8. Avoid arbitrary scraping as the primary method.
+9. Add manual listing entry when retrieval fails.
+10. Store whether data is verified or manually entered.
+11. Deduplicate recently evaluated listings.
+12. Handle removed and ended listings.
+13. Add strict timeouts.
+14. Add malicious-URL and provider-response tests.
+
+PHASE 31: LISTING ANALYSIS
+Classification: MUST SHIP
+
+1. Match the listing to a set.
+2. Calculate product-match confidence.
+3. Parse condition and completeness.
+4. Calculate total cost.
+5. Retrieve fair-value estimates.
+6. Calculate discount or premium.
+7. Evaluate seller and marketplace signals.
+8. Generate risk flags.
+9. Run the deal-scoring engine.
+10. Return Buy, Watch, Pass, or Insufficient Data.
+11. Return decision confidence.
+12. Return itemized reasons.
+13. Return freshness and sample-size details.
+14. Store the evaluation.
+15. Add complete tests.
+
+PHASE 32: LISTING EVALUATOR INTERFACE
+Classification: MUST SHIP
+
+1. Create a dedicated Listing Evaluator page.
+2. Add a listing URL input.
+3. Detect and display the marketplace.
+4. Show retrieval progress.
+5. Display normalized listing details.
+6. Display fair-value range.
+7. Display discount or premium.
+8. Display Buy, Watch, Pass, or Insufficient Data.
+9. Display confidence and freshness.
+10. Display risk flags.
+11. Display score breakdown.
+12. Add Save to Watchlist.
+13. Add Add Purchase to Portfolio.
+14. Add manual-entry fallback.
+15. Add responsive and accessibility tests.
+
+==================================================
+PART IX - WATCHLIST
+==================================================
+
+PHASE 33: MANUAL WATCHLIST
+Classification: MUST SHIP
+
+1. Finalize the watchlist-item model.
+2. Support set-based and listing-based entries.
+3. Store owner, set, listing, target price, notes, and date saved.
+4. Store last known listing price and status.
+5. Add create, read, edit, and delete operations.
+6. Prevent accidental duplicates.
+7. Add ownership checks.
+8. Add Save to Watchlist across the application.
+9. Build the watchlist page.
+10. Display current price, target, valuation, discount, and last checked time.
+11. Add manual refresh.
+12. Add sorting and filtering.
+13. Add Move to Portfolio.
+14. Handle ended and removed listings.
+15. Add backend and frontend tests.
+
+PHASE 34: WATCHLIST INTELLIGENCE
+Classification: SHIP LATER
+
+1. Add watchlist summary metrics.
+2. Identify entries under target price.
+3. Identify price changes.
+4. Identify ended or removed listings.
+5. Recalculate fair-value comparisons.
+6. Recalculate deal scores.
+7. Store watchlist price history.
+8. Add price-history charts.
+9. Add manual bulk refresh.
+10. Add provider throttling.
+11. Add recommendation badges.
+12. Add stale-data indicators.
+13. Add replacement search for ended listings.
+14. Add refresh-failure reporting.
+15. Add tests.
+
+PHASE 35: AUTOMATED WATCHLIST MONITORING
+Classification: SHIP LATER
+
+1. Select a background job system.
+2. Add a separate worker process.
+3. Add scheduled watchlist refresh jobs.
+4. Batch entries by provider.
+5. Respect provider rate limits.
+6. Record job attempts and failures.
+7. Add retry behavior.
+8. Prevent duplicate concurrent jobs.
+9. Detect material price changes.
+10. Detect target-price crossings.
+11. Detect listing expiration.
+12. Add user monitoring preferences.
+13. Add job health metrics.
+14. Add job inspection tools.
+15. Add worker tests.
+
+PHASE 36: WATCHLIST NOTIFICATIONS
+Classification: SHIP LATER
+
+1. Create a notification model.
+2. Define price-drop, target-reached, ended-listing, and deal-score notification types.
+3. Add in-app notifications.
+4. Add unread counts.
+5. Add notification history.
+6. Add per-type preferences.
+7. Add email notifications.
+8. Batch notifications to reduce spam.
+9. Add quiet hours.
+10. Add unsubscribe controls.
+11. Prevent duplicate alerts.
+12. Add direct links to relevant items.
+13. Add delivery-failure handling.
+14. Add audit logs.
+15. Add workflow tests.
+
+==================================================
+PART X - PORTFOLIO ANALYSIS AND AI
+==================================================
+
+PHASE 37: PORTFOLIO ANALYTICS METRICS
+Classification: MUST SHIP
+
+1. Calculate performance for every holding.
+2. Calculate holding periods.
+3. Calculate allocation by set, theme, condition, and release year.
+4. Calculate concentration by portfolio value.
+5. Identify top and bottom performers.
+6. Identify stale or low-confidence valuations.
+7. Calculate available price trends.
+8. Measure marketplace supply where reliable.
+9. Identify insufficient-data holdings.
+10. Calculate diversification indicators.
+11. Define objective hold, watch, and sell-consideration signals.
+12. Store all metrics used.
+13. Add an analytics service and endpoint.
+14. Document methodology.
+15. Add deterministic tests.
+
+PHASE 38: HOLD/SELL RECOMMENDATION ENGINE
+Classification: MUST SHIP
+
+1. Define Hold, Watch, Consider Selling, and Insufficient Data categories.
+2. Define weighted inputs.
+3. Include gain or loss.
+4. Include price direction.
+5. Include valuation confidence.
+6. Include concentration.
+7. Include holding period.
+8. Include supply and demand signals where available.
+9. Include freshness.
+10. Produce recommendation confidence.
+11. Produce structured reasons and warnings.
+12. Avoid guaranteed financial claims.
+13. Version the method.
+14. Store recommendations and inputs.
+15. Add rule-boundary tests.
+
+PHASE 39: LLM INTEGRATION FOUNDATION
+Classification: MUST SHIP
+
+1. Create an LLM provider interface.
+2. Add one provider.
+3. Store keys only in backend secrets.
+4. Define strict structured-output schemas.
+5. Pass calculated metrics instead of uncontrolled raw data.
+6. Require the model to distinguish facts from uncertainty.
+7. Prohibit invented prices and marketplace facts.
+8. Add timeouts and retries.
+9. Add user and global rate limits.
+10. Track tokens and cost.
+11. Track prompt versions.
+12. Validate every model response.
+13. Fall back to deterministic results.
+14. Add mocked tests.
+15. Document AI limitations.
+
+PHASE 40: ANALYZE PORTFOLIO FEATURE
+Classification: MUST SHIP
+
+1. Create an authenticated portfolio-analysis endpoint.
+2. Generate deterministic metrics.
+3. Generate item-level recommendations.
+4. Pass structured metrics to the LLM.
+5. Generate an executive summary.
+6. Generate diversification and concentration observations.
+7. Generate prioritized actions.
+8. Include confidence and data-quality warnings.
+9. Store completed analyses.
+10. Build the Analyze Portfolio page.
+11. Display the summary.
+12. Display portfolio-wide risks and opportunities.
+13. Display sortable item recommendations.
+14. Add a collectibles-market disclaimer.
+15. Add end-to-end tests.
+
+PHASE 41: RECOMMENDATION HISTORY
+Classification: SHIP LATER
+
+1. Add analysis-history retrieval.
+2. Store method and prompt versions.
+3. Store portfolio context at analysis time.
+4. Display previous analyses.
+5. Compare recommendation changes by set.
+6. Highlight recommendation reversals.
+7. Explain which metrics changed.
+8. Show timestamps and freshness.
+9. Allow labels and annotations.
+10. Add deletion.
+11. Compare two selected dates.
+12. Add trend summaries.
+13. Prevent stale analyses from appearing current.
+14. Add pagination.
+15. Add tests.
+
+==================================================
+PART XI - V1 COMPLETION AND LAUNCH
+==================================================
+
+PHASE 42: CROSS-FEATURE NAVIGATION
+Classification: MUST SHIP
+
+1. Add global set search.
+2. Link search results to set details.
+3. Add Add to Portfolio throughout the app.
+4. Add Add to Watchlist throughout the app.
+5. Add Find Deals from set and holding pages.
+6. Add Evaluate Listing from deal results.
+7. Add Move to Portfolio from the watchlist.
+8. Link recommendations to holdings.
+9. Add breadcrumbs and return navigation.
+10. Preserve useful filter and search state.
+11. Add recent searches.
+12. Add not-found pages.
+13. Add unauthorized and expired-session redirects.
+14. Test primary user journeys.
+
+PHASE 43: DEMO DATA AND ONBOARDING
+Classification: MUST SHIP
+
+1. Create representative seed sets.
+2. Create representative price snapshots.
+3. Create representative listings.
+4. Create a demo portfolio.
+5. Create a demo watchlist.
+6. Create sample analysis output.
+7. Add first-login onboarding.
+8. Explain cost basis and estimated value.
+9. Explain confidence, freshness, and data limits.
+10. Offer sample holdings.
+11. Add useful empty states.
+12. Add contextual help.
+13. Add a reset-demo-data script.
+14. Mark demo data clearly.
+15. Test the full first-time experience.
+
+PHASE 44: ACCESSIBILITY AND RESPONSIVE QUALITY
+Classification: MUST SHIP
+
+1. Audit heading structure.
+2. Add accessible control labels.
+3. Add keyboard support.
+4. Add focus management.
+5. Add screen-reader-friendly messages.
+6. Add accessible table support.
+7. Provide text summaries for charts.
+8. Avoid using color as the only status signal.
+9. Test mobile layouts.
+10. Test tablet layouts.
+11. Test large desktop layouts.
+12. Fix overflow and scrolling issues.
+13. Test browser zoom.
+14. Run automated accessibility checks.
+15. Perform manual keyboard-only testing.
+
+PHASE 45: PERFORMANCE OPTIMIZATION
+Classification: MUST SHIP
+
+1. Measure backend endpoint latency.
+2. Measure frontend load performance.
+3. Add indexes based on real query patterns.
+4. Optimize dashboard queries.
+5. Cache stable catalog data.
+6. Cache marketplace results.
+7. Cache valuations where safe.
+8. Prevent duplicate provider calls.
+9. Paginate large results.
+10. Lazy-load heavy frontend pages.
+11. Optimize images.
+12. Cancel abandoned searches.
+13. Add provider timeouts and partial-result handling.
+14. Define performance targets.
+15. Add regression checks.
+
+PHASE 46: OBSERVABILITY AND ERROR MONITORING
+Classification: MUST SHIP
+
+1. Add structured backend logging.
+2. Add request IDs.
+3. Add frontend error reporting.
+4. Add backend exception monitoring.
+5. Tag errors by release and environment.
+6. Add database health metrics.
+7. Add provider success, failure, and latency metrics.
+8. Add LLM usage, latency, failure, and cost metrics.
+9. Add worker metrics when background jobs exist.
+10. Add health monitoring.
+11. Add error-rate alerts.
+12. Add deploy and migration failure alerts.
+13. Remove sensitive data from telemetry.
+14. Create an operations guide.
+15. Test error capture.
+
+PHASE 47: V1 DEPLOYMENT
+Classification: MUST SHIP
+
+1. Select frontend, backend, and database hosting.
+2. Configure production PostgreSQL with backups.
+3. Configure staging separately.
+4. Configure production secrets.
+5. Configure the frontend API URL.
+6. Configure production CORS.
+7. Configure HTTPS and a custom domain.
+8. Run migrations during deployment.
+9. Configure health checks.
+10. Configure frontend routing and caching.
+11. Add preview or staging builds.
+12. Add rollback procedures.
+13. Add backup and restore procedures.
+14. Create a deployment checklist.
+15. Rehearse staging-to-production deployment.
+
+PHASE 48: LEGAL, PRIVACY, AND DISCLAIMERS
+Classification: MUST SHIP
+
+1. Write a privacy policy.
+2. Write terms of use.
+3. Write marketplace-data disclaimers.
+4. Write collectibles and analysis disclaimers.
+5. Explain that valuations are estimates.
+6. Explain data freshness and provider availability.
+7. Explain data retention.
+8. Explain account deletion.
+9. Explain third-party API usage.
+10. Add legal links to registration.
+11. Add footer links.
+12. Add disclaimers to recommendation pages.
+13. Avoid implying official LEGO, BrickLink, or eBay affiliation.
+14. Review catalog and image usage rights.
+15. Track policy versions.
+
+PHASE 49: V1 RELEASE VERIFICATION
+Classification: MUST SHIP
+
+1. Test registration.
+2. Test verification and password reset.
+3. Test login, logout, refresh, and session revocation.
+4. Test valid and invalid set lookup.
+5. Test portfolio creation, editing, deletion, valuation, and history.
+6. Test dashboard charts and incomplete data.
+7. Test Deal Finder and filters.
+8. Test listing evaluation with valid, malformed, unsupported, and expired links.
+9. Test watchlist workflows.
+10. Test deterministic and AI portfolio analysis.
+11. Test mobile and desktop.
+12. Test provider failures.
+13. Test production migrations.
+14. Test backup restoration.
+15. Complete a signed release checklist.
+
+PHASE 50: PUBLIC V1 LAUNCH
+Classification: MUST SHIP
+
+1. Create a concise landing page.
+2. State the product value clearly.
+3. Add screenshots or a short walkthrough.
+4. Add a demo account or sample-data mode.
+5. Add a structured feedback form.
+6. Add privacy-conscious analytics.
+7. Track major user journeys.
+8. Track errors separately from abandonment.
+9. Prepare a Reddit launch post.
+10. Label the product as an early public release.
+11. Ask focused feedback questions.
+12. Add bug and feature-request issue templates.
+13. Triage feedback.
+14. Fix critical launch defects before adding scope.
+15. Record baseline launch metrics.
+
+==================================================
+PART XII - V2 AND POST-LAUNCH FEATURES
+==================================================
+
+PHASE 51: PART CATALOG
+Classification: SHIP LATER
+
+1. Create part, color, category, and element models.
+2. Store provider identifiers.
+3. Store names, aliases, mold variants, and images.
+4. Store available colors.
+5. Store known year ranges.
+6. Add search indexes.
+7. Add catalog synchronization.
+8. Normalize provider records.
+9. Add source and freshness metadata.
+10. Handle duplicates and variants.
+11. Add repositories and services.
+12. Add seed data.
+13. Add quality flags.
+14. Add tests.
+15. Document limitations.
+
+PHASE 52: PART-DESCRIPTION LOOKUP
+Classification: SHIP LATER
+
+1. Add exact part-number search.
+2. Add text search over names and aliases.
+3. Add fuzzy matching.
+4. Add color filtering.
+5. Add category filtering.
+6. Add year filtering.
+7. Rank exact and high-confidence matches first.
+8. Explain why each result matched.
+9. Build the part-search page.
+10. Build the part-detail page.
+11. Display colors and variants.
+12. Display market pricing where available.
+13. Add pagination.
+14. Add no-result suggestions.
+15. Add search-quality tests.
+
+PHASE 53: INVENTORY AND MISSING PARTS
+Classification: SHIP LATER
+
+1. Add set inventory data.
+2. Link sets to parts, colors, and quantities.
+3. Add owned and missing-part tracking.
+4. Allow portfolio sets to be marked incomplete.
+5. Generate missing-parts checklists.
+6. Allow substitutions and manual adjustments.
+7. Search for replacement parts.
+8. Estimate replacement cost.
+9. Compare replacement cost with completed-set value.
+10. Add completeness percentage.
+11. Include completeness in valuation.
+12. Add CSV export.
+13. Add printable lists.
+14. Add replacement-purchase tracking.
+15. Add tests.
+
+PHASE 54: ADVANCED PRICING ANALYTICS
+Classification: SHIP LATER
+
+1. Store longer pricing histories.
+2. Add weekly and monthly aggregation.
+3. Calculate rolling averages.
+4. Calculate volatility.
+5. Calculate marketplace spread.
+6. Calculate liquidity proxies.
+7. Calculate drawdown from recorded highs.
+8. Add condition-adjusted comparisons.
+9. Add theme benchmark indices.
+10. Add retirement annotations.
+11. Add MSRP comparisons.
+12. Add inflation-adjusted views.
+13. Add confidence bands.
+14. Add advanced chart controls.
+15. Validate metrics.
+
+PHASE 55: PREDICTIVE PRICE EXPERIMENTATION
+Classification: SHIP LATER
+
+1. Define forecast use cases.
+2. Assemble historical training data.
+3. Audit data quality and bias.
+4. Build a simple baseline model.
+5. Compare with naive forecasts.
+6. Add time-based validation.
+7. Add features such as age, theme, retirement, MSRP, and volume.
+8. Evaluate forecast error.
+9. Calculate prediction intervals.
+10. Reject low-quality forecasts.
+11. Version models.
+12. Add experimentation notebooks or pipelines.
+13. Add model monitoring.
+14. Label forecasts as experimental.
+15. Keep forecasts out of core decisions until validated.
+
+PHASE 56: MULTI-PORTFOLIO SUPPORT
+Classification: SHIP LATER
+
+1. Create a portfolio entity.
+2. Migrate existing holdings into a default portfolio.
+3. Add portfolio name, description, and currency.
+4. Add portfolio creation.
+5. Add editing.
+6. Add deletion and reassignment.
+7. Add portfolio switching.
+8. Add cross-portfolio totals.
+9. Add portfolio-specific dashboards.
+10. Add portfolio-specific analysis.
+11. Add move and copy actions.
+12. Add archived portfolios.
+13. Add exports.
+14. Add migration and authorization tests.
+15. Update all existing portfolio workflows.
+
+PHASE 57: IMPORT AND EXPORT
+Classification: SHIP LATER
+
+1. Define a portfolio CSV format.
+2. Add a downloadable import template.
+3. Add CSV upload.
+4. Validate rows.
+5. Preview changes.
+6. Match set numbers.
+7. Report invalid or unknown rows.
+8. Add duplicate-handling options.
+9. Import purchase data.
+10. Make imports transactional.
+11. Add portfolio export.
+12. Add watchlist export.
+13. Add analysis export.
+14. Add import audit logs.
+15. Add malformed and large-file tests.
+
+PHASE 58: MFA
+Classification: SHIP LATER
+
+1. Add MFA settings to users.
+2. Add TOTP enrollment.
+3. Generate QR codes.
+4. Confirm enrollment with a valid code.
+5. Add recovery codes.
+6. Hash recovery codes.
+7. Add MFA login challenges.
+8. Add trusted devices only if implemented securely.
+9. Add MFA reset.
+10. Add security notifications.
+11. Add recovery-code regeneration.
+12. Enforce MFA for administrators.
+13. Rate-limit MFA attempts.
+14. Add recovery tests.
+15. Document supported authenticator apps.
+
+PHASE 59: COMMUNITY MARKET SIGNALS
+Classification: SHIP LATER
+
+1. Define privacy-safe aggregate metrics.
+2. Add user opt-in.
+3. Aggregate watchlist interest.
+4. Aggregate portfolio ownership counts.
+5. Aggregate Buy, Watch, and Pass outcomes.
+6. Hide small sample sizes.
+7. Add trending sets.
+8. Add most-watched themes.
+9. Add rising-interest signals.
+10. Add anti-manipulation protections.
+11. Explain what signals mean.
+12. Add opt-out and deletion.
+13. Add aggregation jobs.
+14. Perform a privacy review.
+15. Add privacy tests.
+
+PHASE 60: SOCIAL AND SHARING FEATURES
+Classification: SHIP LATER
+
+1. Add shareable portfolio summary cards.
+2. Allow hiding cost basis and sensitive values.
+3. Add shareable listing evaluations.
+4. Add shareable set analysis.
+5. Add expiring share links.
+6. Add public and private controls.
+7. Add social preview metadata.
+8. Add downloadable summary images.
+9. Add PDF report generation.
+10. Add link revocation.
+11. Add abuse reporting.
+12. Prevent private notes from being shared.
+13. Add anonymous view counts.
+14. Add authorization tests.
+15. Update privacy documentation.
+
+PHASE 61: ADDITIONAL MARKETPLACES
+Classification: SHIP LATER
+
+1. Define provider-selection criteria.
+2. Review API access, terms, rate limits, and region coverage.
+3. Add one provider at a time.
+4. Use the marketplace adapter interface.
+5. Normalize currency and condition.
+6. Add product-match tests.
+7. Add seller-quality mappings.
+8. Add listing-status handling.
+9. Add URL ingestion.
+10. Add provider-specific risk flags.
+11. Compare data quality.
+12. Update Deal Finder filters.
+13. Update Listing Evaluator.
+14. Update source documentation.
+15. Launch behind feature flags.
+
+PHASE 62: CURRENCY AND REGIONAL SUPPORT
+Classification: SHIP LATER
+
+1. Add user display-currency preferences.
+2. Preserve original source currencies.
+3. Add an exchange-rate provider.
+4. Store rate timestamps.
+5. Convert display values consistently.
+6. Add stale-rate handling.
+7. Add regional MSRP data.
+8. Add marketplace region filters.
+9. Add locale-aware formatting.
+10. Add regional shipping considerations.
+11. Add regional availability indicators.
+12. Add mixed-currency tests.
+13. Add rounding tests.
+14. Document conversion limitations.
+15. Add currency and locale settings.
+
+PHASE 63: ADMINISTRATIVE TOOLS
+Classification: SHIP LATER
+
+1. Add administrator roles.
+2. Add administrator authorization.
+3. Add user lookup.
+4. Add account-status controls.
+5. Add provider-health dashboards.
+6. Add listing and catalog inspection.
+7. Add failed-job inspection.
+8. Add LLM usage and cost reporting.
+9. Add rate-limit visibility.
+10. Add feature-flag management.
+11. Add administrator audit logs.
+12. Add support notes.
+13. Add secure read-only impersonation only if needed.
+14. Add administrator tests.
+15. Keep admin tools separate from normal user bundles.
+
+PHASE 64: PLATFORM SCALABILITY
+Classification: SHIP LATER
+
+1. Measure production bottlenecks.
+2. Tune database connections.
+3. Add shared caching where needed.
+4. Add background workers.
+5. Add idempotent task queues.
+6. Add horizontal API scaling.
+7. Separate heavy analytics workloads if necessary.
+8. Add CDN delivery.
+9. Add database monitoring.
+10. Archive old snapshot data.
+11. Batch provider requests.
+12. Add provider circuit breakers.
+13. Run load tests.
+14. Define scaling thresholds.
+15. Document architecture decisions.
+
+==================================================
+RELEASE MILESTONES
+==================================================
+
+MILESTONE A: ENGINEERING FOUNDATION
+Complete Phases 0-14.
+
+MILESTONE B: CATALOG AND PRICING FOUNDATION
+Complete Phases 15-20.
+
+MILESTONE C: PORTFOLIO PRODUCT
+Complete Phases 21-25.
+
+MILESTONE D: MARKETPLACE PRODUCT
+Complete Phases 26-33 for V1.
+Complete Phases 29 and 34-36 later.
+
+MILESTONE E: PORTFOLIO ANALYSIS
+Complete Phases 37-40.
+
+MILESTONE F: PUBLIC V1
+Complete every MUST SHIP phase through Phase 50.
+
+MILESTONE G: V2
+Prioritize based on public feedback:
+1. Saved searches
+2. Watchlist intelligence
+3. Automated monitoring and notifications
+4. Part lookup
+5. Import and export
+6. Recommendation history
+7. Multi-portfolio support
+8. Advanced pricing analytics
+9. MFA
+10. Additional marketplaces
+
+==================================================
+PHASE COMPLETION RULE
+==================================================
+
+Do not begin the next phase until:
+
+1. Required models and services are complete.
+2. Tests for the current phase pass.
+3. The feature is usable from the frontend.
+4. Loading, error, empty, and failure states are implemented.
+5. Documentation is updated.
+6. The feature can operate without manual developer intervention.
+7. No critical defect from the current phase remains unresolved.
