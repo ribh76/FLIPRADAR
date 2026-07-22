@@ -1,4 +1,4 @@
-from engine.hold_sell_engine import decide_sell_or_hold
+from flipradar.domain.engines.hold_sell_engine import decide_sell_or_hold
 
 
 def test_hold_sell_engine_strong_profit_can_sell_despite_rising_trend():

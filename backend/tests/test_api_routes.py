@@ -10,12 +10,12 @@ from sqlalchemy import event
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-import models  # noqa: F401
-from app.main import app
-from config import get_settings
-from database import Base, get_db_session
-from engine import price_estimator
-from services import recommendation_service
+import flipradar.domain.models  # noqa: F401
+from flipradar.main import app
+from flipradar.core.settings import get_settings
+from flipradar.database import Base, get_db_session
+from flipradar.domain.engines import price_estimator
+from flipradar.services import recommendation_service
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,7 @@
 from decimal import Decimal
 
-from app.schemas import RecommendationDecision, UserGoal
-from engine.decision_engine import decide
+from flipradar.api.schemas import RecommendationDecision, UserGoal
+from flipradar.domain.engines.decision_engine import decide
 
 
 def score(score_value: int, deal_band: str = "strong") -> dict:

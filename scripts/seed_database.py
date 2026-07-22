@@ -7,8 +7,8 @@ from path_setup import ensure_backend_path
 
 ensure_backend_path()
 
-from database import SessionLocal, create_database_tables
-from models import LegoSet, Marketplace, PriceSnapshot
+from flipradar.database import SessionLocal, create_database_tables
+from flipradar.domain.models import LegoSet, Marketplace, PriceSnapshot
 
 DEMO_SETS = [
     {

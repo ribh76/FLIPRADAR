@@ -1,4 +1,4 @@
-from engine.buy_decision_engine import decide_buy_or_pass
+from flipradar.domain.engines.buy_decision_engine import decide_buy_or_pass
 
 
 def test_buy_decision_engine_deep_discount_buy():

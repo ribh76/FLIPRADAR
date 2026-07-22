@@ -5,8 +5,8 @@ from path_setup import ensure_backend_path
 
 ensure_backend_path()
 
-from app.core.logging import setup_logging
-from database import check_database_connection, create_database_tables
+from flipradar.core.logging import setup_logging
+from flipradar.database import check_database_connection, create_database_tables
 
 logger = logging.getLogger(__name__)
 

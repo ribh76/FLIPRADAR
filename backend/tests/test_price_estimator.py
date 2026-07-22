@@ -1,7 +1,7 @@
 from decimal import Decimal
 from types import SimpleNamespace
 
-from engine.price_estimator import estimate_fair_value
+from flipradar.domain.engines.price_estimator import estimate_fair_value
 
 
 def make_snapshot(

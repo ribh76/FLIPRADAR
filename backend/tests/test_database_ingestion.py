@@ -9,24 +9,24 @@ from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-import models  # noqa: F401
-from database import Base
-from database.repositories import (
+import flipradar.domain.models  # noqa: F401
+from flipradar.database import Base
+from flipradar.database.repositories import (
     create_recommendation,
     get_latest_snapshots_by_set_number,
     get_recent_snapshots_by_set_number,
     get_set_by_number,
 )
-from models import (
+from flipradar.domain.models import (
     LegoSet,
     Marketplace,
     MarketplaceListing,
     PriceSnapshot,
     Recommendation,
 )
-from services.pricing_service import get_latest_price_snapshot_by_set_number
-from services import marketplace_service
-from services.listing_normalizer import normalize
+from flipradar.services.price_snapshot_service import get_latest_price_snapshot_by_set_number
+from flipradar.services import marketplace_service
+from flipradar.services.listing_normalizer import normalize
 
 logger = logging.getLogger(__name__)
 

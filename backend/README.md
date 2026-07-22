@@ -17,14 +17,14 @@ Required environment variables are documented in `.env.example`. For local devel
 - `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`
 - `JWT_SECRET_KEY` with at least 32 characters
 
-`config.py` loads environment values from `backend/.env`.
+`flipradar/core/settings.py` loads environment values from `backend/.env`.
 
 ## Run
 
 ```bash
 cd backend
 source venv/bin/activate
-python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+python3 -m uvicorn flipradar.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 Shortcut:
@@ -38,7 +38,7 @@ Swagger UI is available at `http://127.0.0.1:8000/docs`.
 
 ## Database Migrations
 
-Alembic is configured by `backend/alembic.ini`, with migration files in `backend/database/migrations`.
+Alembic is configured by `backend/alembic.ini`, with migration files in `backend/flipradar/database/migrations`.
 
 ```bash
 cd backend

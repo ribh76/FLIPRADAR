@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from engine.scoring_engine import score_recommendation
+from flipradar.domain.engines.scoring_engine import score_recommendation
 
 
 def test_scoring_engine_excellent_deal():
