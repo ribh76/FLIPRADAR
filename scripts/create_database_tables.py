@@ -1,6 +1,10 @@
 import asyncio
 import logging
 
+from path_setup import ensure_backend_path
+
+ensure_backend_path()
+
 from app.core.logging import setup_logging
 from database import check_database_connection, create_database_tables
 

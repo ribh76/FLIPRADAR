@@ -3,6 +3,10 @@ from decimal import Decimal
 
 from sqlalchemy import select
 
+from path_setup import ensure_backend_path
+
+ensure_backend_path()
+
 from database import SessionLocal, create_database_tables
 from models import LegoSet, Marketplace, PriceSnapshot
 
