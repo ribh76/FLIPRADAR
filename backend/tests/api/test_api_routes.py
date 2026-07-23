@@ -1,6 +1,7 @@
 import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Any
 from uuid import uuid4
 
 import jwt
@@ -140,6 +141,14 @@ def create_snapshot_payload(set_number: str, fair_value: str = "152.00") -> dict
     }
 
 
+def collection_data(response: Any) -> list:
+    body = response.json()
+    assert "data" in body
+    assert "pagination" in body
+    assert body["pagination"]["count"] == len(body["data"])
+    return body["data"]
+
+
 def test_health_endpoint(client: TestClient):
     response = client.get("/health")
 
@@ -154,6 +163,16 @@ def test_db_health_endpoint(client: TestClient):
     logger.info(f"API TEST: GET /db-health status={response.status_code}")
     assert response.status_code == 200
     assert response.json()["database"] == "connected"
+
+
+def test_liveness_and_readiness_endpoints(client: TestClient):
+    live_response = client.get("/health/live")
+    ready_response = client.get("/health/ready")
+
+    assert live_response.status_code == 200
+    assert live_response.json()["status"] == "ok"
+    assert ready_response.status_code == 200
+    assert ready_response.json()["service"] == "ready"
 
 
 def test_create_set_endpoint(client: TestClient):
@@ -218,6 +237,7 @@ def test_get_set_endpoint_missing_set_returns_404(client: TestClient):
     )
     assert response.status_code == 404
     assert response.json()["detail"] == "LEGO set not found"
+    assert response.json()["error"]["code"] == "not_found"
 
 
 def test_list_sets_endpoint(client: TestClient):
@@ -226,7 +246,10 @@ def test_list_sets_endpoint(client: TestClient):
 
     logger.info(f"API TEST: GET /sets status={response.status_code}")
     assert response.status_code == 200
-    assert any(item["set_number"] == lego_set["set_number"] for item in response.json())
+    assert any(
+        item["set_number"] == lego_set["set_number"]
+        for item in collection_data(response)
+    )
 
 
 def test_list_sets_endpoint_supports_pagination_filtering_and_ordering(
@@ -248,8 +271,13 @@ def test_list_sets_endpoint_supports_pagination_filtering_and_ordering(
 
     assert response.status_code == 200
     body = response.json()
-    assert len(body) == 1
-    assert body[0]["set_number"] == "100002"
+    assert body["pagination"] == {
+        "limit": 1,
+        "offset": 1,
+        "count": 1,
+        "has_more": False,
+    }
+    assert body["data"][0]["set_number"] == "100002"
 
 
 def test_create_listing_endpoint(client: TestClient):
@@ -271,6 +299,7 @@ def test_duplicate_listing_returns_conflict(client: TestClient):
 
     assert response.status_code == 409
     assert response.json()["detail"] == "Marketplace listing already exists"
+    assert response.json()["error"]["code"] == "conflict"
 
 
 def test_listings_by_set_endpoint(client: TestClient):
@@ -282,7 +311,7 @@ def test_listings_by_set_endpoint(client: TestClient):
 
     logger.info(f"API TEST: GET /listings/{{set_number}} status={response.status_code}")
     assert response.status_code == 200
-    assert any(item["id"] == listing["id"] for item in response.json())
+    assert any(item["id"] == listing["id"] for item in collection_data(response))
 
 
 def test_listings_by_set_endpoint_supports_pagination_and_filters(
@@ -302,8 +331,8 @@ def test_listings_by_set_endpoint_supports_pagination_and_filters(
 
     assert response.status_code == 200
     body = response.json()
-    assert len(body) == 1
-    assert body[0]["condition"] == "used"
+    assert body["pagination"]["count"] == 1
+    assert body["data"][0]["condition"] == "used"
 
 
 def test_listings_by_exact_sets_set_number_endpoint(client: TestClient):
@@ -327,7 +356,7 @@ def test_listings_by_sets_set_number_listings_endpoint(client: TestClient):
         f"API TEST: GET /sets/{{set_number}}/listings status={response.status_code}"
     )
     assert response.status_code == 200
-    assert any(item["id"] == listing["id"] for item in response.json())
+    assert any(item["id"] == listing["id"] for item in collection_data(response))
 
 
 def test_latest_listing_endpoint(client: TestClient):
@@ -364,6 +393,7 @@ def test_duplicate_snapshot_returns_conflict(client: TestClient):
 
     assert response.status_code == 409
     assert response.json()["detail"] == "Price snapshot already exists"
+    assert response.json()["error"]["code"] == "conflict"
 
 
 def test_snapshots_by_set_endpoint(client: TestClient):
@@ -377,7 +407,7 @@ def test_snapshots_by_set_endpoint(client: TestClient):
         f"API TEST: GET /snapshots/{{set_number}} status={response.status_code}"
     )
     assert response.status_code == 200
-    assert any(item["id"] == snapshot["id"] for item in response.json())
+    assert any(item["id"] == snapshot["id"] for item in collection_data(response))
 
 
 def test_snapshots_by_set_endpoint_supports_pagination_and_filters(
@@ -397,8 +427,8 @@ def test_snapshots_by_set_endpoint_supports_pagination_and_filters(
 
     assert response.status_code == 200
     body = response.json()
-    assert len(body) == 1
-    assert body[0]["condition"] == "used"
+    assert body["pagination"]["count"] == 1
+    assert body["data"][0]["condition"] == "used"
 
 
 def test_latest_snapshot_endpoint(client: TestClient):
@@ -755,7 +785,7 @@ def test_portfolio_add_list_summary_delete(client: TestClient):
 
     list_response = client.get("/portfolio", headers=headers)
     assert list_response.status_code == 200
-    assert len(list_response.json()) == 1
+    assert len(collection_data(list_response)) == 1
 
     summary_response = client.get("/portfolio/summary", headers=headers)
     assert summary_response.status_code == 200
@@ -768,7 +798,7 @@ def test_portfolio_add_list_summary_delete(client: TestClient):
 
     delete_response = client.delete(f"/portfolio/items/{item['id']}", headers=headers)
     assert delete_response.status_code == 204
-    assert client.get("/portfolio", headers=headers).json() == []
+    assert client.get("/portfolio", headers=headers).json()["data"] == []
 
 
 def test_portfolio_update_item_with_patch_and_put(client: TestClient):
@@ -844,7 +874,7 @@ def test_portfolio_item_access_is_user_scoped(client: TestClient):
 
     other_list = client.get("/portfolio", headers=other_headers)
     assert other_list.status_code == 200
-    assert other_list.json() == []
+    assert other_list.json()["data"] == []
 
     other_patch = client.patch(
         f"/portfolio/items/{item['id']}",
@@ -854,7 +884,7 @@ def test_portfolio_item_access_is_user_scoped(client: TestClient):
     assert other_patch.status_code == 404
     assert other_patch.json()["detail"] == "Portfolio item not found"
 
-    owner_list = client.get("/portfolio", headers=owner_headers).json()
+    owner_list = client.get("/portfolio", headers=owner_headers).json()["data"]
     assert len(owner_list) == 1
     assert owner_list[0]["id"] == item["id"]
     assert owner_list[0]["quantity"] == 1
@@ -899,8 +929,8 @@ def test_portfolio_list_supports_pagination_and_condition_filter(
 
     assert response.status_code == 200
     body = response.json()
-    assert len(body) == 1
-    assert body[0]["set_number"] == "110002"
+    assert body["pagination"]["count"] == 1
+    assert body["data"][0]["set_number"] == "110002"
 
 
 def test_portfolio_delete_is_ownership_protected(client: TestClient):
@@ -926,7 +956,9 @@ def test_portfolio_delete_is_ownership_protected(client: TestClient):
 
     owner_list = client.get("/portfolio", headers=owner_headers)
     assert owner_list.status_code == 200
-    assert [owned_item["id"] for owned_item in owner_list.json()] == [item["id"]]
+    assert [owned_item["id"] for owned_item in owner_list.json()["data"]] == [
+        item["id"]
+    ]
 
     owner_delete = client.delete(
         f"/portfolio/items/{item['id']}", headers=owner_headers

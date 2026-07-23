@@ -4,7 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
-from flipradar.api.schemas import ListingCreate, ListingResponse
+from flipradar.api.schemas import (
+    ListingCollectionResponse,
+    ListingCreate,
+    ListingResponse,
+)
+from flipradar.api.schemas.common_schema import collection_response
 from flipradar.domain.models import MarketplaceListing
 from flipradar.services import listing_service
 from flipradar.services.errors import ServiceError
@@ -50,7 +55,7 @@ async def create_marketplace_listing(
 # Lists marketplace listings for a set. It accepts a set number path parameter and returns matching listings.
 @router.get(
     "/listings/{set_number}",
-    response_model=list[ListingResponse],
+    response_model=ListingCollectionResponse,
     summary="List set listings",
     description="Supporting backend data route for listings tied to a LEGO set number.",
 )
@@ -63,7 +68,7 @@ async def list_marketplace_listings(
     listing_status: str | None = Query(default=None),
     marketplace_name: str | None = Query(default=None),
     order: str = Query(default="last_seen_desc"),
-) -> list[MarketplaceListing]:
+) -> dict:
     """List marketplace listings for one LEGO set number."""
     logger.info(
         "request started route=list_marketplace_listings set_number=%s", set_number
@@ -71,7 +76,7 @@ async def list_marketplace_listings(
     listings = await listing_service.list_listings_for_set(
         db,
         set_number,
-        limit=limit,
+        limit=limit + 1,
         offset=offset,
         condition=condition,
         listing_status=listing_status,
@@ -81,13 +86,13 @@ async def list_marketplace_listings(
     logger.info(
         "request finished route=list_marketplace_listings set_number=%s", set_number
     )
-    return listings
+    return collection_response(listings, limit=limit, offset=offset)
 
 
 # Compatibility listing route. It accepts a set number and returns listing data for that set.
 @router.get(
     "/sets/{set_number}/listings",
-    response_model=list[ListingResponse],
+    response_model=ListingCollectionResponse,
     summary="List set listings by set path",
     description="Supporting backend data route for listings tied to a LEGO set number.",
 )
@@ -100,7 +105,7 @@ async def list_marketplace_listings_by_set_path(
     listing_status: str | None = Query(default=None),
     marketplace_name: str | None = Query(default=None),
     order: str = Query(default="last_seen_desc"),
-) -> list[MarketplaceListing]:
+) -> dict:
     """List marketplace listings using a set-oriented path."""
     logger.info(
         "request started route=list_marketplace_listings_by_set_path set_number=%s",
@@ -109,7 +114,7 @@ async def list_marketplace_listings_by_set_path(
     listings = await listing_service.list_listings_for_set(
         db,
         set_number,
-        limit=limit,
+        limit=limit + 1,
         offset=offset,
         condition=condition,
         listing_status=listing_status,
@@ -120,7 +125,7 @@ async def list_marketplace_listings_by_set_path(
         "request finished route=list_marketplace_listings_by_set_path set_number=%s",
         set_number,
     )
-    return listings
+    return collection_response(listings, limit=limit, offset=offset)
 
 
 # Fetches the latest listing for a set. It accepts a set number and returns the newest listing by last_seen_at.

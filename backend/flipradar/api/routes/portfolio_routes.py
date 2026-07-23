@@ -7,11 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from flipradar.api.dependencies.auth import get_current_user
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
+    PortfolioItemCollectionResponse,
     PortfolioItemCreate,
     PortfolioItemResponse,
     PortfolioItemUpdate,
     PortfolioSummaryResponse,
 )
+from flipradar.api.schemas.common_schema import collection_response
 from flipradar.domain.models import User
 from flipradar.services import portfolio_service
 
@@ -21,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 @router.get(
     "",
-    response_model=list[PortfolioItemResponse],
+    response_model=PortfolioItemCollectionResponse,
     summary="List portfolio",
     description="List the authenticated user's LEGO portfolio items with valuation status.",
 )
@@ -37,13 +39,13 @@ async def list_portfolio(
     items = await portfolio_service.list_user_portfolio_page(
         db,
         current_user.id,
-        limit=limit,
+        limit=limit + 1,
         offset=offset,
         condition=condition,
         order=order,
     )
     logger.info("request finished route=list_portfolio user_id=%s", current_user.id)
-    return items
+    return collection_response(items, limit=limit, offset=offset)
 
 
 @router.post(

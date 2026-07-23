@@ -114,7 +114,7 @@ Classification: FOUNDATION (Skipping)
 13. Add a manually triggered staging smoke-test workflow.
 
 ==================================================
-PART II - CORE DATA AND API ARCHITECTURE
+PART II - CORE DATA AND API ARCHITECTURE (Phase complete) 
 ==================================================
 
 PHASE 6: DATABASE MODEL CLEANUP (COmplete) 
@@ -137,7 +137,7 @@ Classification: MUST SHIP
 15. Create an entity-relationship diagram in docs.
 
 PHASE 7: REPOSITORY AND TRANSACTION LAYER
-Classification: MUST SHIP
+Classification: MUST SHIP (Complete) 
 
 1. Define repositories for users, sets, portfolios, prices, listings, watchlists, and recommendations. (do) 
 2. Move direct SQLAlchemy queries out of route handlers. (do) 
@@ -153,23 +153,23 @@ Classification: MUST SHIP
 12. Prevent N+1 queries in portfolio and set-detail endpoints. (Do) 
 13. Document repository conventions. (Skip) 
 
-PHASE 8: API STANDARDS AND ERROR HANDLING
+PHASE 8: API STANDARDS AND ERROR HANDLING (complete)
 Classification: MUST SHIP
 
-1. Version routes under /api/v1.
-2. Define a standard API error structure.
-3. Add centralized validation, authentication, authorization, database, integration, and unexpected-error handlers.
-4. Add request IDs to responses and logs.
-5. Add pagination metadata to collection responses.
-6. Standardize date, decimal, currency, and enum serialization.
-7. Add OpenAPI tags and descriptions.
-8. Add request and response examples.
-9. Prevent internal errors and stack traces from reaching users.
-10. Add request limits where appropriate.
-11. Add timeout handling for marketplace and LLM calls.
-12. Add readiness and liveness endpoints.
-13. Export the OpenAPI specification into docs.
-14. Add API contract tests.
+1. Version routes under /api/v1. (Skip) 
+2. Define a standard API error structure. (do) 
+3. Add centralized validation, authentication, authorization, database, integration, and unexpected-error handlers. ( check and do if not done) 
+4. Add request IDs to responses and logs. (")
+5. Add pagination metadata to collection responses. (Check and do) 
+6. Standardize date, decimal, currency, and enum serialization.(check and do) 
+7. Add OpenAPI tags and descriptions. (skip) 
+8. Add request and response examples. (skip)
+9. Prevent internal errors and stack traces from reaching users. (Check and do)
+10. Add request limits where appropriate. (MUST DO) 
+11. Add timeout handling for marketplace and LLM calls. (MUST DO) 
+12. Add readiness and liveness endpoints. (DO) 
+13. Export the OpenAPI specification into docs. skip
+14. Add API contract tests. 
 
 ==================================================
 PART III - SECURITY AND ACCOUNTS

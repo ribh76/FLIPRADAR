@@ -4,7 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
-from flipradar.api.schemas import PriceSnapshotCreate, PriceSnapshotResponse
+from flipradar.api.schemas import (
+    PriceSnapshotCollectionResponse,
+    PriceSnapshotCreate,
+    PriceSnapshotResponse,
+)
+from flipradar.api.schemas.common_schema import collection_response
 from flipradar.domain.models import PriceSnapshot
 from flipradar.services import price_snapshot_service
 from flipradar.services.errors import ServiceError
@@ -50,7 +55,7 @@ async def create_price_snapshot(
 # Lists snapshots for a set. It accepts a set number and returns historical snapshot rows.
 @router.get(
     "/snapshots/{set_number}",
-    response_model=list[PriceSnapshotResponse],
+    response_model=PriceSnapshotCollectionResponse,
     summary="List price snapshots",
     description="Internal/development helper for listing stored snapshot history.",
 )
@@ -62,13 +67,13 @@ async def list_price_snapshots(
     condition: str | None = Query(default=None),
     marketplace_name: str | None = Query(default=None),
     order: str = Query(default="snapshot_desc"),
-) -> list[PriceSnapshot]:
+) -> dict:
     """List all price snapshots for one LEGO set number."""
     logger.info("request started route=list_price_snapshots set_number=%s", set_number)
     snapshots = await price_snapshot_service.list_price_snapshots_for_set(
         db,
         set_number,
-        limit=limit,
+        limit=limit + 1,
         offset=offset,
         condition=condition,
         marketplace_name=marketplace_name,
@@ -79,7 +84,7 @@ async def list_price_snapshots(
         set_number,
         len(snapshots),
     )
-    return snapshots
+    return collection_response(snapshots, limit=limit, offset=offset)
 
 
 # Fetches the latest snapshot for a set. It accepts a set number and returns the newest pricing snapshot.

@@ -5,11 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
+    LegoSetCollectionResponse,
     LegoSetCreate,
     LegoSetResponse,
     PriceSnapshotResponse,
     SetDetailResponse,
 )
+from flipradar.api.schemas.common_schema import collection_response
 from flipradar.domain.models import LegoSet
 from flipradar.services import set_catalog_service, set_detail_service
 from flipradar.services.errors import ServiceError
@@ -71,7 +73,7 @@ async def get_lego_set(
 # Lists LEGO sets. It takes no body input and returns all stored LEGO set metadata.
 @router.get(
     "/sets",
-    response_model=list[LegoSetResponse],
+    response_model=LegoSetCollectionResponse,
     summary="List set metadata",
     description="List stored LEGO set metadata records. This does not return listings.",
 )
@@ -82,14 +84,14 @@ async def list_lego_sets(
     theme: str | None = Query(default=None),
     query: str | None = Query(default=None),
     order: str = Query(default="set_number"),
-) -> list[LegoSet]:
+) -> dict:
     """List all LEGO set records ordered by set number."""
     logger.info("request started route=list_lego_sets")
     lego_sets = await set_catalog_service.list_lego_sets(
-        db, limit=limit, offset=offset, theme=theme, query=query, order=order
+        db, limit=limit + 1, offset=offset, theme=theme, query=query, order=order
     )
     logger.info("request finished route=list_lego_sets")
-    return lego_sets
+    return collection_response(lego_sets, limit=limit, offset=offset)
 
 
 @router.get(

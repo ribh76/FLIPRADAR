@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
@@ -18,6 +18,27 @@ async def health_check() -> dict[str, str]:
     response = {"status": "ok", "service": "FlipRadar API"}
     logger.info("request finished route=health_check")
     return response
+
+
+@router.get("/health/live")
+async def liveness_check() -> dict[str, str]:
+    """Return process liveness without touching downstream dependencies."""
+    return {"status": "ok", "service": "FlipRadar API"}
+
+
+@router.get("/health/ready")
+async def readiness_check(
+    db: AsyncSession = Depends(get_db_session),
+) -> dict[str, str]:
+    """Return readiness after verifying required dependencies."""
+    try:
+        await health_service.check_database_connection(db)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service is not ready",
+        ) from exc
+    return {"status": "ok", "database": "connected", "service": "ready"}
 
 
 # Checks database connectivity. It takes no body input and returns the DB connection status.

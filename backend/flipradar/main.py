@@ -3,13 +3,13 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from starlette import status
-from starlette.requests import Request
 
+from flipradar.api.error_handlers import register_exception_handlers
+from flipradar.api.middleware import (
+    RequestContextMiddleware,
+    RollingWindowRateLimitMiddleware,
+)
 from flipradar.api.routes import (
     auth_routes,
     health_routes,
@@ -74,6 +74,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = resolved_settings
 
+    app.add_middleware(
+        RollingWindowRateLimitMiddleware,
+        max_requests=5000,
+        window_seconds=24 * 60 * 60,
+    )
+    app.add_middleware(RequestContextMiddleware)
+
     cors = resolved_settings.cors
     app.add_middleware(
         CORSMiddleware,
@@ -92,29 +99,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(portfolio_routes.router)
     app.include_router(marketplace_routes.router)
 
-    @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(
-        request: Request, exc: RequestValidationError
-    ) -> JSONResponse:
-        logger.warning(
-            "major validation failure route=%s error_count=%s",
-            request.url.path,
-            len(exc.errors()),
-        )
-        return JSONResponse(
-            status_code=422,
-            content={"detail": jsonable_encoder(exc.errors())},
-        )
-
-    @app.exception_handler(Exception)
-    async def unhandled_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
-        logger.exception("unhandled request failure route=%s", request.url.path)
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "Internal server error"},
-        )
+    register_exception_handlers(app)
 
     logger.info("application configured")
     return app
