@@ -2,6 +2,8 @@
 
 The backend is a FastAPI API backed by async SQLAlchemy, Alembic migrations, and PostgreSQL in normal development.
 
+For the complete Docker stack, see [docs/local-development.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/local-development.md).
+
 ## Setup
 
 ```bash
@@ -35,6 +37,16 @@ python3 run.py
 ```
 
 Swagger UI is available at `http://127.0.0.1:8000/docs`.
+
+## Docker
+
+The backend image is defined in `backend/Dockerfile`. In Docker Compose, the backend waits for PostgreSQL, runs Alembic migrations, seeds demo data, and starts:
+
+```bash
+python3 -m uvicorn flipradar.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+The backend health check uses `GET /db-health`.
 
 ## Database Migrations
 

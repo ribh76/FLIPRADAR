@@ -18,6 +18,8 @@ Frontend setup and commands live in [frontend/README.md](/Users/rbbla1/Documents
 
 Documentation is indexed in [docs/README.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/README.md).
 
+Local Docker development is documented in [docs/local-development.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/local-development.md).
+
 ## Local Development
 
 Start the API:
@@ -29,6 +31,12 @@ source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 python3 -m uvicorn flipradar.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Start the complete Docker stack:
+
+```bash
+./scripts/run_local_app.sh
 ```
 
 Start the frontend:

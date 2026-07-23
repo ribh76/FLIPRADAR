@@ -2,6 +2,8 @@
 
 The frontend is a React, TypeScript, Vite, and Tailwind application.
 
+For the complete Docker stack, see [docs/local-development.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/local-development.md).
+
 ## Install
 
 ```bash
@@ -12,6 +14,8 @@ npm install
 ## Environment
 
 The current Vite configuration proxies `/api/*` requests to `http://127.0.0.1:8000` during local development. Add frontend-specific `.env` files in `frontend/` when environment variables are introduced.
+
+When running in Docker Compose, `VITE_API_PROXY_TARGET` points the Vite proxy at `http://backend:8000`.
 
 ## Run
 
@@ -35,6 +39,14 @@ Preview the production build:
 cd frontend
 npm run preview
 ```
+
+## Docker
+
+`frontend/Dockerfile` contains:
+
+- `development`: Vite dev server on port `5173`.
+- `build`: TypeScript and Vite production build.
+- `production`: Nginx static server with `/api` proxied to the backend service.
 
 ## Tests
 
