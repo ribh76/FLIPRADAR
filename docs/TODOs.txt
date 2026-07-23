@@ -27,7 +27,7 @@ Classification: FOUNDATION (Complete)
 13. Verify the backend starts, the frontend builds, migrations run, and tests are still discovered.
 
 PHASE 1: BACKEND PACKAGE STANDARDIZATION
-Classification: FOUNDATION
+Classification: FOUNDATION (Complete) 
 
 1. Create one backend package namespace, such as flipradar.
 2. Move route files into flipradar/api/routes.
@@ -63,7 +63,7 @@ Classification: FOUNDATION
 14. Verify tests run without production credentials or live external APIs.
 
 PHASE 3: LOCAL DEVELOPMENT ENVIRONMENT
-Classification: FOUNDATION
+Classification: FOUNDATION (Complete) 
 
 1. Add docker-compose.yml for PostgreSQL and local supporting services.
 2. Add a backend Dockerfile.
@@ -97,7 +97,7 @@ Classification: FOUNDATION
 14. Document test naming and organization conventions.
 
 PHASE 5: CONTINUOUS INTEGRATION
-Classification: FOUNDATION
+Classification: FOUNDATION 
 
 1. Add a GitHub Actions backend workflow.
 2. Install backend dependencies using caching.

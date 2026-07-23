@@ -13,7 +13,12 @@ npm install
 
 ## Environment
 
-The current Vite configuration proxies `/api/*` requests to `http://127.0.0.1:8000` during local development. Add frontend-specific `.env` files in `frontend/` when environment variables are introduced.
+The current Vite configuration proxies `/api/*` requests to `http://127.0.0.1:8000` during local development.
+
+Supported frontend variables are listed in `.env.example`:
+
+- `VITE_API_BASE_URL`: browser-facing API base URL, default `/api`.
+- `VITE_API_PROXY_TARGET`: Vite dev-server proxy target, default `http://127.0.0.1:8000`.
 
 When running in Docker Compose, `VITE_API_PROXY_TARGET` points the Vite proxy at `http://backend:8000`.
 

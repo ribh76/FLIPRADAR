@@ -1,5 +1,4 @@
 import asyncio
-import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -19,7 +18,7 @@ target_metadata = Base.metadata
 
 
 def _database_url() -> str:
-    return os.getenv("ALEMBIC_DATABASE_URL") or get_settings().database_url
+    return get_settings().database.alembic_url
 
 
 def _sync_database_url(url: str) -> str:

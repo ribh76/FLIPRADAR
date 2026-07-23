@@ -26,7 +26,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(subject: str) -> str:
-    settings = get_settings()
+    settings = get_settings().auth
     expires_at = datetime.now(UTC) + timedelta(
         minutes=settings.access_token_expire_minutes
     )
@@ -37,7 +37,7 @@ def create_access_token(subject: str) -> str:
 
 
 def decode_access_token(token: str) -> dict:
-    settings = get_settings()
+    settings = get_settings().auth
     try:
         return jwt.decode(
             token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]

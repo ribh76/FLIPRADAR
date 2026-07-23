@@ -21,12 +21,14 @@ Required environment variables are documented in `.env.example`. For local devel
 
 `flipradar/core/settings.py` loads environment values from `backend/.env`.
 
+Runtime settings are grouped in `flipradar.core.settings.Settings`. See [docs/runtime-configuration.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/runtime-configuration.md) for supported environments, production validation, and optional integration behavior.
+
 ## Run
 
 ```bash
 cd backend
 source venv/bin/activate
-python3 -m uvicorn flipradar.main:app --host 127.0.0.1 --port 8000 --reload
+python3 -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload
 ```
 
 Shortcut:
@@ -43,7 +45,7 @@ Swagger UI is available at `http://127.0.0.1:8000/docs`.
 The backend image is defined in `backend/Dockerfile`. In Docker Compose, the backend waits for PostgreSQL, runs Alembic migrations, seeds demo data, and starts:
 
 ```bash
-python3 -m uvicorn flipradar.main:app --host 0.0.0.0 --port 8000 --reload
+python3 -m uvicorn flipradar.main:create_app --factory --host 0.0.0.0 --port 8000 --reload
 ```
 
 The backend health check uses `GET /db-health`.

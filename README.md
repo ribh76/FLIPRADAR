@@ -20,6 +20,8 @@ Documentation is indexed in [docs/README.md](/Users/rbbla1/Documents/dev/buildin
 
 Local Docker development is documented in [docs/local-development.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/local-development.md).
 
+Runtime configuration is documented in [docs/runtime-configuration.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/runtime-configuration.md).
+
 ## Local Development
 
 Start the API:
@@ -30,7 +32,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-python3 -m uvicorn flipradar.main:app --host 127.0.0.1 --port 8000 --reload
+python3 -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload
 ```
 
 Start the complete Docker stack:
