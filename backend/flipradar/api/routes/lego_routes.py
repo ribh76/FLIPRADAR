@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
@@ -12,6 +12,7 @@ from flipradar.api.schemas import (
 )
 from flipradar.domain.models import LegoSet
 from flipradar.services import set_catalog_service, set_detail_service
+from flipradar.services.errors import ServiceError
 from flipradar.services.price_snapshot_service import (
     get_latest_price_snapshot_by_set_number,
 )
@@ -37,14 +38,12 @@ async def create_lego_set(
     )
     try:
         lego_set = await set_catalog_service.create_lego_set(db, payload)
-    except ValueError as exc:
+    except ServiceError as exc:
         logger.warning(
             "major validation failure route=create_lego_set set_number=%s",
             payload.set_number,
         )
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     logger.info(
         "request finished route=create_lego_set set_number=%s", payload.set_number
     )
@@ -78,10 +77,17 @@ async def get_lego_set(
 )
 async def list_lego_sets(
     db: AsyncSession = Depends(get_db_session),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    theme: str | None = Query(default=None),
+    query: str | None = Query(default=None),
+    order: str = Query(default="set_number"),
 ) -> list[LegoSet]:
     """List all LEGO set records ordered by set number."""
     logger.info("request started route=list_lego_sets")
-    lego_sets = await set_catalog_service.list_lego_sets(db)
+    lego_sets = await set_catalog_service.list_lego_sets(
+        db, limit=limit, offset=offset, theme=theme, query=query, order=order
+    )
     logger.info("request finished route=list_lego_sets")
     return lego_sets
 

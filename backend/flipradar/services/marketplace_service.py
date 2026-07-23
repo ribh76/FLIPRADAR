@@ -1,11 +1,10 @@
 import logging
 from collections import defaultdict
-from decimal import Decimal
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas.validation import MarketplaceName, normalize_set_number
+from flipradar.database import repositories
 from flipradar.database.session import SessionLocal
 from flipradar.domain.models import (
     LegoSet,
@@ -16,6 +15,7 @@ from flipradar.domain.models import (
 from flipradar.integrations import bricklink_mock_client as bricklink_client
 from flipradar.integrations import ebay_mock_client as ebay_client
 from flipradar.services import listing_normalizer, snapshot_builder
+from flipradar.services.errors import ServiceConflictError
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +60,11 @@ async def _update_marketplace_data(db: AsyncSession, set_number: str) -> PriceSn
             len(normalized_listings),
         )
 
-    await _save_listings(db, lego_set, normalized_listings)
-    snapshots = await _save_snapshots_by_marketplace(db, lego_set, normalized_listings)
+    async with db.begin_nested():
+        await _save_listings(db, lego_set, normalized_listings)
+        snapshots = await _save_snapshots_by_marketplace(
+            db, lego_set, normalized_listings
+        )
     if not snapshots:
         raise LookupError("No valid marketplace listings found")
     return snapshots[0]
@@ -72,11 +75,7 @@ def _with_marketplace(marketplace_name: str, listings: list[dict]) -> list[dict]
 
 
 async def _get_lego_set(db: AsyncSession, set_number: str) -> LegoSet | None:
-    normalized_set_number = normalize_set_number(set_number)
-    result = await db.execute(
-        select(LegoSet).where(LegoSet.set_number == normalized_set_number)
-    )
-    return result.scalar_one_or_none()
+    return await repositories.get_set_by_number(db, normalize_set_number(set_number))
 
 
 async def _get_or_create_marketplace(
@@ -86,23 +85,10 @@ async def _get_or_create_marketplace(
     allowed_marketplaces = {marketplace.value for marketplace in MarketplaceName}
     if normalized_name not in allowed_marketplaces:
         raise ValueError("Unsupported marketplace")
-
-    result = await db.execute(
-        select(Marketplace).where(Marketplace.name == normalized_name)
-    )
-    marketplace = result.scalar_one_or_none()
-    if marketplace is not None:
-        return marketplace
-
-    marketplace = Marketplace(
-        name=normalized_name,
-        display_name=marketplace_name.title(),
-        base_url=_marketplace_base_url(normalized_name),
-        fee_percent=Decimal("0.00"),
-    )
-    db.add(marketplace)
-    await db.flush()
-    return marketplace
+    try:
+        return await repositories.get_or_create_marketplace(db, normalized_name)
+    except repositories.DuplicateRecordError as exc:
+        raise ServiceConflictError(str(exc)) from exc
 
 
 async def _save_listings(
@@ -117,36 +103,42 @@ async def _save_listings(
             marketplace_cache[marketplace_name] = await _get_or_create_marketplace(
                 db, marketplace_name
             )
-        marketplace = marketplace_cache[marketplace_name]
-        existing_listing = await _get_existing_listing(
-            db, marketplace.id, listing_data["external_listing_id"]
-        )
-        if existing_listing is not None:
-            logger.info(
-                "duplicate marketplace listing skipped marketplace=%s external_listing_id=%s",
-                marketplace_name,
-                listing_data["external_listing_id"],
-            )
-            continue
 
-        listing = MarketplaceListing(
+    listings_by_marketplace = defaultdict(list)
+    for listing_data in listings:
+        listings_by_marketplace[listing_data["marketplace"]].append(
+            {
+                "external_listing_id": listing_data["external_listing_id"],
+                "title": listing_data["title"],
+                "url": listing_data["listing_url"],
+                "price": listing_data["price"],
+                "shipping_price": listing_data["shipping_price"],
+                "total_price": listing_data["price"] + listing_data["shipping_price"],
+                "currency": listing_data["currency"],
+                "condition": listing_data["condition"],
+                "listing_status": "active",
+                "seller_name": listing_data["seller"],
+                "raw_payload": listing_data["raw_payload"],
+            }
+        )
+
+    for marketplace_name, marketplace_listings in listings_by_marketplace.items():
+        marketplace = marketplace_cache[marketplace_name]
+        new_listings = await repositories.bulk_create_marketplace_listings(
+            db,
             lego_set_id=lego_set.id,
             marketplace_id=marketplace.id,
-            external_listing_id=listing_data["external_listing_id"],
-            title=listing_data["title"],
-            url=listing_data["listing_url"],
-            price=listing_data["price"],
-            shipping_price=listing_data["shipping_price"],
-            total_price=listing_data["price"] + listing_data["shipping_price"],
-            currency=listing_data["currency"],
-            condition=listing_data["condition"],
-            listing_status="active",
-            seller_name=listing_data["seller"],
-            raw_payload=listing_data["raw_payload"],
+            listings_data=marketplace_listings,
+            skip_duplicates=True,
         )
-        db.add(listing)
-        await db.flush()
-        saved_listings.append(listing)
+        duplicate_count = len(marketplace_listings) - len(new_listings)
+        if duplicate_count:
+            logger.info(
+                "duplicate marketplace listings skipped marketplace=%s duplicate_count=%s",
+                marketplace_name,
+                duplicate_count,
+            )
+        saved_listings.extend(new_listings)
 
     return saved_listings
 
@@ -159,13 +151,20 @@ async def _save_snapshots_by_marketplace(
         listings_by_marketplace[listing["marketplace"]].append(listing)
 
     snapshots = []
+    snapshot_rows = []
     for marketplace_name in sorted(listings_by_marketplace):
         marketplace = await _get_or_create_marketplace(db, marketplace_name)
         snapshot_data = snapshot_builder.build(
             listings_by_marketplace[marketplace_name]
         )
-        snapshot = await _save_snapshot(db, lego_set, marketplace, snapshot_data)
-        snapshots.append(snapshot)
+        snapshot_rows.append(
+            {
+                "lego_set_id": lego_set.id,
+                "marketplace_id": marketplace.id,
+                **snapshot_data,
+            }
+        )
+    snapshots.extend(await repositories.bulk_create_price_snapshots(db, snapshot_rows))
     return snapshots
 
 
@@ -175,15 +174,12 @@ async def _save_snapshot(
     marketplace: Marketplace,
     snapshot_data: dict,
 ) -> PriceSnapshot:
-    snapshot = PriceSnapshot(
+    return await repositories.create_price_snapshot(
+        db,
         lego_set_id=lego_set.id,
         marketplace_id=marketplace.id,
-        **snapshot_data,
+        snapshot_data=snapshot_data,
     )
-    db.add(snapshot)
-    await db.flush()
-    await db.refresh(snapshot)
-    return snapshot
 
 
 def _marketplace_base_url(marketplace_name: str) -> str | None:
@@ -197,10 +193,6 @@ def _marketplace_base_url(marketplace_name: str) -> str | None:
 async def _get_existing_listing(
     db: AsyncSession, marketplace_id, external_listing_id: str
 ) -> MarketplaceListing | None:
-    result = await db.execute(
-        select(MarketplaceListing).where(
-            MarketplaceListing.marketplace_id == marketplace_id,
-            MarketplaceListing.external_listing_id == external_listing_id,
-        )
+    return await repositories.get_existing_listing(
+        db, marketplace_id, external_listing_id
     )
-    return result.scalar_one_or_none()

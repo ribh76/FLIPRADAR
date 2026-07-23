@@ -1,12 +1,13 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import PriceSnapshotCreate, PriceSnapshotResponse
 from flipradar.domain.models import PriceSnapshot
 from flipradar.services import price_snapshot_service
+from flipradar.services.errors import ServiceError
 
 router = APIRouter(tags=["Marketplace/Internal"])
 logger = logging.getLogger(__name__)
@@ -31,24 +32,13 @@ async def create_price_snapshot(
     )
     try:
         snapshot = await price_snapshot_service.create_price_snapshot(db, payload)
-    except LookupError as exc:
+    except ServiceError as exc:
         logger.warning(
             "major validation failure route=create_price_snapshot set_number=%s marketplace=%s",
             payload.set_number,
             payload.marketplace_name,
         )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
-    except ValueError as exc:
-        logger.warning(
-            "major validation failure route=create_price_snapshot set_number=%s marketplace=%s",
-            payload.set_number,
-            payload.marketplace_name,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     logger.info(
         "request finished route=create_price_snapshot set_number=%s marketplace=%s",
         payload.set_number,
@@ -65,12 +55,24 @@ async def create_price_snapshot(
     description="Internal/development helper for listing stored snapshot history.",
 )
 async def list_price_snapshots(
-    set_number: str, db: AsyncSession = Depends(get_db_session)
+    set_number: str,
+    db: AsyncSession = Depends(get_db_session),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    condition: str | None = Query(default=None),
+    marketplace_name: str | None = Query(default=None),
+    order: str = Query(default="snapshot_desc"),
 ) -> list[PriceSnapshot]:
     """List all price snapshots for one LEGO set number."""
     logger.info("request started route=list_price_snapshots set_number=%s", set_number)
     snapshots = await price_snapshot_service.list_price_snapshots_for_set(
-        db, set_number
+        db,
+        set_number,
+        limit=limit,
+        offset=offset,
+        condition=condition,
+        marketplace_name=marketplace_name,
+        order=order,
     )
     logger.info(
         "request finished route=list_price_snapshots set_number=%s snapshot_count=%s",

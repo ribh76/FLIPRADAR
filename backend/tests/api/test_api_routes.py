@@ -229,6 +229,29 @@ def test_list_sets_endpoint(client: TestClient):
     assert any(item["set_number"] == lego_set["set_number"] for item in response.json())
 
 
+def test_list_sets_endpoint_supports_pagination_filtering_and_ordering(
+    client: TestClient,
+):
+    create_lego_set(client, "100001")
+    create_lego_set(client, "100002")
+    create_lego_set(client, "200001")
+
+    response = client.get(
+        "/sets",
+        params={
+            "limit": 1,
+            "offset": 1,
+            "query": "100",
+            "order": "set_number",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["set_number"] == "100002"
+
+
 def test_create_listing_endpoint(client: TestClient):
     lego_set = create_lego_set(client)
     payload = create_listing_payload(lego_set["set_number"])
@@ -237,6 +260,17 @@ def test_create_listing_endpoint(client: TestClient):
     logger.info(f"API TEST: POST /listings status={response.status_code}")
     assert response.status_code == 201
     assert response.json()["external_listing_id"] == payload["external_listing_id"]
+
+
+def test_duplicate_listing_returns_conflict(client: TestClient):
+    lego_set = create_lego_set(client)
+    payload = create_listing_payload(lego_set["set_number"])
+    assert client.post("/listings", json=payload).status_code == 201
+
+    response = client.post("/listings", json=payload)
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Marketplace listing already exists"
 
 
 def test_listings_by_set_endpoint(client: TestClient):
@@ -249,6 +283,27 @@ def test_listings_by_set_endpoint(client: TestClient):
     logger.info(f"API TEST: GET /listings/{{set_number}} status={response.status_code}")
     assert response.status_code == 200
     assert any(item["id"] == listing["id"] for item in response.json())
+
+
+def test_listings_by_set_endpoint_supports_pagination_and_filters(
+    client: TestClient,
+):
+    lego_set = create_lego_set(client)
+    new_listing = create_listing_payload(lego_set["set_number"])
+    used_listing = create_listing_payload(lego_set["set_number"])
+    used_listing.update({"condition": "used"})
+    assert client.post("/listings", json=new_listing).status_code == 201
+    assert client.post("/listings", json=used_listing).status_code == 201
+
+    response = client.get(
+        f"/listings/{lego_set['set_number']}",
+        params={"condition": "used", "limit": 1, "offset": 0},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["condition"] == "used"
 
 
 def test_listings_by_exact_sets_set_number_endpoint(client: TestClient):
@@ -299,6 +354,18 @@ def test_create_snapshot_endpoint(client: TestClient):
     assert response.json()["fair_market_value"] == payload["fair_market_value"]
 
 
+def test_duplicate_snapshot_returns_conflict(client: TestClient):
+    lego_set = create_lego_set(client)
+    payload = create_snapshot_payload(lego_set["set_number"])
+    payload["snapshot_at"] = datetime.now(UTC).isoformat()
+    assert client.post("/snapshots", json=payload).status_code == 201
+
+    response = client.post("/snapshots", json=payload)
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Price snapshot already exists"
+
+
 def test_snapshots_by_set_endpoint(client: TestClient):
     lego_set = create_lego_set(client)
     snapshot = client.post(
@@ -311,6 +378,27 @@ def test_snapshots_by_set_endpoint(client: TestClient):
     )
     assert response.status_code == 200
     assert any(item["id"] == snapshot["id"] for item in response.json())
+
+
+def test_snapshots_by_set_endpoint_supports_pagination_and_filters(
+    client: TestClient,
+):
+    lego_set = create_lego_set(client)
+    new_snapshot = create_snapshot_payload(lego_set["set_number"])
+    used_snapshot = create_snapshot_payload(lego_set["set_number"], fair_value="99.00")
+    used_snapshot.update({"marketplace_name": "bricklink", "condition": "used"})
+    assert client.post("/snapshots", json=new_snapshot).status_code == 201
+    assert client.post("/snapshots", json=used_snapshot).status_code == 201
+
+    response = client.get(
+        f"/snapshots/{lego_set['set_number']}",
+        params={"condition": "used", "marketplace_name": "bricklink", "limit": 1},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["condition"] == "used"
 
 
 def test_latest_snapshot_endpoint(client: TestClient):
@@ -770,6 +858,49 @@ def test_portfolio_item_access_is_user_scoped(client: TestClient):
     assert len(owner_list) == 1
     assert owner_list[0]["id"] == item["id"]
     assert owner_list[0]["quantity"] == 1
+
+
+def test_portfolio_list_supports_pagination_and_condition_filter(
+    client: TestClient,
+):
+    create_lego_set(client, "110001")
+    create_lego_set(client, "110002")
+    headers = auth_headers(client, "portfolio-pagination")
+    assert (
+        client.post(
+            "/portfolio/items",
+            headers=headers,
+            json={
+                "set_number": "110001",
+                "quantity": 1,
+                "purchase_price": "100.00",
+                "condition": "new",
+            },
+        ).status_code
+        == 201
+    )
+    assert (
+        client.post(
+            "/portfolio/items",
+            headers=headers,
+            json={
+                "set_number": "110002",
+                "quantity": 1,
+                "purchase_price": "90.00",
+                "condition": "used",
+            },
+        ).status_code
+        == 201
+    )
+
+    response = client.get(
+        "/portfolio", headers=headers, params={"condition": "used", "limit": 1}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["set_number"] == "110002"
 
 
 def test_portfolio_delete_is_ownership_protected(client: TestClient):

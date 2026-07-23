@@ -1,7 +1,6 @@
 import logging
 from decimal import ROUND_HALF_UP, Decimal
 
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,13 +17,15 @@ from flipradar.database.repositories import (
     get_recent_snapshots_by_set_number,
     get_set_by_number,
 )
+from flipradar.database.repositories import (
+    get_latest_recommendation_for_set as repository_get_latest_recommendation_for_set,
+)
 from flipradar.domain.engines import (
     buy_decision_engine,
     decision_engine,
     hold_sell_engine,
     price_estimator,
 )
-from flipradar.domain.models import LegoSet, Recommendation
 
 logger = logging.getLogger(__name__)
 
@@ -87,23 +88,17 @@ async def get_latest_recommendation_for_set(
     db: AsyncSession, set_number: str
 ) -> dict | None:
     normalized_set_number = normalize_set_number(set_number)
-    result = await db.execute(
-        select(Recommendation)
-        .join(LegoSet)
-        .where(LegoSet.set_number == normalized_set_number)
-        .order_by(Recommendation.created_at.desc())
-        .limit(1)
+    recommendation = await repository_get_latest_recommendation_for_set(
+        db, normalized_set_number
     )
-    recommendation = result.scalar_one_or_none()
     if recommendation is None:
         return None
 
-    lego_set = await db.get(LegoSet, recommendation.lego_set_id)
     fair_value = recommendation.fair_market_value or Decimal("0.00")
     return {
         "id": recommendation.id,
         "lego_set_id": recommendation.lego_set_id,
-        "set_number": lego_set.set_number if lego_set else normalized_set_number,
+        "set_number": recommendation.lego_set.set_number,
         "user_goal": UserGoal(recommendation.goal),
         "recommendation": RecommendationDecision(recommendation.decision),
         "fair_value": int(fair_value.quantize(Decimal("1"), rounding=ROUND_HALF_UP)),

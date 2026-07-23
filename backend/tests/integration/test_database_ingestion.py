@@ -12,6 +12,9 @@ from sqlalchemy.pool import StaticPool
 import flipradar.domain.models  # noqa: F401
 from flipradar.database import Base
 from flipradar.database.repositories import (
+    DuplicateRecordError,
+    bulk_create_marketplace_listings,
+    create_listing,
     create_recommendation,
     get_latest_snapshots_by_set_number,
     get_recent_snapshots_by_set_number,
@@ -21,10 +24,12 @@ from flipradar.domain.models import (
     LegoSet,
     Marketplace,
     MarketplaceListing,
+    PortfolioItem,
     PriceSnapshot,
     Recommendation,
+    User,
 )
-from flipradar.services import marketplace_service
+from flipradar.services import marketplace_service, portfolio_service
 from flipradar.services.listing_normalizer import normalize
 from flipradar.services.price_snapshot_service import (
     get_latest_price_snapshot_by_set_number,
@@ -465,3 +470,132 @@ async def test_marketplace_service_updates_listings_and_snapshot(
     snapshots = list(saved_snapshots.scalars())
     assert len(snapshots) == 2
     assert sum(item.listing_count for item in snapshots) == 12
+
+
+@pytest.mark.asyncio
+async def test_bulk_listing_repository_skips_duplicates(db_session: AsyncSession):
+    lego_set = make_random_lego_set()
+    marketplace = make_marketplace()
+    db_session.add_all([lego_set, marketplace])
+    await db_session.flush()
+
+    listing_data = {
+        "external_listing_id": "bulk-duplicate",
+        "title": "LEGO bulk duplicate test",
+        "url": "https://www.ebay.com/itm/bulk-duplicate",
+        "price": Decimal("100.00"),
+        "shipping_price": Decimal("10.00"),
+        "total_price": Decimal("110.00"),
+        "currency": "USD",
+        "condition": "new",
+        "listing_status": "active",
+    }
+
+    created = await bulk_create_marketplace_listings(
+        db_session,
+        lego_set_id=lego_set.id,
+        marketplace_id=marketplace.id,
+        listings_data=[listing_data],
+    )
+    skipped = await bulk_create_marketplace_listings(
+        db_session,
+        lego_set_id=lego_set.id,
+        marketplace_id=marketplace.id,
+        listings_data=[listing_data],
+    )
+
+    assert len(created) == 1
+    assert skipped == []
+
+
+@pytest.mark.asyncio
+async def test_duplicate_listing_repository_maps_conflict(db_session: AsyncSession):
+    lego_set = make_random_lego_set()
+    marketplace = make_marketplace()
+    db_session.add_all([lego_set, marketplace])
+    await db_session.flush()
+
+    listing_data = {
+        "external_listing_id": "concurrent-duplicate",
+        "title": "LEGO duplicate conflict test",
+        "url": "https://www.ebay.com/itm/concurrent-duplicate",
+        "price": Decimal("100.00"),
+        "shipping_price": Decimal("10.00"),
+        "total_price": Decimal("110.00"),
+        "currency": "USD",
+        "condition": "new",
+        "listing_status": "active",
+    }
+    await create_listing(
+        db_session,
+        lego_set_id=lego_set.id,
+        marketplace_id=marketplace.id,
+        listing_data=listing_data,
+    )
+
+    with pytest.raises(DuplicateRecordError):
+        await create_listing(
+            db_session,
+            lego_set_id=lego_set.id,
+            marketplace_id=marketplace.id,
+            listing_data=listing_data,
+        )
+
+
+@pytest.mark.asyncio
+async def test_portfolio_summary_batches_snapshot_queries(db_session: AsyncSession):
+    user = User(
+        username=f"nplusone-{uuid4().hex[:8]}",
+        email=f"nplusone-{uuid4().hex[:8]}@example.com",
+        hashed_password="hashed",
+    )
+    marketplace = make_marketplace()
+    sets = [make_random_lego_set() for _ in range(3)]
+    db_session.add_all([user, marketplace, *sets])
+    await db_session.flush()
+
+    for index, lego_set in enumerate(sets):
+        db_session.add(
+            PriceSnapshot(
+                lego_set_id=lego_set.id,
+                marketplace_id=marketplace.id,
+                condition="new",
+                currency="USD",
+                median_price=Decimal("100.00") + index,
+                fair_market_value=Decimal("100.00") + index,
+                listing_count=10,
+            )
+        )
+        db_session.add(
+            PortfolioItem(
+                user_id=user.id,
+                lego_set_id=lego_set.id,
+                quantity=1,
+                purchase_price=Decimal("75.00"),
+                condition="new",
+            )
+        )
+    await db_session.flush()
+
+    statement_counts = {"price_snapshots": 0}
+
+    def count_price_snapshot_queries(
+        conn, cursor, statement, parameters, context, executemany
+    ):
+        del conn, cursor, parameters, context, executemany
+        if "price_snapshots" in statement and statement.lstrip().upper().startswith(
+            "SELECT"
+        ):
+            statement_counts["price_snapshots"] += 1
+
+    engine = db_session.get_bind()
+    event.listen(engine, "before_cursor_execute", count_price_snapshot_queries)
+    try:
+        summary = await portfolio_service.calculate_portfolio_summary(
+            db_session, user.id
+        )
+    finally:
+        event.remove(engine, "before_cursor_execute", count_price_snapshot_queries)
+
+    assert summary["total_items"] == 3
+    assert statement_counts["price_snapshots"] == 1

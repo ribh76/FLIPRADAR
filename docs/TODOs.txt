@@ -117,7 +117,7 @@ Classification: FOUNDATION (Skipping)
 PART II - CORE DATA AND API ARCHITECTURE
 ==================================================
 
-PHASE 6: DATABASE MODEL CLEANUP
+PHASE 6: DATABASE MODEL CLEANUP (COmplete) 
 Classification: MUST SHIP
 
 1. Review every model and document its purpose. (Done) 
@@ -139,19 +139,19 @@ Classification: MUST SHIP
 PHASE 7: REPOSITORY AND TRANSACTION LAYER
 Classification: MUST SHIP
 
-1. Define repositories for users, sets, portfolios, prices, listings, watchlists, and recommendations.
-2. Move direct SQLAlchemy queries out of route handlers.
-3. Add shared pagination behavior.
-4. Add consistent filtering and ordering.
-5. Add transaction boundaries for multi-step actions.
-6. Add duplicate and conflict handling.
-7. Add bulk insert and snapshot repository methods.
-8. Add database exceptions that map to service-level errors.
-9. Make service logic testable with mocked repositories.
-10. Add rollback tests.
-11. Add duplicate-action and concurrency tests.
-12. Prevent N+1 queries in portfolio and set-detail endpoints.
-13. Document repository conventions.
+1. Define repositories for users, sets, portfolios, prices, listings, watchlists, and recommendations. (do) 
+2. Move direct SQLAlchemy queries out of route handlers. (do) 
+3. Add shared pagination behavior. (Doen) 
+4. Add consistent filtering and ordering. (Do) 
+5. Add transaction boundaries for multi-step actions. (do) 
+6. Add duplicate and conflict handling. (DO) 
+7. Add bulk insert and snapshot repository methods. (Do) 
+8. Add database exceptions that map to service-level errors. (Do) 
+9. Make service logic testable with mocked repositories. (Skip) 
+10. Add rollback tests. (Skip) 
+11. Add duplicate-action and concurrency tests.(Do)
+12. Prevent N+1 queries in portfolio and set-detail endpoints. (Do) 
+13. Document repository conventions. (Skip) 
 
 PHASE 8: API STANDARDS AND ERROR HANDLING
 Classification: MUST SHIP

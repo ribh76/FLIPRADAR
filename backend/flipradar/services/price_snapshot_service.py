@@ -1,12 +1,17 @@
 import logging
 
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas import PriceSnapshotCreate
-from flipradar.api.schemas.validation import MarketplaceName, normalize_set_number
-from flipradar.domain.models import LegoSet, Marketplace, PriceSnapshot
+from flipradar.database import repositories
+from flipradar.database.repositories import Pagination
+from flipradar.domain.models import Marketplace, PriceSnapshot
+from flipradar.services.errors import (
+    ServiceConflictError,
+    ServiceNotFoundError,
+    ServiceValidationError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -14,86 +19,68 @@ logger = logging.getLogger(__name__)
 async def get_or_create_marketplace(
     db: AsyncSession, marketplace_name: str
 ) -> Marketplace:
-    normalized_name = marketplace_name.lower()
-    if normalized_name not in {marketplace.value for marketplace in MarketplaceName}:
-        raise ValueError("Unsupported marketplace")
-    result = await db.execute(
-        select(Marketplace).where(Marketplace.name == normalized_name)
-    )
-    marketplace = result.scalar_one_or_none()
-    if marketplace is not None:
-        return marketplace
-
-    marketplace = Marketplace(
-        name=normalized_name,
-        display_name=normalized_name.title(),
-        fee_percent=0,
-    )
-    db.add(marketplace)
-    await db.flush()
-    return marketplace
+    try:
+        return await repositories.get_or_create_marketplace(db, marketplace_name)
+    except ValueError as exc:
+        raise ServiceValidationError(str(exc)) from exc
+    except repositories.DuplicateRecordError as exc:
+        raise ServiceConflictError(str(exc)) from exc
 
 
 async def create_price_snapshot(
     db: AsyncSession, payload: PriceSnapshotCreate
 ) -> PriceSnapshot:
-    result = await db.execute(
-        select(LegoSet).where(LegoSet.set_number == payload.set_number)
-    )
-    lego_set = result.scalar_one_or_none()
+    lego_set = await repositories.get_set_by_number(db, payload.set_number)
     if lego_set is None:
-        raise LookupError("LEGO set not found")
+        raise ServiceNotFoundError("LEGO set not found")
 
     marketplace = await get_or_create_marketplace(db, payload.marketplace_name)
     snapshot_data = payload.model_dump(
         exclude={"set_number", "marketplace_name"}, exclude_none=True
     )
-    snapshot = PriceSnapshot(
-        lego_set_id=lego_set.id,
-        marketplace_id=marketplace.id,
-        **snapshot_data,
-    )
-    db.add(snapshot)
-    await db.flush()
-    await db.refresh(snapshot)
-    return snapshot
+    try:
+        async with db.begin_nested():
+            return await repositories.create_price_snapshot(
+                db,
+                lego_set_id=lego_set.id,
+                marketplace_id=marketplace.id,
+                snapshot_data=snapshot_data,
+            )
+    except repositories.DuplicateRecordError as exc:
+        raise ServiceConflictError(str(exc)) from exc
 
 
 async def list_price_snapshots_for_set(
-    db: AsyncSession, set_number: str
+    db: AsyncSession,
+    set_number: str,
+    *,
+    limit: int = repositories.DEFAULT_PAGE_LIMIT,
+    offset: int = 0,
+    condition: str | None = None,
+    marketplace_name: str | None = None,
+    order: str = "snapshot_desc",
 ) -> list[PriceSnapshot]:
-    normalized_set_number = normalize_set_number(set_number)
-    result = await db.execute(
-        select(PriceSnapshot)
-        .join(LegoSet)
-        .where(LegoSet.set_number == normalized_set_number)
-        .order_by(PriceSnapshot.snapshot_at.desc())
+    return await repositories.list_price_snapshots_for_set(
+        db,
+        set_number,
+        pagination=Pagination(limit=limit, offset=offset),
+        condition=condition,
+        marketplace_name=marketplace_name,
+        order=order,
     )
-    return list(result.scalars())
 
 
 async def get_latest_price_snapshot_by_set_number(
     db: AsyncSession, set_number: str
 ) -> PriceSnapshot | None:
-    normalized_set_number = normalize_set_number(set_number)
-    statement = (
-        select(PriceSnapshot)
-        .join(LegoSet)
-        .where(LegoSet.set_number == normalized_set_number)
-        .order_by(PriceSnapshot.snapshot_at.desc(), PriceSnapshot.created_at.desc())
-        .limit(1)
-    )
     try:
-        result = await db.execute(statement)
+        snapshot = await repositories.get_latest_price_snapshot_by_set_number(
+            db, set_number
+        )
     except SQLAlchemyError:
         logger.exception(
             "unexpected DB failure while fetching latest snapshot set_number=%s",
             set_number,
         )
         raise
-    snapshot = result.scalar_one_or_none()
-    if snapshot is None:
-        logger.info(
-            "important missing data no latest snapshot set_number=%s", set_number
-        )
     return snapshot

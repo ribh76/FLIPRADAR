@@ -1,5 +1,4 @@
 from fastapi import HTTPException, status
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.auth import (
@@ -8,7 +7,11 @@ from flipradar.api.dependencies.auth import (
     verify_password,
 )
 from flipradar.api.schemas import TokenResponse, UserCreate, UserLogin, UserResponse
-from flipradar.database.repositories import create_user, get_user_by_username_or_email
+from flipradar.database.repositories import (
+    DuplicateRecordError,
+    create_user,
+    get_user_by_username_or_email,
+)
 from flipradar.domain.models import User
 
 
@@ -30,7 +33,7 @@ async def register_user(db: AsyncSession, payload: UserCreate) -> TokenResponse:
                 "hashed_password": hash_password(payload.password),
             },
         )
-    except IntegrityError as exc:
+    except DuplicateRecordError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="User already exists"
         ) from exc

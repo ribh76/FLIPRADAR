@@ -1,87 +1,73 @@
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas import ListingCreate
-from flipradar.api.schemas.validation import MarketplaceName, normalize_set_number
-from flipradar.domain.models import LegoSet, Marketplace, MarketplaceListing
+from flipradar.database import repositories
+from flipradar.database.repositories import Pagination
+from flipradar.domain.models import Marketplace, MarketplaceListing
+from flipradar.services.errors import (
+    ServiceConflictError,
+    ServiceNotFoundError,
+    ServiceValidationError,
+)
 
 
 async def get_or_create_marketplace(
     db: AsyncSession, marketplace_name: str
 ) -> Marketplace:
-    normalized_name = marketplace_name.lower()
-    if normalized_name not in {marketplace.value for marketplace in MarketplaceName}:
-        raise ValueError("Unsupported marketplace")
-    result = await db.execute(
-        select(Marketplace).where(Marketplace.name == normalized_name)
-    )
-    marketplace = result.scalar_one_or_none()
-    if marketplace is not None:
-        return marketplace
-
-    marketplace = Marketplace(
-        name=normalized_name,
-        display_name=normalized_name.title(),
-        fee_percent=0,
-    )
-    db.add(marketplace)
-    await db.flush()
-    return marketplace
+    try:
+        return await repositories.get_or_create_marketplace(db, marketplace_name)
+    except ValueError as exc:
+        raise ServiceValidationError(str(exc)) from exc
+    except repositories.DuplicateRecordError as exc:
+        raise ServiceConflictError(str(exc)) from exc
 
 
 async def create_listing(
     db: AsyncSession, payload: ListingCreate
 ) -> MarketplaceListing:
-    result = await db.execute(
-        select(LegoSet).where(LegoSet.set_number == payload.set_number)
-    )
-    lego_set = result.scalar_one_or_none()
+    lego_set = await repositories.get_set_by_number(db, payload.set_number)
     if lego_set is None:
-        raise LookupError("LEGO set not found")
+        raise ServiceNotFoundError("LEGO set not found")
 
     marketplace = await get_or_create_marketplace(db, payload.marketplace_name)
     listing_data = payload.model_dump(
         exclude={"set_number", "marketplace_name"}, mode="json"
     )
-    listing = MarketplaceListing(
-        lego_set_id=lego_set.id,
-        marketplace_id=marketplace.id,
-        **listing_data,
-    )
-    db.add(listing)
     try:
-        await db.flush()
-    except IntegrityError as exc:
-        raise ValueError("Marketplace listing already exists") from exc
-    await db.refresh(listing)
-    return listing
+        async with db.begin_nested():
+            return await repositories.create_listing(
+                db,
+                lego_set_id=lego_set.id,
+                marketplace_id=marketplace.id,
+                listing_data=listing_data,
+            )
+    except repositories.DuplicateRecordError as exc:
+        raise ServiceConflictError(str(exc)) from exc
 
 
 async def list_listings_for_set(
-    db: AsyncSession, set_number: str
+    db: AsyncSession,
+    set_number: str,
+    *,
+    limit: int = repositories.DEFAULT_PAGE_LIMIT,
+    offset: int = 0,
+    condition: str | None = None,
+    listing_status: str | None = None,
+    marketplace_name: str | None = None,
+    order: str = "last_seen_desc",
 ) -> list[MarketplaceListing]:
-    normalized_set_number = normalize_set_number(set_number)
-    result = await db.execute(
-        select(MarketplaceListing)
-        .join(LegoSet)
-        .where(LegoSet.set_number == normalized_set_number)
-        .order_by(MarketplaceListing.last_seen_at.desc())
+    return await repositories.list_listings_for_set(
+        db,
+        set_number,
+        pagination=Pagination(limit=limit, offset=offset),
+        condition=condition,
+        listing_status=listing_status,
+        marketplace_name=marketplace_name,
+        order=order,
     )
-    return list(result.scalars())
 
 
 async def latest_listing_for_set(
     db: AsyncSession, set_number: str
 ) -> MarketplaceListing | None:
-    normalized_set_number = normalize_set_number(set_number)
-    result = await db.execute(
-        select(MarketplaceListing)
-        .join(LegoSet)
-        .where(LegoSet.set_number == normalized_set_number)
-        .order_by(
-            MarketplaceListing.last_seen_at.desc(), MarketplaceListing.created_at.desc()
-        )
-        .limit(1)
-    )
-    return result.scalar_one_or_none()
+    return await repositories.latest_listing_for_set(db, set_number)

@@ -8,9 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas import PortfolioItemCreate, PortfolioItemUpdate
 from flipradar.database.repositories import (
+    DEFAULT_PAGE_LIMIT,
+    Pagination,
     create_portfolio_item,
     delete_portfolio_item,
+    get_all_portfolio_items_for_user,
     get_latest_snapshots_by_set_number,
+    get_latest_snapshots_for_set_numbers,
     get_portfolio_items_for_user,
     get_recent_snapshots_by_set_number,
     get_set_by_number,
@@ -42,12 +46,32 @@ async def add_item_to_portfolio(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid portfolio item"
         ) from exc
-    return await _portfolio_item_response(db, item)
+    value_map = await _current_unit_value_map(db, [item])
+    return _portfolio_item_response(item, value_map)
 
 
 async def list_user_portfolio(db: AsyncSession, user_id: UUID) -> list[dict]:
-    items = await get_portfolio_items_for_user(db, user_id)
-    return [await _portfolio_item_response(db, item) for item in items]
+    return await list_user_portfolio_page(db, user_id)
+
+
+async def list_user_portfolio_page(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    limit: int = DEFAULT_PAGE_LIMIT,
+    offset: int = 0,
+    condition: str | None = None,
+    order: str = "created_at_desc",
+) -> list[dict]:
+    items = await get_portfolio_items_for_user(
+        db,
+        user_id,
+        pagination=Pagination(limit=limit, offset=offset),
+        condition=condition,
+        order=order,
+    )
+    value_map = await _current_unit_value_map(db, items)
+    return [_portfolio_item_response(item, value_map) for item in items]
 
 
 async def update_user_portfolio_item(
@@ -66,7 +90,8 @@ async def update_user_portfolio_item(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found"
         )
-    return await _portfolio_item_response(db, item)
+    value_map = await _current_unit_value_map(db, [item])
+    return _portfolio_item_response(item, value_map)
 
 
 async def delete_user_portfolio_item(
@@ -80,7 +105,8 @@ async def delete_user_portfolio_item(
 
 
 async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
-    items = await get_portfolio_items_for_user(db, user_id)
+    items = await get_all_portfolio_items_for_user(db, user_id)
+    value_map = await _current_unit_value_map(db, items)
     holdings = []
     total_quantity = 0
     total_cost_basis = Decimal("0.00")
@@ -98,7 +124,7 @@ async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
         total_quantity += quantity
         total_cost_basis += cost_basis
 
-        unit_value, status = await _current_unit_value(db, set_number, condition)
+        unit_value, status = value_map[(set_number, condition)]
         set_name = getattr(grouped_items[0].lego_set, "name", None)
         if unit_value is None:
             current_value = None
@@ -139,8 +165,8 @@ async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
     }
 
 
-async def _portfolio_item_response(db: AsyncSession, item) -> dict:
-    unit_value, status = await _current_unit_value(db, item.set_number, item.condition)
+def _portfolio_item_response(item, value_map: dict[tuple[str, str], tuple]) -> dict:
+    unit_value, status = value_map[(item.set_number, item.condition)]
     cost_basis = _money(item.purchase_price * item.quantity)
     current_total_value = _money(unit_value * item.quantity) if unit_value else None
     gain_loss = (
@@ -189,6 +215,38 @@ async def _current_unit_value(
     if fair_value <= 0:
         return None, "missing_market_data"
     return _money(fair_value), "valued"
+
+
+async def _current_unit_value_map(
+    db: AsyncSession, items: list
+) -> dict[tuple[str, str], tuple]:
+    keys = {(item.set_number, item.condition) for item in items}
+    if not keys:
+        return {}
+
+    snapshots_by_set = await get_latest_snapshots_for_set_numbers(
+        db, {set_number for set_number, _condition in keys}
+    )
+    values = {}
+    for set_number, condition in keys:
+        snapshot_condition = _snapshot_condition(condition)
+        snapshots = snapshots_by_set.get(set_number, [])
+        if snapshot_condition is not None:
+            snapshots = [
+                snapshot
+                for snapshot in snapshots
+                if snapshot.condition == snapshot_condition
+            ]
+        if not snapshots:
+            values[(set_number, condition)] = (None, "missing_market_data")
+            continue
+        estimate = price_estimator.estimate_fair_value(snapshots)
+        fair_value = estimate["fair_value"]
+        if fair_value <= 0:
+            values[(set_number, condition)] = (None, "missing_market_data")
+        else:
+            values[(set_number, condition)] = (_money(fair_value), "valued")
+    return values
 
 
 def _snapshot_condition(condition: str) -> str | None:

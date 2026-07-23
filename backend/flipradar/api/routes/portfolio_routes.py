@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.auth import get_current_user
@@ -28,9 +28,20 @@ logger = logging.getLogger(__name__)
 async def list_portfolio(
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    condition: str | None = Query(default=None),
+    order: str = Query(default="created_at_desc"),
 ) -> list[dict]:
     logger.info("request started route=list_portfolio user_id=%s", current_user.id)
-    items = await portfolio_service.list_user_portfolio(db, current_user.id)
+    items = await portfolio_service.list_user_portfolio_page(
+        db,
+        current_user.id,
+        limit=limit,
+        offset=offset,
+        condition=condition,
+        order=order,
+    )
     logger.info("request finished route=list_portfolio user_id=%s", current_user.id)
     return items
 

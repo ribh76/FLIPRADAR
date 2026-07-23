@@ -1,12 +1,13 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import ListingCreate, ListingResponse
 from flipradar.domain.models import MarketplaceListing
 from flipradar.services import listing_service
+from flipradar.services.errors import ServiceError
 
 router = APIRouter(tags=["Marketplace/Internal"])
 logger = logging.getLogger(__name__)
@@ -31,27 +32,13 @@ async def create_marketplace_listing(
     )
     try:
         listing = await listing_service.create_listing(db, payload)
-    except LookupError as exc:
+    except ServiceError as exc:
         logger.warning(
             "major validation failure route=create_marketplace_listing set_number=%s marketplace=%s",
             payload.set_number,
             payload.marketplace_name,
         )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
-    except ValueError as exc:
-        logger.warning(
-            "major validation failure route=create_marketplace_listing set_number=%s marketplace=%s",
-            payload.set_number,
-            payload.marketplace_name,
-        )
-        status_code = (
-            status.HTTP_400_BAD_REQUEST
-            if str(exc) == "Unsupported marketplace"
-            else status.HTTP_409_CONFLICT
-        )
-        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     logger.info(
         "request finished route=create_marketplace_listing set_number=%s marketplace=%s",
         payload.set_number,
@@ -68,13 +55,29 @@ async def create_marketplace_listing(
     description="Supporting backend data route for listings tied to a LEGO set number.",
 )
 async def list_marketplace_listings(
-    set_number: str, db: AsyncSession = Depends(get_db_session)
+    set_number: str,
+    db: AsyncSession = Depends(get_db_session),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    condition: str | None = Query(default=None),
+    listing_status: str | None = Query(default=None),
+    marketplace_name: str | None = Query(default=None),
+    order: str = Query(default="last_seen_desc"),
 ) -> list[MarketplaceListing]:
     """List marketplace listings for one LEGO set number."""
     logger.info(
         "request started route=list_marketplace_listings set_number=%s", set_number
     )
-    listings = await listing_service.list_listings_for_set(db, set_number)
+    listings = await listing_service.list_listings_for_set(
+        db,
+        set_number,
+        limit=limit,
+        offset=offset,
+        condition=condition,
+        listing_status=listing_status,
+        marketplace_name=marketplace_name,
+        order=order,
+    )
     logger.info(
         "request finished route=list_marketplace_listings set_number=%s", set_number
     )
@@ -89,14 +92,30 @@ async def list_marketplace_listings(
     description="Supporting backend data route for listings tied to a LEGO set number.",
 )
 async def list_marketplace_listings_by_set_path(
-    set_number: str, db: AsyncSession = Depends(get_db_session)
+    set_number: str,
+    db: AsyncSession = Depends(get_db_session),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    condition: str | None = Query(default=None),
+    listing_status: str | None = Query(default=None),
+    marketplace_name: str | None = Query(default=None),
+    order: str = Query(default="last_seen_desc"),
 ) -> list[MarketplaceListing]:
     """List marketplace listings using a set-oriented path."""
     logger.info(
         "request started route=list_marketplace_listings_by_set_path set_number=%s",
         set_number,
     )
-    listings = await listing_service.list_listings_for_set(db, set_number)
+    listings = await listing_service.list_listings_for_set(
+        db,
+        set_number,
+        limit=limit,
+        offset=offset,
+        condition=condition,
+        listing_status=listing_status,
+        marketplace_name=marketplace_name,
+        order=order,
+    )
     logger.info(
         "request finished route=list_marketplace_listings_by_set_path set_number=%s",
         set_number,
