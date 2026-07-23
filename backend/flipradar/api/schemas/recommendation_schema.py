@@ -8,10 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from flipradar.api.schemas.validation import (
     Money,
     OptionalMoney,
-    PortfolioCondition,
     PortfolioConditionValue,
     SetNumber,
 )
+from flipradar.domain.models.enums import PortfolioCondition, RecommendationDecision
 
 
 class UserGoal(StrEnum):
@@ -23,14 +23,6 @@ class UserGoal(StrEnum):
     SELL_SET = "sell_set"
     HOLD_VS_SELL = "hold_vs_sell"
     BUY_VS_PASS = "buy_vs_pass"
-
-
-class RecommendationDecision(StrEnum):
-    BUY = "BUY"
-    PASS = "PASS"
-    SELL = "SELL"
-    HOLD = "HOLD"
-    WATCH = "WATCH"
 
 
 class ConfidenceBand(StrEnum):
@@ -93,5 +85,6 @@ class RecommendationResponse(BaseModel):
     reason: str
     market_summary: dict | None
     created_at: datetime
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -56,12 +56,23 @@ class LegoSet(Base):
     )
 
     listings = relationship(
-        "MarketplaceListing", back_populates="lego_set", cascade="all, delete-orphan"
+        "MarketplaceListing",
+        back_populates="lego_set",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     price_snapshots = relationship(
-        "PriceSnapshot", back_populates="lego_set", cascade="all, delete-orphan"
+        "PriceSnapshot",
+        back_populates="lego_set",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     recommendations = relationship(
-        "Recommendation", back_populates="lego_set", cascade="all, delete-orphan"
+        "Recommendation",
+        back_populates="lego_set",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
-    portfolio_items = relationship("PortfolioItem", back_populates="lego_set")
+    portfolio_items = relationship(
+        "PortfolioItem", back_populates="lego_set", passive_deletes=True
+    )

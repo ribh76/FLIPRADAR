@@ -17,17 +17,22 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from flipradar.database.base import Base
 from flipradar.database.types import JsonDocument
+from flipradar.domain.models.enums import (
+    RecommendationDecision,
+    RecommendationType,
+    sql_values,
+)
 
 
 class Recommendation(Base):
     __tablename__ = "recommendations"
     __table_args__ = (
         CheckConstraint(
-            "goal IN ('buy_set', 'sell_set', 'hold_vs_sell', 'buy_vs_pass')",
+            f"goal IN ({sql_values(RecommendationType)})",
             name="goal_allowed",
         ),
         CheckConstraint(
-            "decision IN ('BUY', 'PASS', 'SELL', 'HOLD', 'WATCH')",
+            f"decision IN ({sql_values(RecommendationDecision)})",
             name="decision_allowed",
         ),
         CheckConstraint(
@@ -44,6 +49,12 @@ class Recommendation(Base):
         ),
         Index(
             "ix_recommendations_set_goal_created", "lego_set_id", "goal", "created_at"
+        ),
+        Index(
+            "ix_recommendations_set_decision_created_at",
+            "lego_set_id",
+            "decision",
+            "created_at",
         ),
     )
 
@@ -64,6 +75,12 @@ class Recommendation(Base):
     market_summary: Mapped[dict | None] = mapped_column(JsonDocument)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
     lego_set = relationship("LegoSet", back_populates="recommendations")

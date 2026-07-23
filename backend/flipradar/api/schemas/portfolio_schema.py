@@ -7,10 +7,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from flipradar.api.schemas.validation import (
     Money,
     OptionalMoney,
-    PortfolioCondition,
     PortfolioConditionValue,
     SetNumber,
 )
+from flipradar.domain.models.enums import PortfolioCondition
 
 
 class PortfolioItemCreate(BaseModel):

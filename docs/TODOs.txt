@@ -120,16 +120,16 @@ PART II - CORE DATA AND API ARCHITECTURE
 PHASE 6: DATABASE MODEL CLEANUP
 Classification: MUST SHIP
 
-1. Review every model and document its purpose.
-2. Remove duplicate, unused, or incomplete models.
-3. Standardize primary keys, timestamps, foreign keys, and naming conventions.
-4. Add created_at and updated_at fields to user-managed records.
-5. Standardize enums for conditions, marketplaces, statuses, and recommendation types.
-6. Add uniqueness constraints for set numbers and marketplace identifiers.
-7. Add indexes for common searches and joins.
-8. Define delete behavior for users, holdings, watchlists, snapshots, and analyses.
-9. Replace floating-point money fields with decimal fields.
-10. Add currency fields to all relevant price records.
+1. Review every model and document its purpose. (Done) 
+2. Remove duplicate, unused, or incomplete models. (Done) 
+3. Standardize primary keys, timestamps, foreign keys, and naming conventions. (Done) 
+4. Add created_at and updated_at fields to user-managed records. (previosuly done) 
+5. Standardize enums for conditions, marketplaces, statuses, and recommendation types. (previosuly done) 
+6. Add uniqueness constraints for set numbers and marketplace identifiers. (add check)
+7. Add indexes for common searches and joins. (needs to be done) 
+8. Define delete behavior for users, holdings, watchlists, snapshots, and analyses. (needs check) 
+9. Replace floating-point money fields with decimal fields. (neesd check) 
+10. Add currency fields to all relevant price records. (also needs check) 
 11. Create forward migrations from the current schema.
 12. Test migrations against an empty database.
 13. Test migrations against representative existing data.

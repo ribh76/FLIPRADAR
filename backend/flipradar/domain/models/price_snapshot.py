@@ -19,6 +19,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from flipradar.database.base import Base
 from flipradar.database.types import JsonDocument
+from flipradar.domain.models.enums import SnapshotCondition, sql_values
 
 
 class PriceSnapshot(Base):
@@ -73,7 +74,8 @@ class PriceSnapshot(Base):
         ),
         CheckConstraint("currency = upper(currency)", name="currency_uppercase"),
         CheckConstraint(
-            "condition IN ('new', 'used', 'mixed', 'unknown')", name="condition_allowed"
+            f"condition IN ({sql_values(SnapshotCondition)})",
+            name="condition_allowed",
         ),
         UniqueConstraint(
             "lego_set_id",
@@ -83,6 +85,18 @@ class PriceSnapshot(Base):
             name="uq_price_snapshot_market_condition_time",
         ),
         Index("ix_price_snapshots_set_snapshot_at", "lego_set_id", "snapshot_at"),
+        Index(
+            "ix_price_snapshots_set_condition_snapshot_at",
+            "lego_set_id",
+            "condition",
+            "snapshot_at",
+        ),
+        Index(
+            "ix_price_snapshots_marketplace_condition_snapshot_at",
+            "marketplace_id",
+            "condition",
+            "snapshot_at",
+        ),
     )
 
     id: Mapped[PyUUID] = mapped_column(
@@ -114,6 +128,12 @@ class PriceSnapshot(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
     lego_set = relationship("LegoSet", back_populates="price_snapshots")

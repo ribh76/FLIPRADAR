@@ -8,9 +8,9 @@ from flipradar.api.schemas.validation import (
     MarketplaceValue,
     OptionalMoney,
     SetNumber,
-    SnapshotCondition,
     SnapshotConditionValue,
 )
+from flipradar.domain.models.enums import SnapshotCondition
 
 
 class PriceSnapshotCreate(BaseModel):
@@ -64,5 +64,6 @@ class PriceSnapshotResponse(BaseModel):
     source_payload: dict | None
     snapshot_at: datetime
     created_at: datetime
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

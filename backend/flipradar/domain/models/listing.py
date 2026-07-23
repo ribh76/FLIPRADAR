@@ -18,6 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from flipradar.database.base import Base
 from flipradar.database.types import JsonDocument
+from flipradar.domain.models.enums import ListingCondition, ListingStatus, sql_values
 
 
 class MarketplaceListing(Base):
@@ -31,10 +32,11 @@ class MarketplaceListing(Base):
         ),
         CheckConstraint("currency = upper(currency)", name="currency_uppercase"),
         CheckConstraint(
-            "condition IN ('new', 'used', 'unknown')", name="condition_allowed"
+            f"condition IN ({sql_values(ListingCondition)})",
+            name="condition_allowed",
         ),
         CheckConstraint(
-            "listing_status IN ('active', 'sold', 'ended', 'removed')",
+            f"listing_status IN ({sql_values(ListingStatus)})",
             name="listing_status_allowed",
         ),
         CheckConstraint(

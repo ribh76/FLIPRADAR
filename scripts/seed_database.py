@@ -61,16 +61,16 @@ DEMO_SETS = [
 
 async def _get_or_create_marketplace(session) -> Marketplace:
     result = await session.execute(
-        select(Marketplace).where(Marketplace.name == "demo")
+        select(Marketplace).where(Marketplace.name == "ebay")
     )
     marketplace = result.scalar_one_or_none()
     if marketplace is not None:
         return marketplace
 
     marketplace = Marketplace(
-        name="demo",
-        display_name="Demo Market",
-        base_url=None,
+        name="ebay",
+        display_name="eBay",
+        base_url="https://www.ebay.com",
         fee_percent=Decimal("0.00"),
     )
     session.add(marketplace)

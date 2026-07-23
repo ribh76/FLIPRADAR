@@ -121,7 +121,15 @@ async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
 async def create_portfolio_item(
     db: AsyncSession, user_id: UUID, item_data: dict[str, Any]
 ) -> PortfolioItem:
-    item = PortfolioItem(user_id=user_id, **item_data)
+    normalized_set_number = normalize_set_number(item_data["set_number"])
+    lego_set = await get_set_by_number(db, normalized_set_number)
+    if lego_set is None:
+        raise ValueError("LEGO set not found")
+
+    persisted_data = {
+        key: value for key, value in item_data.items() if key != "set_number"
+    }
+    item = PortfolioItem(user_id=user_id, lego_set_id=lego_set.id, **persisted_data)
     db.add(item)
     try:
         await db.flush()
@@ -163,7 +171,15 @@ async def update_portfolio_item(
     if item is None:
         return None
 
-    for field_name, value in item_data.items():
+    persisted_data = dict(item_data)
+    if "set_number" in persisted_data:
+        lego_set = await get_set_by_number(db, persisted_data.pop("set_number"))
+        if lego_set is None:
+            raise ValueError("LEGO set not found")
+        item.lego_set_id = lego_set.id
+        item.lego_set = lego_set
+
+    for field_name, value in persisted_data.items():
         setattr(item, field_name, value)
 
     try:

@@ -113,6 +113,7 @@ async def get_latest_recommendation_for_set(
         "reason": recommendation.reason,
         "market_summary": recommendation.market_summary,
         "created_at": recommendation.created_at,
+        "updated_at": recommendation.updated_at,
     }
 
 

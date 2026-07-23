@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID as PyUUID
 from uuid import uuid4
 
@@ -6,13 +7,16 @@ from sqlalchemy import CheckConstraint, DateTime, Numeric, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from flipradar.database.base import Base
+from flipradar.domain.models.enums import MarketplaceName, sql_values
 
 
 class Marketplace(Base):
     __tablename__ = "marketplaces"
     __table_args__ = (
         CheckConstraint("name = lower(name)", name="name_lowercase"),
-        CheckConstraint("name IN ('ebay', 'bricklink')", name="name_allowed"),
+        CheckConstraint(
+            f"name IN ({sql_values(MarketplaceName)})", name="name_allowed"
+        ),
         CheckConstraint(
             "fee_percent >= 0 AND fee_percent <= 100", name="fee_percent_valid"
         ),
@@ -26,7 +30,9 @@ class Marketplace(Base):
     )
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     base_url: Mapped[str | None] = mapped_column(String(500))
-    fee_percent: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False, default=0)
+    fee_percent: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), nullable=False, default=0
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -38,8 +44,8 @@ class Marketplace(Base):
     )
 
     listings = relationship(
-        "MarketplaceListing", back_populates="marketplace", cascade="all, delete-orphan"
+        "MarketplaceListing", back_populates="marketplace", passive_deletes=True
     )
     price_snapshots = relationship(
-        "PriceSnapshot", back_populates="marketplace", cascade="all, delete-orphan"
+        "PriceSnapshot", back_populates="marketplace", passive_deletes=True
     )

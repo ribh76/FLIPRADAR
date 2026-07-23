@@ -18,23 +18,22 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from flipradar.database.base import Base
+from flipradar.domain.models.enums import PortfolioCondition, sql_values
 
 
 class PortfolioItem(Base):
     __tablename__ = "portfolio_items"
     __table_args__ = (
-        CheckConstraint(
-            "set_number = upper(trim(set_number))", name="set_number_canonical"
-        ),
         CheckConstraint("quantity > 0", name="quantity_positive"),
         CheckConstraint("purchase_price >= 0", name="purchase_price_non_negative"),
         CheckConstraint(
-            "condition IN ('new', 'used', 'sealed', 'unknown')",
+            f"condition IN ({sql_values(PortfolioCondition)})",
             name="condition_allowed",
         ),
         Index("ix_portfolio_items_user_id", "user_id"),
-        Index("ix_portfolio_items_set_number", "set_number"),
-        Index("ix_portfolio_items_user_set", "user_id", "set_number"),
+        Index("ix_portfolio_items_lego_set_id", "lego_set_id"),
+        Index("ix_portfolio_items_user_lego_set", "user_id", "lego_set_id"),
+        Index("ix_portfolio_items_user_created_at", "user_id", "created_at"),
     )
 
     id: Mapped[PyUUID] = mapped_column(
@@ -43,9 +42,9 @@ class PortfolioItem(Base):
     user_id: Mapped[PyUUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    set_number: Mapped[str] = mapped_column(
-        String(32),
-        ForeignKey("lego_sets.set_number", ondelete="RESTRICT"),
+    lego_set_id: Mapped[PyUUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("lego_sets.id", ondelete="RESTRICT"),
         nullable=False,
     )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -67,3 +66,7 @@ class PortfolioItem(Base):
 
     user = relationship("User", back_populates="portfolio_items")
     lego_set = relationship("LegoSet", back_populates="portfolio_items")
+
+    @property
+    def set_number(self) -> str:
+        return self.lego_set.set_number

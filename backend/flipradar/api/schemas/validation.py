@@ -1,34 +1,14 @@
 from decimal import Decimal
-from enum import StrEnum
 from typing import Annotated, Any
 
 from pydantic import AfterValidator, BeforeValidator
 
-
-class MarketplaceName(StrEnum):
-    EBAY = "ebay"
-    BRICKLINK = "bricklink"
-
-
-class ListingCondition(StrEnum):
-    NEW = "new"
-    USED = "used"
-    UNKNOWN = "unknown"
-
-
-class PortfolioCondition(StrEnum):
-    NEW = "new"
-    USED = "used"
-    SEALED = "sealed"
-    UNKNOWN = "unknown"
-
-
-class SnapshotCondition(StrEnum):
-    NEW = "new"
-    USED = "used"
-    MIXED = "mixed"
-    UNKNOWN = "unknown"
-
+from flipradar.domain.models.enums import (
+    ListingCondition,
+    MarketplaceName,
+    PortfolioCondition,
+    SnapshotCondition,
+)
 
 MONEY_QUANT = Decimal("0.01")
 

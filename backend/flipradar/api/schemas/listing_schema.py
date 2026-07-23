@@ -5,7 +5,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 from flipradar.api.schemas.validation import (
-    ListingCondition,
     ListingConditionValue,
     LowerText,
     MarketplaceValue,
@@ -13,6 +12,7 @@ from flipradar.api.schemas.validation import (
     OptionalMoney,
     SetNumber,
 )
+from flipradar.domain.models.enums import ListingCondition
 
 
 class MarketplaceCreate(BaseModel):
