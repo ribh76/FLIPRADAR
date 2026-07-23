@@ -1,4 +1,11 @@
-import { BarChart3, Boxes, Calculator, LayoutDashboard, LogOut, Search } from "lucide-react";
+import {
+  BarChart3,
+  Boxes,
+  Calculator,
+  LayoutDashboard,
+  LogOut,
+  Search,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Logo } from "./Logo";
@@ -7,7 +14,7 @@ const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/analyze", label: "Analyze", icon: Calculator },
   { to: "/portfolio", label: "Portfolio", icon: Boxes },
-  { to: "/sets", label: "Sets", icon: Search }
+  { to: "/sets", label: "Sets", icon: Search },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -37,7 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       "inline-flex h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold transition",
                       isActive
                         ? "bg-white text-navy-950"
-                        : "text-blue-100 hover:bg-white/10 hover:text-white"
+                        : "text-blue-100 hover:bg-white/10 hover:text-white",
                     ].join(" ")
                   }
                 >
@@ -60,7 +67,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="mx-auto min-h-[calc(100vh-73px)] max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-7 flex items-center gap-3 text-blue-100">
           <BarChart3 size={18} aria-hidden="true" />
-          <span className="text-sm font-semibold">Collector valuation workspace</span>
+          <span className="text-sm font-semibold">
+            Collector valuation workspace
+          </span>
         </div>
         {children}
       </main>

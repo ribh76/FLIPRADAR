@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 from flipradar.api.schemas.validation import (
+    ListingCondition,
     ListingConditionValue,
     LowerText,
     MarketplaceValue,
@@ -41,7 +42,7 @@ class ListingCreate(BaseModel):
     currency: str = Field(
         default="USD", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$"
     )
-    condition: ListingConditionValue = "unknown"
+    condition: ListingConditionValue = ListingCondition.UNKNOWN
     listing_status: LowerText = Field(
         default="active", pattern=r"^(active|sold|ended|removed)$"
     )
@@ -49,7 +50,9 @@ class ListingCreate(BaseModel):
     seller_rating: OptionalMoney = Field(default=None, ge=0, le=100, decimal_places=2)
     is_complete: bool | None = None
     is_sealed: bool | None = None
-    match_confidence: OptionalMoney = Field(default=None, ge=0, le=100, decimal_places=2)
+    match_confidence: OptionalMoney = Field(
+        default=None, ge=0, le=100, decimal_places=2
+    )
     raw_payload: dict | None = None
 
     @model_validator(mode="after")

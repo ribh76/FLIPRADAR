@@ -2,8 +2,12 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from flipradar.api.dependencies.auth import create_access_token, hash_password, verify_password
-from flipradar.api.schemas import TokenResponse, UserCreate, UserLogin
+from flipradar.api.dependencies.auth import (
+    create_access_token,
+    hash_password,
+    verify_password,
+)
+from flipradar.api.schemas import TokenResponse, UserCreate, UserLogin, UserResponse
 from flipradar.database.repositories import create_user, get_user_by_username_or_email
 from flipradar.domain.models import User
 
@@ -31,7 +35,10 @@ async def register_user(db: AsyncSession, payload: UserCreate) -> TokenResponse:
             status_code=status.HTTP_409_CONFLICT, detail="User already exists"
         ) from exc
 
-    return TokenResponse(access_token=create_access_token(str(user.id)), user=user)
+    return TokenResponse(
+        access_token=create_access_token(str(user.id)),
+        user=UserResponse.model_validate(user),
+    )
 
 
 async def authenticate_user(db: AsyncSession, payload: UserLogin) -> TokenResponse:
@@ -40,7 +47,10 @@ async def authenticate_user(db: AsyncSession, payload: UserLogin) -> TokenRespon
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
         )
-    return TokenResponse(access_token=create_access_token(str(user.id)), user=user)
+    return TokenResponse(
+        access_token=create_access_token(str(user.id)),
+        user=UserResponse.model_validate(user),
+    )
 
 
 async def get_user_profile(user: User) -> User:

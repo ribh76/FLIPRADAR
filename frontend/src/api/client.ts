@@ -1,21 +1,26 @@
 import axios from "axios";
+import type { InternalAxiosRequestConfig } from "axios";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 export const api = axios.create({
   baseURL: apiBaseUrl,
   headers: {
-    "Content-Type": "application/json"
-  }
+    "Content-Type": "application/json",
+  },
 });
 
-api.interceptors.request.use((config) => {
+export function applyAuthToken(
+  config: InternalAxiosRequestConfig,
+): InternalAxiosRequestConfig {
   const token = localStorage.getItem("flipradar_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
-});
+}
+
+api.interceptors.request.use(applyAuthToken);
 
 export function getApiError(error: unknown): string {
   if (axios.isAxiosError(error)) {

@@ -55,4 +55,22 @@ npm run preview
 
 ## Tests
 
-No frontend test runner is configured yet. When frontend tests are added, keep test commands in `frontend/package.json` and document them here.
+```bash
+cd frontend
+npm run test
+npm run test:coverage
+```
+
+Vitest uses jsdom and React Testing Library. Coverage currently targets API helpers, reusable components, and formatting/business display utilities.
+
+## Quality
+
+```bash
+cd frontend
+npm run lint
+npm run typecheck
+npm run format:check
+npm run build
+```
+
+From the repository root, `make frontend-quality` runs ESLint, TypeScript checks, Vitest coverage, and the production build.

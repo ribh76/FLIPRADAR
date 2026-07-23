@@ -1,4 +1,4 @@
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from statistics import mean, median
 from typing import Any
 
@@ -72,7 +72,7 @@ def _snapshot_condition(listings: list[dict[str, Any]]) -> str:
     conditions.discard(None)
     conditions.discard("unknown")
     if len(conditions) == 1:
-        return conditions.pop()
+        return str(conditions.pop())
     if len(conditions) > 1:
         return "mixed"
     return "unknown"
@@ -86,7 +86,7 @@ def _snapshot_currency(listings: list[dict[str, Any]]) -> str:
         return "USD"
     first_currency = currencies[0]
     if all(currency == first_currency for currency in currencies):
-        return first_currency
+        return str(first_currency)
     return "USD"
 
 

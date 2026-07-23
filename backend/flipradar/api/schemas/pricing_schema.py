@@ -6,9 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from flipradar.api.schemas.validation import (
     MarketplaceValue,
-    Money,
     OptionalMoney,
     SetNumber,
+    SnapshotCondition,
     SnapshotConditionValue,
 )
 
@@ -16,7 +16,7 @@ from flipradar.api.schemas.validation import (
 class PriceSnapshotCreate(BaseModel):
     set_number: SetNumber = Field(..., min_length=1, max_length=32)
     marketplace_name: MarketplaceValue
-    condition: SnapshotConditionValue = "unknown"
+    condition: SnapshotConditionValue = SnapshotCondition.UNKNOWN
     currency: str = Field(
         default="USD", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$"
     )

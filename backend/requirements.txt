@@ -23,4 +23,6 @@ pytest
 pytest-asyncio
 black
 ruff
+pyright
+pre-commit
 httpx

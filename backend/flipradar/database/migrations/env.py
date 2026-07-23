@@ -5,9 +5,9 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+import flipradar.domain.models  # noqa: F401
 from flipradar.core.settings import get_settings
 from flipradar.database.base import Base
-import flipradar.domain.models  # noqa: F401
 
 config = context.config
 

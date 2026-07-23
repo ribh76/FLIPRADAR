@@ -129,9 +129,7 @@ def _split_csv(value: str | list[str]) -> list[str]:
 
 class Settings(BaseSettings):
     app_name: str = Field(default="FlipRadar", alias="APP_NAME")
-    app_env: AppEnvironment = Field(
-        default=AppEnvironment.DEVELOPMENT, alias="APP_ENV"
-    )
+    app_env: AppEnvironment = Field(default=AppEnvironment.DEVELOPMENT, alias="APP_ENV")
     app_debug: bool = Field(default=True, alias="APP_DEBUG")
     frontend_url: str = Field(default="http://127.0.0.1:5173", alias="FRONTEND_URL")
 
@@ -221,9 +219,7 @@ class Settings(BaseSettings):
         default="http://127.0.0.1:5173,http://localhost:5173",
         alias="CORS_ALLOWED_ORIGINS",
     )
-    cors_allow_credentials: bool = Field(
-        default=True, alias="CORS_ALLOW_CREDENTIALS"
-    )
+    cors_allow_credentials: bool = Field(default=True, alias="CORS_ALLOW_CREDENTIALS")
     cors_allow_methods: str = Field(default="*", alias="CORS_ALLOW_METHODS")
     cors_allow_headers: str = Field(default="*", alias="CORS_ALLOW_HEADERS")
 
@@ -258,7 +254,7 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def validate_environment(self) -> "Settings":
+    def validate_environment(self) -> Settings:
         if self.app_env == AppEnvironment.PRODUCTION:
             self._validate_production()
         return self

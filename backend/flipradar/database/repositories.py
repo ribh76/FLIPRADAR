@@ -1,15 +1,21 @@
 import logging
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import delete, or_
+from sqlalchemy import delete, or_, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from flipradar.domain.models import LegoSet, PortfolioItem, PriceSnapshot, Recommendation, User
 from flipradar.api.schemas.validation import normalize_set_number
+from flipradar.domain.models import (
+    LegoSet,
+    PortfolioItem,
+    PriceSnapshot,
+    Recommendation,
+    User,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -169,9 +175,12 @@ async def update_portfolio_item(
 
 
 async def delete_portfolio_item(db: AsyncSession, item_id: UUID, user_id: UUID) -> bool:
-    result = await db.execute(
-        delete(PortfolioItem).where(
-            PortfolioItem.id == item_id, PortfolioItem.user_id == user_id
-        )
+    result = cast(
+        CursorResult[Any],
+        await db.execute(
+            delete(PortfolioItem).where(
+                PortfolioItem.id == item_id, PortfolioItem.user_id == user_id
+            )
+        ),
     )
     return bool(result.rowcount)

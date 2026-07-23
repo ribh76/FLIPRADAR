@@ -1,5 +1,5 @@
 import logging
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -18,13 +18,13 @@ from flipradar.database.repositories import (
     get_recent_snapshots_by_set_number,
     get_set_by_number,
 )
-from flipradar.domain.models import LegoSet, Recommendation
 from flipradar.domain.engines import (
     buy_decision_engine,
     decision_engine,
     hold_sell_engine,
     price_estimator,
 )
+from flipradar.domain.models import LegoSet, Recommendation
 
 logger = logging.getLogger(__name__)
 
@@ -234,9 +234,9 @@ async def _recent_fair_values(db: AsyncSession, set_number: str) -> list[float]:
         db, set_number, limit=10
     )
     values = [
-        _snapshot_price(snapshot)
+        value
         for snapshot in reversed(recent_snapshots)
-        if _snapshot_price(snapshot) is not None
+        if (value := _snapshot_price(snapshot)) is not None
     ]
     return [float(value) for value in values]
 

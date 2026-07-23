@@ -1,0 +1,39 @@
+repos:
+  - repo: local
+    hooks:
+      - id: backend-ruff
+        name: backend ruff
+        entry: ./venv/bin/python -m ruff check backend scripts
+        language: system
+        pass_filenames: false
+        types_or: [python]
+      - id: backend-black
+        name: backend black
+        entry: ./venv/bin/python -m black --check backend scripts
+        language: system
+        pass_filenames: false
+        types_or: [python]
+      - id: backend-pyright
+        name: backend pyright
+        entry: ./venv/bin/python -m pyright
+        language: system
+        pass_filenames: false
+        types_or: [python]
+      - id: frontend-eslint
+        name: frontend eslint
+        entry: npm run lint --prefix frontend
+        language: system
+        pass_filenames: false
+        files: ^frontend/
+      - id: frontend-prettier
+        name: frontend prettier
+        entry: npm run format:check --prefix frontend
+        language: system
+        pass_filenames: false
+        files: ^frontend/
+      - id: frontend-typecheck
+        name: frontend typecheck
+        entry: npm run typecheck --prefix frontend
+        language: system
+        pass_filenames: false
+        files: ^frontend/

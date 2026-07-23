@@ -2,9 +2,15 @@
   <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
     <div>
       <h1 class="text-3xl font-bold text-white">Analyze Set</h1>
-      <p class="mt-2 text-blue-100">A calculator-style recommendation tool for LEGO set decisions.</p>
+      <p class="mt-2 text-blue-100">
+        A calculator-style recommendation tool for LEGO set decisions.
+      </p>
     </div>
-    <div class="rounded-md bg-white/10 px-3 py-2 text-sm font-bold text-blue-100">BUY / PASS / HOLD / WATCH</div>
+    <div
+      class="rounded-md bg-white/10 px-3 py-2 text-sm font-bold text-blue-100"
+    >
+      BUY / PASS / HOLD / WATCH
+    </div>
   </div>
 
   <div class="grid gap-5 lg:grid-cols-[380px_1fr]">
@@ -14,7 +20,12 @@
       </div>
       <label class="block space-y-2">
         <span class="field-label">Set number</span>
-        <input name="set_number" class="field-input" placeholder="75192-1" required />
+        <input
+          name="set_number"
+          class="field-input"
+          placeholder="75192-1"
+          required
+        />
       </label>
       <label class="block space-y-2">
         <span class="field-label">Goal</span>
@@ -26,7 +37,14 @@
       </label>
       <label class="block space-y-2">
         <span class="field-label">Asking price</span>
-        <input name="asking_price" class="field-input" type="number" min="0" step="0.01" placeholder="425.00" />
+        <input
+          name="asking_price"
+          class="field-input"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="425.00"
+        />
       </label>
       <label class="block space-y-2">
         <span class="field-label">Condition</span>
@@ -37,8 +55,13 @@
           <option value="unknown">Unknown</option>
         </select>
       </label>
-      <div data-error class="hidden rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800"></div>
-      <button data-submit class="primary-button w-full" type="submit">Analyze</button>
+      <div
+        data-error
+        class="hidden rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800"
+      ></div>
+      <button data-submit class="primary-button w-full" type="submit">
+        Analyze
+      </button>
     </form>
 
     <section class="space-y-5">
@@ -46,30 +69,69 @@
         <div class="mb-4 flex items-center justify-between gap-3">
           <div>
             <p class="metric-label">Main verdict</p>
-            <h2 data-result-set class="mt-2 text-2xl font-bold text-slate-950">Waiting for set</h2>
+            <h2 data-result-set class="mt-2 text-2xl font-bold text-slate-950">
+              Waiting for set
+            </h2>
           </div>
-          <span data-verdict-badge class="inline-flex items-center rounded-md border border-amber-200 bg-amber-100 px-2 py-1 text-xs font-bold text-amber-900">WATCH</span>
+          <span
+            data-verdict-badge
+            class="inline-flex items-center rounded-md border border-amber-200 bg-amber-100 px-2 py-1 text-xs font-bold text-amber-900"
+            >WATCH</span
+          >
         </div>
-        <div data-verdict-card class="rounded-lg border border-slate-200 bg-slate-50 p-8 text-center text-slate-600">
-          <div data-verdict class="text-6xl font-black tracking-normal">READY</div>
+        <div
+          data-verdict-card
+          class="rounded-lg border border-slate-200 bg-slate-50 p-8 text-center text-slate-600"
+        >
+          <div data-verdict class="text-6xl font-black tracking-normal">
+            READY
+          </div>
         </div>
       </div>
 
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-lg border border-blue-200 bg-blue-50 p-5"><div class="metric-label">Fair Value</div><div data-fair-value class="metric-value">--</div></div>
-        <div class="rounded-lg border border-slate-200 p-5"><div class="metric-label">Asking Price</div><div data-asking-price class="metric-value">--</div></div>
-        <div class="rounded-lg border border-slate-200 p-5"><div class="metric-label">Score</div><div data-score class="metric-value">--</div></div>
-        <div class="rounded-lg border border-amber-200 bg-amber-50 p-5"><div class="metric-label">Confidence</div><div data-confidence class="metric-value">--</div></div>
-        <div class="rounded-lg border border-slate-200 p-5"><div class="metric-label">Market Low</div><div data-market-low class="metric-value">--</div></div>
-        <div class="rounded-lg border border-slate-200 p-5"><div class="metric-label">Market High</div><div data-market-high class="metric-value">--</div></div>
-        <div class="rounded-lg border border-slate-200 p-5"><div class="metric-label">Listing Count</div><div data-listing-count class="metric-value">--</div></div>
-        <div class="rounded-lg border border-slate-200 p-5"><div class="metric-label">Condition</div><div data-condition class="metric-value">UNKNOWN</div></div>
+        <div class="rounded-lg border border-blue-200 bg-blue-50 p-5">
+          <div class="metric-label">Fair Value</div>
+          <div data-fair-value class="metric-value">--</div>
+        </div>
+        <div class="rounded-lg border border-slate-200 p-5">
+          <div class="metric-label">Asking Price</div>
+          <div data-asking-price class="metric-value">--</div>
+        </div>
+        <div class="rounded-lg border border-slate-200 p-5">
+          <div class="metric-label">Score</div>
+          <div data-score class="metric-value">--</div>
+        </div>
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-5">
+          <div class="metric-label">Confidence</div>
+          <div data-confidence class="metric-value">--</div>
+        </div>
+        <div class="rounded-lg border border-slate-200 p-5">
+          <div class="metric-label">Market Low</div>
+          <div data-market-low class="metric-value">--</div>
+        </div>
+        <div class="rounded-lg border border-slate-200 p-5">
+          <div class="metric-label">Market High</div>
+          <div data-market-high class="metric-value">--</div>
+        </div>
+        <div class="rounded-lg border border-slate-200 p-5">
+          <div class="metric-label">Listing Count</div>
+          <div data-listing-count class="metric-value">--</div>
+        </div>
+        <div class="rounded-lg border border-slate-200 p-5">
+          <div class="metric-label">Condition</div>
+          <div data-condition class="metric-value">UNKNOWN</div>
+        </div>
       </div>
 
       <div class="page-card">
         <h2 class="text-lg font-bold text-slate-950">Formatted explanation</h2>
-        <p data-reasoning class="mt-3 whitespace-pre-line text-sm leading-7 text-slate-700">
-          Run an analysis to see how fair value, asking price, confidence, and listing depth shaped the recommendation.
+        <p
+          data-reasoning
+          class="mt-3 whitespace-pre-line text-sm leading-7 text-slate-700"
+        >
+          Run an analysis to see how fair value, asking price, confidence, and
+          listing depth shaped the recommendation.
         </p>
       </div>
     </section>

@@ -1,0 +1,19 @@
+{
+  "include": ["backend/flipradar", "backend/tests", "scripts"],
+  "exclude": [
+    "**/__pycache__",
+    "backend/flipradar/database/migrations/versions",
+    "frontend",
+    "venv"
+  ],
+  "venvPath": ".",
+  "venv": "venv",
+  "extraPaths": ["backend"],
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "basic",
+  "reportMissingTypeStubs": false,
+  "reportUnknownArgumentType": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownVariableType": false,
+  "reportUntypedFunctionDecorator": false
+}

@@ -5,13 +5,13 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.auth import get_current_user
+from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
     PortfolioItemCreate,
     PortfolioItemResponse,
     PortfolioItemUpdate,
     PortfolioSummaryResponse,
 )
-from flipradar.api.dependencies.database import get_db_session
 from flipradar.domain.models import User
 from flipradar.services import portfolio_service
 

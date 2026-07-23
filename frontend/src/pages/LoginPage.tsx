@@ -12,9 +12,13 @@ export function LoginPage() {
       const form = root.querySelector<HTMLFormElement>("[data-login-form]");
       const errorBox = root.querySelector<HTMLElement>("[data-error]");
       const loadingBar = root.querySelector<HTMLElement>("[data-loading-bar]");
-      const submitButton = root.querySelector<HTMLButtonElement>("[data-submit]");
-      const devPassButton = root.querySelector<HTMLButtonElement>("[data-dev-pass]");
-      const registerButton = root.querySelector<HTMLButtonElement>("[data-mode='register']");
+      const submitButton =
+        root.querySelector<HTMLButtonElement>("[data-submit]");
+      const devPassButton =
+        root.querySelector<HTMLButtonElement>("[data-dev-pass]");
+      const registerButton = root.querySelector<HTMLButtonElement>(
+        "[data-mode='register']",
+      );
 
       const showError = (message: string) => {
         if (errorBox) {
@@ -37,7 +41,9 @@ export function LoginPage() {
       };
 
       const handleRegister = () => {
-        showError("Registration toggle is present but disabled for this build.");
+        showError(
+          "Registration toggle is present but disabled for this build.",
+        );
       };
 
       const handleSubmit = async (event: SubmitEvent) => {
@@ -51,7 +57,7 @@ export function LoginPage() {
         try {
           const response = await api.post("/auth/login", {
             username_or_email: String(values.get("username_or_email") ?? ""),
-            password: String(values.get("password") ?? "")
+            password: String(values.get("password") ?? ""),
           });
           localStorage.setItem("flipradar_token", response.data.access_token);
           navigate("/dashboard");
@@ -72,7 +78,7 @@ export function LoginPage() {
         registerButton?.removeEventListener("click", handleRegister);
       };
     },
-    [navigate]
+    [navigate],
   );
 
   return <HtmlTemplate html={loginHtml} onMount={onMount} />;

@@ -30,7 +30,9 @@ export function AnalyzePage() {
     const form = root.querySelector<HTMLFormElement>("[data-analyze-form]");
     const errorBox = root.querySelector<HTMLElement>("[data-error]");
     const submitButton = root.querySelector<HTMLButtonElement>("[data-submit]");
-    const condition = root.querySelector<HTMLSelectElement>("select[name='condition']");
+    const condition = root.querySelector<HTMLSelectElement>(
+      "select[name='condition']",
+    );
 
     const showError = (message: string) => {
       if (!errorBox) {
@@ -55,7 +57,11 @@ export function AnalyzePage() {
       setText(root, "[data-market-low]", currency(result.market_low));
       setText(root, "[data-market-high]", currency(result.market_high));
       setText(root, "[data-listing-count]", numberValue(result.listing_count));
-      setText(root, "[data-condition]", condition?.value.toUpperCase() ?? "UNKNOWN");
+      setText(
+        root,
+        "[data-condition]",
+        condition?.value.toUpperCase() ?? "UNKNOWN",
+      );
       setText(root, "[data-reasoning]", result.reasoning);
 
       if (badge) {
@@ -86,7 +92,7 @@ export function AnalyzePage() {
           set_number: String(values.get("set_number") ?? ""),
           user_goal: String(values.get("user_goal") ?? "buy_vs_pass"),
           condition: String(values.get("condition") ?? "unknown"),
-          asking_price: askingPrice ? Number(askingPrice) : null
+          asking_price: askingPrice ? Number(askingPrice) : null,
         });
         renderResult(response.data);
       } catch (error) {
@@ -100,7 +106,11 @@ export function AnalyzePage() {
     };
 
     const handleConditionChange = () => {
-      setText(root, "[data-condition]", condition?.value.toUpperCase() ?? "UNKNOWN");
+      setText(
+        root,
+        "[data-condition]",
+        condition?.value.toUpperCase() ?? "UNKNOWN",
+      );
     };
 
     form?.addEventListener("submit", handleSubmit);

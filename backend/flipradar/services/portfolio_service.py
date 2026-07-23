@@ -1,5 +1,5 @@
 from collections import defaultdict
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -19,8 +19,8 @@ from flipradar.database.repositories import (
 from flipradar.domain.engines import price_estimator
 
 
-def _money(value: Decimal) -> Decimal:
-    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+def _money(value: Decimal | int) -> Decimal:
+    return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 async def add_item_to_portfolio(

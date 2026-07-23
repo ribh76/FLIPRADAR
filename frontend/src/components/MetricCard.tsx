@@ -1,7 +1,7 @@
 export function MetricCard({
   label,
   value,
-  tone = "neutral"
+  tone = "neutral",
 }: {
   label: string;
   value: string;
@@ -12,7 +12,7 @@ export function MetricCard({
     good: "border-emerald-200 bg-emerald-50",
     bad: "border-red-200 bg-red-50",
     watch: "border-amber-200 bg-amber-50",
-    hold: "border-blue-200 bg-blue-50"
+    hold: "border-blue-200 bg-blue-50",
   }[tone];
 
   return (

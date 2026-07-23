@@ -1,5 +1,6 @@
 from datetime import datetime
-from uuid import UUID as PyUUID, uuid4
+from uuid import UUID as PyUUID
+from uuid import uuid4
 
 from sqlalchemy import CheckConstraint, DateTime, Numeric, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship

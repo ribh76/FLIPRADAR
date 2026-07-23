@@ -1,10 +1,13 @@
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas.validation import normalize_set_number
-from flipradar.database.repositories import get_latest_snapshots_by_set_number, get_set_by_number
+from flipradar.database.repositories import (
+    get_latest_snapshots_by_set_number,
+    get_set_by_number,
+)
 from flipradar.domain.engines import price_estimator
 from flipradar.integrations import bricklink_mock_client
 

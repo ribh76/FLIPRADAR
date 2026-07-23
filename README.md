@@ -22,6 +22,14 @@ Local Docker development is documented in [docs/local-development.md](/Users/rbb
 
 Runtime configuration is documented in [docs/runtime-configuration.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/runtime-configuration.md).
 
+Run the complete local quality gate before CI integration:
+
+```bash
+make quality
+```
+
+That command runs backend formatting checks, Ruff, Pyright, pytest, frontend ESLint, TypeScript checks, Vitest coverage, and the production frontend build.
+
 ## Local Development
 
 Start the API:

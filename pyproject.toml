@@ -1,0 +1,29 @@
+[tool.black]
+line-length = 88
+target-version = ["py314"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+src = ["backend", "scripts"]
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]
+ignore = ["B008", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["flipradar", "scripts"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/create_database_tables.py" = ["E402"]
+"scripts/seed_database.py" = ["E402"]
+"backend/flipradar/database/migrations/versions/*.py" = ["UP007", "UP035"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+asyncio_mode = "auto"
+markers = [
+  "api: HTTP API tests",
+  "integration: database or cross-layer integration tests",
+  "unit: isolated business logic tests",
+]

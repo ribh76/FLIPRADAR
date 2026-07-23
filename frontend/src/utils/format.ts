@@ -9,7 +9,7 @@ export function currency(value: number | string | null | undefined): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 0
+    maximumFractionDigits: 0,
   }).format(parsed);
 }
 
@@ -35,7 +35,9 @@ export function percent(value: number | string | null | undefined): string {
   return `${parsed.toFixed(1)}%`;
 }
 
-export function signedCurrency(value: number | string | null | undefined): string {
+export function signedCurrency(
+  value: number | string | null | undefined,
+): string {
   if (value === null || value === undefined || value === "") {
     return "--";
   }

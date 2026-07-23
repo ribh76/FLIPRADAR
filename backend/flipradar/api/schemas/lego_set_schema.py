@@ -23,7 +23,9 @@ class LegoSetCreate(BaseModel):
             and self.retirement_year is not None
             and self.retirement_year < self.release_year
         ):
-            raise ValueError("retirement_year must be greater than or equal to release_year")
+            raise ValueError(
+                "retirement_year must be greater than or equal to release_year"
+            )
         return self
 
 

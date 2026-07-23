@@ -32,7 +32,8 @@ export function PortfolioPage() {
         return;
       }
       if (items.length === 0) {
-        tableBody.innerHTML = '<tr><td class="px-4 py-8 text-center font-semibold text-slate-500" colspan="8">No holdings yet.</td></tr>';
+        tableBody.innerHTML =
+          '<tr><td class="px-4 py-8 text-center font-semibold text-slate-500" colspan="8">No holdings yet.</td></tr>';
         return;
       }
       tableBody.innerHTML = items
@@ -59,13 +60,29 @@ export function PortfolioPage() {
       try {
         const [itemsResponse, summaryResponse] = await Promise.all([
           api.get<PortfolioItem[]>("/portfolio"),
-          api.get<PortfolioSummary>("/portfolio/summary")
+          api.get<PortfolioSummary>("/portfolio/summary"),
         ]);
         renderRows(itemsResponse.data);
-        setText(root, "[data-total-value]", currency(summaryResponse.data.estimated_current_value));
-        setText(root, "[data-total-cost]", currency(summaryResponse.data.total_cost_basis));
-        setText(root, "[data-gain-loss]", signedCurrency(summaryResponse.data.unrealized_gain_loss));
-        setText(root, "[data-total-sets]", String(summaryResponse.data.total_quantity));
+        setText(
+          root,
+          "[data-total-value]",
+          currency(summaryResponse.data.estimated_current_value),
+        );
+        setText(
+          root,
+          "[data-total-cost]",
+          currency(summaryResponse.data.total_cost_basis),
+        );
+        setText(
+          root,
+          "[data-gain-loss]",
+          signedCurrency(summaryResponse.data.unrealized_gain_loss),
+        );
+        setText(
+          root,
+          "[data-total-sets]",
+          String(summaryResponse.data.total_quantity),
+        );
       } catch (error) {
         renderRows([]);
         showError(getApiError(error));
@@ -90,7 +107,7 @@ export function PortfolioPage() {
           purchase_price: Number(values.get("purchase_price") ?? 0),
           condition: String(values.get("condition") ?? "unknown"),
           acquired_at: acquiredAt ? new Date(acquiredAt).toISOString() : null,
-          notes: String(values.get("notes") ?? "") || null
+          notes: String(values.get("notes") ?? "") || null,
         });
         form.reset();
         await loadPortfolio();

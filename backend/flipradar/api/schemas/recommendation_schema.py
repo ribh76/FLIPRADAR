@@ -5,7 +5,14 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from flipradar.api.schemas.validation import Money, OptionalMoney, PortfolioConditionValue, SetNumber
+from flipradar.api.schemas.validation import (
+    Money,
+    OptionalMoney,
+    PortfolioCondition,
+    PortfolioConditionValue,
+    SetNumber,
+)
+
 
 class UserGoal(StrEnum):
     BUY = "buy"
@@ -36,7 +43,7 @@ class AnalyzeRequest(BaseModel):
     set_number: SetNumber = Field(..., min_length=1, max_length=32)
     user_goal: UserGoal
     asking_price: OptionalMoney = Field(default=None, ge=0, decimal_places=2)
-    condition: PortfolioConditionValue = "unknown"
+    condition: PortfolioConditionValue = PortfolioCondition.UNKNOWN
     shipping_price: Money = Field(default=Decimal("0.00"), ge=0, decimal_places=2)
     marketplace_fee_pct: Decimal = Field(default=Decimal("0.13"), ge=0, le=1)
     target_margin_pct: Decimal = Field(default=Decimal("0.15"), ge=0, le=1)

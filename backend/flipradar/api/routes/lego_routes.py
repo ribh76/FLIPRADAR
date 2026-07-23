@@ -3,17 +3,18 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
     LegoSetCreate,
     LegoSetResponse,
     PriceSnapshotResponse,
     SetDetailResponse,
 )
-from flipradar.api.dependencies.database import get_db_session
 from flipradar.domain.models import LegoSet
-from flipradar.services import set_catalog_service
-from flipradar.services import set_detail_service
-from flipradar.services.price_snapshot_service import get_latest_price_snapshot_by_set_number
+from flipradar.services import set_catalog_service, set_detail_service
+from flipradar.services.price_snapshot_service import (
+    get_latest_price_snapshot_by_set_number,
+)
 
 router = APIRouter(tags=["Sets"])
 logger = logging.getLogger(__name__)
@@ -114,4 +115,4 @@ async def get_latest_set_snapshot(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="No price snapshots found"
         )
-    return snapshot
+    return PriceSnapshotResponse.model_validate(snapshot)

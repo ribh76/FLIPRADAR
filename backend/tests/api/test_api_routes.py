@@ -10,9 +10,9 @@ from sqlalchemy import event
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+import flipradar.domain.models  # noqa: F401
 from flipradar.core.settings import get_settings
 from flipradar.database import Base, get_db_session
-import flipradar.domain.models  # noqa: F401
 from flipradar.domain.engines import price_estimator
 from flipradar.main import create_app
 from flipradar.services import recommendation_service

@@ -15,7 +15,9 @@ export function verdictTone(verdict: Verdict | string) {
 
 export function StatusBadge({ value }: { value: string }) {
   return (
-    <span className={`inline-flex items-center rounded-md border px-2 py-1 text-xs font-bold ${verdictTone(value)}`}>
+    <span
+      className={`inline-flex items-center rounded-md border px-2 py-1 text-xs font-bold ${verdictTone(value)}`}
+    >
       {value}
     </span>
   );

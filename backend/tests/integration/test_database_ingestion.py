@@ -24,9 +24,11 @@ from flipradar.domain.models import (
     PriceSnapshot,
     Recommendation,
 )
-from flipradar.services.price_snapshot_service import get_latest_price_snapshot_by_set_number
 from flipradar.services import marketplace_service
 from flipradar.services.listing_normalizer import normalize
+from flipradar.services.price_snapshot_service import (
+    get_latest_price_snapshot_by_set_number,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +159,7 @@ async def test_insert_marketplace_listing(db_session: AsyncSession):
     assert saved_listing.lego_set_id == lego_set.id
     assert saved_listing.marketplace_id == marketplace.id
     assert saved_listing.total_price == Decimal("162.49")
+    assert saved_listing.raw_payload is not None
     assert saved_listing.raw_payload["source"] == "pytest"
 
 
@@ -218,6 +221,7 @@ async def test_insert_price_snapshot_and_fetch_latest_by_set_number(
     assert fetched_snapshot is not None
     assert fetched_snapshot.id == latest_snapshot.id
     assert fetched_snapshot.fair_market_value == Decimal("152.00")
+    assert fetched_snapshot.source_payload is not None
     assert fetched_snapshot.source_payload["age"] == "latest"
 
 
@@ -297,18 +301,23 @@ async def test_repository_functions_fetch_snapshots_and_create_recommendation(
     )
     assert fetched_set is not None
     assert fetched_set.id == lego_set.id
-    assert [snapshot.source_payload["order"] for snapshot in latest_snapshots] == [
-        "latest"
-    ]
-    assert [snapshot.source_payload["order"] for snapshot in recent_snapshots] == [
-        "latest",
-        "middle",
-    ]
+    latest_orders = []
+    for snapshot in latest_snapshots:
+        assert snapshot.source_payload is not None
+        latest_orders.append(snapshot.source_payload["order"])
+    assert latest_orders == ["latest"]
+
+    recent_orders = []
+    for snapshot in recent_snapshots:
+        assert snapshot.source_payload is not None
+        recent_orders.append(snapshot.source_payload["order"])
+    assert recent_orders == ["latest", "middle"]
     assert recommendation.id is not None
     assert recommendation.decision == "BUY"
 
     saved_recommendation = await db_session.get(Recommendation, recommendation.id)
     assert saved_recommendation is not None
+    assert saved_recommendation.market_summary is not None
     assert saved_recommendation.market_summary["source"] == "repository-test"
 
 
@@ -447,6 +456,7 @@ async def test_marketplace_service_updates_listings_and_snapshot(
     assert snapshot.average_price == Decimal("127.50")
     assert snapshot.median_price == Decimal("127.50")
     assert snapshot.fair_market_value == Decimal("127.50")
+    assert snapshot.source_payload is not None
     assert snapshot.source_payload["marketplaces"] == ["bricklink"]
 
     saved_snapshots = await db_session.execute(

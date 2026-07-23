@@ -3,8 +3,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from flipradar.api.schemas import PriceSnapshotResponse
 from flipradar.api.dependencies.database import get_db_session
+from flipradar.api.schemas import PriceSnapshotResponse
 from flipradar.services import marketplace_service
 
 router = APIRouter(prefix="/marketplace", tags=["Marketplace/Internal"])

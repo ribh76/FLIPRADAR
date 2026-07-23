@@ -98,7 +98,27 @@ Run a single test file:
 
 ```bash
 cd backend
-python3 -m pytest tests/test_api_routes.py
+python3 -m pytest tests/api/test_api_routes.py
+```
+
+Tests are organized by intent:
+
+- `tests/unit/` for isolated business logic and engines.
+- `tests/integration/` for database and cross-layer integration.
+- `tests/api/` for FastAPI route behavior.
+
+## Quality
+
+From the repository root:
+
+```bash
+make backend-quality
+```
+
+This runs Ruff import/lint checks, Black formatting checks, Pyright type checking, and pytest. Format backend code with:
+
+```bash
+make format
 ```
 
 ## API Overview

@@ -1,16 +1,33 @@
 <div>
   <div class="mb-7">
     <h1 class="text-3xl font-bold text-white">Portfolio</h1>
-    <p class="mt-2 text-blue-100">Track your LEGO collection value, basis, and holdings.</p>
+    <p class="mt-2 text-blue-100">
+      Track your LEGO collection value, basis, and holdings.
+    </p>
   </div>
 
-  <div data-error class="mb-5 hidden rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800"></div>
+  <div
+    data-error
+    class="mb-5 hidden rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800"
+  ></div>
 
   <div class="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    <div class="rounded-lg border border-blue-200 bg-blue-50 p-5"><div class="metric-label">Total Portfolio Value</div><div data-total-value class="metric-value">--</div></div>
-    <div class="rounded-lg border border-slate-200 bg-white p-5"><div class="metric-label">Total Cost Basis</div><div data-total-cost class="metric-value">--</div></div>
-    <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-5"><div class="metric-label">Unrealized Gain/Loss</div><div data-gain-loss class="metric-value">--</div></div>
-    <div class="rounded-lg border border-amber-200 bg-amber-50 p-5"><div class="metric-label">Total Sets</div><div data-total-sets class="metric-value">0</div></div>
+    <div class="rounded-lg border border-blue-200 bg-blue-50 p-5">
+      <div class="metric-label">Total Portfolio Value</div>
+      <div data-total-value class="metric-value">--</div>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-white p-5">
+      <div class="metric-label">Total Cost Basis</div>
+      <div data-total-cost class="metric-value">--</div>
+    </div>
+    <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-5">
+      <div class="metric-label">Unrealized Gain/Loss</div>
+      <div data-gain-loss class="metric-value">--</div>
+    </div>
+    <div class="rounded-lg border border-amber-200 bg-amber-50 p-5">
+      <div class="metric-label">Total Sets</div>
+      <div data-total-sets class="metric-value">0</div>
+    </div>
   </div>
 
   <form data-portfolio-form class="page-card mb-5">
@@ -18,9 +35,30 @@
       <h2 class="text-lg font-bold text-slate-950">Add item</h2>
     </div>
     <div class="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-      <label class="space-y-2"><span class="field-label">Set number</span><input name="set_number" class="field-input" required /></label>
-      <label class="space-y-2"><span class="field-label">Quantity</span><input name="quantity" class="field-input" type="number" min="1" value="1" required /></label>
-      <label class="space-y-2"><span class="field-label">Purchase price</span><input name="purchase_price" class="field-input" type="number" min="0" step="0.01" required /></label>
+      <label class="space-y-2"
+        ><span class="field-label">Set number</span
+        ><input name="set_number" class="field-input" required
+      /></label>
+      <label class="space-y-2"
+        ><span class="field-label">Quantity</span
+        ><input
+          name="quantity"
+          class="field-input"
+          type="number"
+          min="1"
+          value="1"
+          required
+      /></label>
+      <label class="space-y-2"
+        ><span class="field-label">Purchase price</span
+        ><input
+          name="purchase_price"
+          class="field-input"
+          type="number"
+          min="0"
+          step="0.01"
+          required
+      /></label>
       <label class="space-y-2">
         <span class="field-label">Condition</span>
         <select name="condition" class="field-input">
@@ -30,8 +68,14 @@
           <option value="unknown">Unknown</option>
         </select>
       </label>
-      <label class="space-y-2"><span class="field-label">Acquired date</span><input name="acquired_at" class="field-input" type="date" /></label>
-      <label class="space-y-2 md:col-span-2 xl:col-span-1"><span class="field-label">Notes</span><input name="notes" class="field-input" /></label>
+      <label class="space-y-2"
+        ><span class="field-label">Acquired date</span
+        ><input name="acquired_at" class="field-input" type="date"
+      /></label>
+      <label class="space-y-2 md:col-span-2 xl:col-span-1"
+        ><span class="field-label">Notes</span
+        ><input name="notes" class="field-input"
+      /></label>
     </div>
     <div class="mt-4 flex justify-end">
       <button data-submit class="primary-button" type="submit">Add item</button>
@@ -44,7 +88,9 @@
     </div>
     <div class="overflow-x-auto">
       <table class="w-full min-w-[920px] border-collapse text-left text-sm">
-        <thead class="bg-slate-50 text-xs uppercase tracking-normal text-slate-500">
+        <thead
+          class="bg-slate-50 text-xs uppercase tracking-normal text-slate-500"
+        >
           <tr>
             <th class="px-4 py-3">Set Number</th>
             <th class="px-4 py-3">Name</th>
@@ -57,7 +103,14 @@
           </tr>
         </thead>
         <tbody data-holdings-body class="divide-y divide-slate-200">
-          <tr><td class="px-4 py-8 text-center font-semibold text-slate-500" colspan="8">Loading portfolio...</td></tr>
+          <tr>
+            <td
+              class="px-4 py-8 text-center font-semibold text-slate-500"
+              colspan="8"
+            >
+              Loading portfolio...
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>

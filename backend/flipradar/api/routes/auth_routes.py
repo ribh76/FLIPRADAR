@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.auth import get_current_user
-from flipradar.api.schemas import TokenResponse, UserCreate, UserLogin, UserResponse
 from flipradar.api.dependencies.database import get_db_session
+from flipradar.api.schemas import TokenResponse, UserCreate, UserLogin, UserResponse
 from flipradar.domain.models import User
 from flipradar.services import auth_service
 

@@ -7,7 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas.validation import MarketplaceName, normalize_set_number
 from flipradar.database.session import SessionLocal
-from flipradar.domain.models import LegoSet, Marketplace, MarketplaceListing, PriceSnapshot
+from flipradar.domain.models import (
+    LegoSet,
+    Marketplace,
+    MarketplaceListing,
+    PriceSnapshot,
+)
 from flipradar.integrations import bricklink_mock_client as bricklink_client
 from flipradar.integrations import ebay_mock_client as ebay_client
 from flipradar.services import listing_normalizer, snapshot_builder
@@ -22,7 +27,9 @@ async def update_marketplace_data(
     if db is None:
         async with SessionLocal() as session:
             try:
-                snapshot = await _update_marketplace_data(session, normalized_set_number)
+                snapshot = await _update_marketplace_data(
+                    session, normalized_set_number
+                )
                 await session.commit()
             except Exception:
                 await session.rollback()
@@ -154,7 +161,9 @@ async def _save_snapshots_by_marketplace(
     snapshots = []
     for marketplace_name in sorted(listings_by_marketplace):
         marketplace = await _get_or_create_marketplace(db, marketplace_name)
-        snapshot_data = snapshot_builder.build(listings_by_marketplace[marketplace_name])
+        snapshot_data = snapshot_builder.build(
+            listings_by_marketplace[marketplace_name]
+        )
         snapshot = await _save_snapshot(db, lego_set, marketplace, snapshot_data)
         snapshots.append(snapshot)
     return snapshots

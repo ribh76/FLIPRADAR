@@ -1,5 +1,7 @@
 import logging
-from decimal import Decimal, ROUND_HALF_UP
+from collections.abc import Sequence
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 from flipradar.domain.models import PriceSnapshot
 
@@ -7,7 +9,7 @@ logger = logging.getLogger(__name__)
 logger.debug("engine initialized name=price_estimator")
 
 
-def estimate_fair_value(snapshots: list[PriceSnapshot]) -> dict:
+def estimate_fair_value(snapshots: Sequence[PriceSnapshot] | Sequence[Any]) -> dict:
     if not snapshots:
         return {
             "fair_value": Decimal("0.00"),

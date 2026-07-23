@@ -10,4 +10,5 @@ venv/
 .venv/
 node_modules/
 dist/
+coverage/
 *.tsbuildinfo

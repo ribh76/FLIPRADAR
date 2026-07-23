@@ -32,7 +32,7 @@ def SessionLocal(*args, **kwargs) -> AsyncSession:
     return get_session_factory()(*args, **kwargs)
 
 
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_db_session() -> AsyncGenerator[AsyncSession]:
     logger.debug("db session initiation")
     async with get_session_factory()() as session:
         try:

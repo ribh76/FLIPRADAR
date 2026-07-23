@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from flipradar.api.schemas.validation import (
     Money,
     OptionalMoney,
+    PortfolioCondition,
     PortfolioConditionValue,
     SetNumber,
 )
@@ -16,7 +17,7 @@ class PortfolioItemCreate(BaseModel):
     set_number: SetNumber = Field(..., min_length=1, max_length=32)
     quantity: int = Field(default=1, gt=0)
     purchase_price: Money = Field(..., ge=0, decimal_places=2)
-    condition: PortfolioConditionValue = "unknown"
+    condition: PortfolioConditionValue = PortfolioCondition.UNKNOWN
     acquired_at: datetime | None = None
     notes: str | None = Field(default=None, max_length=2000)
 

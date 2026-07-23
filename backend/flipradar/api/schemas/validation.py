@@ -49,9 +49,7 @@ def quantize_money(value: Decimal | None) -> Decimal | None:
 
 SetNumber = Annotated[str, BeforeValidator(normalize_set_number)]
 LowerText = Annotated[str, BeforeValidator(normalize_lower_text)]
-MarketplaceValue = Annotated[
-    MarketplaceName, BeforeValidator(normalize_lower_text)
-]
+MarketplaceValue = Annotated[MarketplaceName, BeforeValidator(normalize_lower_text)]
 ListingConditionValue = Annotated[
     ListingCondition, BeforeValidator(normalize_lower_text)
 ]

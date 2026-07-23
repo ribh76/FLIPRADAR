@@ -19,8 +19,12 @@ export function SetDetailPage() {
 
   const onMount = useCallback(
     (root: HTMLDivElement) => {
-      const form = root.querySelector<HTMLFormElement>("[data-set-search-form]");
-      const input = root.querySelector<HTMLInputElement>("input[name='set_number']");
+      const form = root.querySelector<HTMLFormElement>(
+        "[data-set-search-form]",
+      );
+      const input = root.querySelector<HTMLInputElement>(
+        "input[name='set_number']",
+      );
       const errorBox = root.querySelector<HTMLElement>("[data-error]");
       const loading = root.querySelector<HTMLElement>("[data-loading]");
       const detailShell = root.querySelector<HTMLElement>("[data-detail]");
@@ -41,7 +45,9 @@ export function SetDetailPage() {
 
       const renderDetail = (detail: SetDetail) => {
         const hasMarketData = detail.valuation_status === "available";
-        const status = root.querySelector<HTMLElement>("[data-valuation-status]");
+        const status = root.querySelector<HTMLElement>(
+          "[data-valuation-status]",
+        );
         const noMarket = root.querySelector<HTMLElement>("[data-no-market]");
 
         detailShell?.classList.remove("hidden");
@@ -53,15 +59,35 @@ export function SetDetailPage() {
         setText(root, "[data-set-number]", detail.set_number);
         setText(root, "[data-theme]", detail.theme ?? "--");
         setText(root, "[data-subtheme]", detail.subtheme ?? "--");
-        setText(root, "[data-release-year]", detail.release_year?.toString() ?? "--");
-        setText(root, "[data-retirement-year]", detail.retirement_year?.toString() ?? "--");
+        setText(
+          root,
+          "[data-release-year]",
+          detail.release_year?.toString() ?? "--",
+        );
+        setText(
+          root,
+          "[data-retirement-year]",
+          detail.retirement_year?.toString() ?? "--",
+        );
         setText(root, "[data-piece-count]", numberValue(detail.piece_count));
-        setText(root, "[data-minifig-count]", numberValue(detail.minifig_count));
+        setText(
+          root,
+          "[data-minifig-count]",
+          numberValue(detail.minifig_count),
+        );
         setText(root, "[data-fair-value]", currency(detail.fair_value));
         setText(root, "[data-market-low]", currency(detail.market_low));
         setText(root, "[data-market-high]", currency(detail.market_high));
-        setText(root, "[data-listing-count]", numberValue(detail.listing_count));
-        setText(root, "[data-confidence]", detail.confidence?.toUpperCase() ?? "--");
+        setText(
+          root,
+          "[data-listing-count]",
+          numberValue(detail.listing_count),
+        );
+        setText(
+          root,
+          "[data-confidence]",
+          detail.confidence?.toUpperCase() ?? "--",
+        );
 
         if (status) {
           status.textContent = detail.valuation_status;
@@ -81,7 +107,9 @@ export function SetDetailPage() {
         setLoading(true);
         detailShell?.classList.add("hidden");
         try {
-          const response = await api.get<SetDetail>(`/sets/${encodeURIComponent(number)}`);
+          const response = await api.get<SetDetail>(
+            `/sets/${encodeURIComponent(number)}`,
+          );
           renderDetail(response.data);
         } catch (error) {
           showError(getApiError(error));
@@ -109,7 +137,7 @@ export function SetDetailPage() {
 
       return () => form?.removeEventListener("submit", handleSubmit);
     },
-    [navigate, setNumber]
+    [navigate, setNumber],
   );
 
   return <HtmlTemplate html={setDetailHtml} onMount={onMount} />;

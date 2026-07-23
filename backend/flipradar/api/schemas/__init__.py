@@ -1,4 +1,9 @@
-from flipradar.api.schemas.auth_schema import TokenResponse, UserCreate, UserLogin, UserResponse
+from flipradar.api.schemas.auth_schema import (
+    TokenResponse,
+    UserCreate,
+    UserLogin,
+    UserResponse,
+)
 from flipradar.api.schemas.lego_set_schema import LegoSetCreate, LegoSetResponse
 from flipradar.api.schemas.listing_schema import (
     ListingCreate,
@@ -6,13 +11,16 @@ from flipradar.api.schemas.listing_schema import (
     MarketplaceCreate,
     MarketplaceResponse,
 )
-from flipradar.api.schemas.pricing_schema import PriceSnapshotCreate, PriceSnapshotResponse
 from flipradar.api.schemas.portfolio_schema import (
     PortfolioHoldingSummary,
     PortfolioItemCreate,
     PortfolioItemResponse,
     PortfolioItemUpdate,
     PortfolioSummaryResponse,
+)
+from flipradar.api.schemas.pricing_schema import (
+    PriceSnapshotCreate,
+    PriceSnapshotResponse,
 )
 from flipradar.api.schemas.recommendation_schema import (
     AnalyzeRequest,

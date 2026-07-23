@@ -8,7 +8,9 @@ export function SetsPage() {
 
   const onMount = useCallback(
     (root: HTMLDivElement) => {
-      const form = root.querySelector<HTMLFormElement>("[data-set-search-form]");
+      const form = root.querySelector<HTMLFormElement>(
+        "[data-set-search-form]",
+      );
       const message = root.querySelector<HTMLElement>("[data-message]");
 
       const handleSubmit = (event: SubmitEvent) => {
@@ -28,7 +30,7 @@ export function SetsPage() {
       form?.addEventListener("submit", handleSubmit);
       return () => form?.removeEventListener("submit", handleSubmit);
     },
-    [navigate]
+    [navigate],
   );
 
   return <HtmlTemplate html={setsHtml} onMount={onMount} />;

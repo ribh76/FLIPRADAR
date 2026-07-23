@@ -8,7 +8,9 @@ export function Logo({ compact = false }: { compact?: boolean }) {
       </div>
       {!compact && (
         <div>
-          <div className="text-lg font-bold leading-none text-white">FlipRadar</div>
+          <div className="text-lg font-bold leading-none text-white">
+            FlipRadar
+          </div>
           <div className="mt-1 text-xs font-medium text-blue-100">
             LEGO set decisions without the spreadsheet fog
           </div>

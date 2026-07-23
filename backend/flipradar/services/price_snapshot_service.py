@@ -5,8 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas import PriceSnapshotCreate
-from flipradar.api.schemas.validation import MarketplaceName
-from flipradar.api.schemas.validation import normalize_set_number
+from flipradar.api.schemas.validation import MarketplaceName, normalize_set_number
 from flipradar.domain.models import LegoSet, Marketplace, PriceSnapshot
 
 logger = logging.getLogger(__name__)
