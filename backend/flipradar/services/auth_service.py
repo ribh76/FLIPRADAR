@@ -19,6 +19,9 @@ from flipradar.api.schemas import (
     EmailVerificationRequest,
     EmailVerificationResponse,
     LogoutRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
+    PasswordResetResponse,
     RefreshTokenRequest,
     ResendVerificationResponse,
     TokenResponse,
@@ -42,9 +45,15 @@ from flipradar.database.repositories import (
     mark_account_token_used,
     mark_user_email_verified,
     revoke_account_tokens_for_user,
+    update_user_password_hash,
 )
 from flipradar.domain.models import User
-from flipradar.services.email_service import send_verification_email
+from flipradar.services.email_service import (
+    send_password_reset_email,
+    send_registration_email,
+    send_security_email,
+    send_verification_email,
+)
 
 EMAIL_VERIFICATION_PURPOSE = "email_verification"
 PASSWORD_RESET_PURPOSE = "password_reset"
@@ -68,6 +77,13 @@ def _invalid_email_verification_token() -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="Invalid or expired verification token",
+    )
+
+
+def _invalid_password_reset_token() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Invalid or expired reset token",
     )
 
 
@@ -98,6 +114,11 @@ def _account_token_jti(payload: dict) -> str:
 def _verification_url(token: str) -> str:
     frontend_url = get_settings().application.frontend_url.rstrip("/")
     return f"{frontend_url}/verify-email?token={token}"
+
+
+def _password_reset_url(token: str) -> str:
+    frontend_url = get_settings().application.frontend_url.rstrip("/")
+    return f"{frontend_url}/reset-password?token={token}"
 
 
 def _aware_utc(value: datetime) -> datetime:
@@ -160,6 +181,17 @@ async def _send_email_verification_token(db: AsyncSession, user: User) -> None:
     )
 
 
+async def _send_password_reset_token(db: AsyncSession, user: User) -> None:
+    token = await _issue_account_token(
+        db, user=user, purpose=PASSWORD_RESET_PURPOSE, mark_sent=True
+    )
+    await send_password_reset_email(
+        to_address=user.email,
+        username=user.username,
+        reset_url=_password_reset_url(token),
+    )
+
+
 async def register_user(db: AsyncSession, payload: UserCreate) -> TokenResponse:
     existing = await get_user_by_username_or_email(db, payload.username)
     if existing is None:
@@ -184,6 +216,7 @@ async def register_user(db: AsyncSession, payload: UserCreate) -> TokenResponse:
         ) from exc
 
     await _send_email_verification_token(db, user)
+    await send_registration_email(to_address=user.email, username=user.username)
     return _token_response(user)
 
 
@@ -244,6 +277,94 @@ async def verify_email(
     return EmailVerificationResponse(
         verified=True, message="Email address verified successfully"
     )
+
+
+def _assert_account_token_valid(
+    *,
+    token_record,
+    user_id: UUID,
+    now: datetime,
+    invalid_error: HTTPException,
+) -> None:
+    if (
+        token_record is None
+        or token_record.user_id != user_id
+        or token_record.used_at is not None
+        or token_record.revoked_at is not None
+        or _aware_utc(token_record.expires_at) <= now
+    ):
+        raise invalid_error
+
+
+async def request_password_reset(
+    db: AsyncSession, payload: PasswordResetRequest
+) -> PasswordResetResponse:
+    user = await get_user_by_username_or_email(db, payload.email)
+    if user is None:
+        return PasswordResetResponse(
+            message="If an account exists for that email, a reset link has been sent"
+        )
+
+    latest_token = await get_latest_account_token_for_user(
+        db, user.id, PASSWORD_RESET_PURPOSE
+    )
+    available_at = _resend_available_at(latest_token)
+    now = datetime.now(UTC)
+    if available_at is not None and available_at > now:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Please wait before requesting another password reset email",
+        )
+
+    await _send_password_reset_token(db, user)
+    return PasswordResetResponse(
+        message="If an account exists for that email, a reset link has been sent"
+    )
+
+
+async def confirm_password_reset(
+    db: AsyncSession, payload: PasswordResetConfirmRequest
+) -> PasswordResetResponse:
+    try:
+        token_payload = decode_account_token(
+            payload.token, expected_purpose=PASSWORD_RESET_PURPOSE
+        )
+    except HTTPException as exc:
+        raise _invalid_password_reset_token() from exc
+
+    user_id = _account_token_subject(token_payload)
+    token_record = await get_account_token_by_hash(
+        db, hash_account_token(payload.token), PASSWORD_RESET_PURPOSE
+    )
+    now = datetime.now(UTC)
+    _assert_account_token_valid(
+        token_record=token_record,
+        user_id=user_id,
+        now=now,
+        invalid_error=_invalid_password_reset_token(),
+    )
+
+    user = token_record.user
+    if user is None:
+        user = await get_user_by_id(db, user_id)
+    if user is None:
+        raise _invalid_password_reset_token()
+
+    await update_user_password_hash(db, user, hash_password(payload.password))
+    await mark_account_token_used(db, token_record, now)
+    await revoke_account_tokens_for_user(
+        db,
+        user_id=user.id,
+        purpose=PASSWORD_RESET_PURPOSE,
+        revoked_at=now,
+        reason="password_reset_complete",
+    )
+    await send_security_email(
+        to_address=user.email,
+        username=user.username,
+        event_label="Your password was reset",
+    )
+    return PasswordResetResponse(message="Password reset successfully")
 
 
 async def resend_verification_email(

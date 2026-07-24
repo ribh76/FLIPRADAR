@@ -11,6 +11,7 @@ import { AnalyzePage } from "./pages/AnalyzePage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { SetDetailPage } from "./pages/SetDetailPage";
 import { SetsPage } from "./pages/SetsPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/login" replace /> },
   { path: "/login", element: <LoginPage /> },
   { path: "/register", element: <LoginPage /> },
+  { path: "/reset-password", element: <ResetPasswordPage /> },
   { path: "/verify-email", element: <VerifyEmailPage /> },
   {
     element: (

@@ -570,6 +570,13 @@ def verification_token_from_url(verification_url: str) -> str:
     return tokens[0]
 
 
+def reset_token_from_url(reset_url: str) -> str:
+    parsed = urlparse(reset_url)
+    tokens = parse_qs(parsed.query).get("token")
+    assert tokens, reset_url
+    return tokens[0]
+
+
 def test_register_success(client: TestClient):
     response = client.post(
         "/auth/register",
@@ -645,6 +652,33 @@ def test_register_sends_verification_email_and_verify_endpoint_confirms_email(
     assert verify_response.json()["verified"] is True
     assert profile_response.status_code == 200
     assert profile_response.json()["is_email_verified"] is True
+
+
+def test_register_sends_registration_email(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    sent_registration: list[dict] = []
+
+    async def capture_registration_email(**kwargs):
+        sent_registration.append(kwargs)
+
+    monkeypatch.setattr(
+        auth_service, "send_registration_email", capture_registration_email
+    )
+
+    response = client.post(
+        "/auth/register",
+        json={
+            "username": "welcometest",
+            "email": "welcometest@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    assert sent_registration == [
+        {"to_address": "welcometest@example.com", "username": "welcometest"}
+    ]
 
 
 def test_verify_email_rejects_reused_token(
@@ -739,6 +773,163 @@ def test_resend_verification_returns_already_verified(
     assert response.status_code == 200
     assert response.json()["sent"] is False
     assert response.json()["message"] == "Email address is already verified"
+
+
+def test_password_reset_request_sends_reset_email_and_confirm_sends_security_email(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    reset_urls: list[str] = []
+    security_events: list[dict] = []
+
+    async def capture_password_reset_email(**kwargs):
+        reset_urls.append(kwargs["reset_url"])
+
+    async def capture_security_email(**kwargs):
+        security_events.append(kwargs)
+
+    monkeypatch.setattr(
+        auth_service, "send_password_reset_email", capture_password_reset_email
+    )
+    monkeypatch.setattr(auth_service, "send_security_email", capture_security_email)
+    client.post(
+        "/auth/register",
+        json={
+            "username": "resetuser",
+            "email": "resetuser@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+
+    request_response = client.post(
+        "/auth/password-reset/request", json={"email": "resetuser@example.com"}
+    )
+    reset_token = reset_token_from_url(reset_urls[0])
+    confirm_response = client.post(
+        "/auth/password-reset/confirm",
+        json={"token": reset_token, "password": "N3w!StrongPass"},
+    )
+    old_login = client.post(
+        "/auth/login",
+        json={"username_or_email": "resetuser", "password": VALID_PASSWORD},
+    )
+    new_login = client.post(
+        "/auth/login",
+        json={"username_or_email": "resetuser", "password": "N3w!StrongPass"},
+    )
+
+    assert request_response.status_code == 200, request_response.text
+    assert "/reset-password?token=" in reset_urls[0]
+    assert confirm_response.status_code == 200, confirm_response.text
+    assert confirm_response.json()["message"] == "Password reset successfully"
+    assert old_login.status_code == 401
+    assert new_login.status_code == 200
+    assert security_events == [
+        {
+            "to_address": "resetuser@example.com",
+            "username": "resetuser",
+            "event_label": "Your password was reset",
+        }
+    ]
+
+
+def test_password_reset_request_is_throttled(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    reset_urls: list[str] = []
+
+    async def capture_password_reset_email(**kwargs):
+        reset_urls.append(kwargs["reset_url"])
+
+    monkeypatch.setattr(
+        auth_service, "send_password_reset_email", capture_password_reset_email
+    )
+    client.post(
+        "/auth/register",
+        json={
+            "username": "resetwait",
+            "email": "resetwait@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+
+    first_response = client.post(
+        "/auth/password-reset/request", json={"email": "resetwait@example.com"}
+    )
+    second_response = client.post(
+        "/auth/password-reset/request", json={"email": "resetwait@example.com"}
+    )
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 429
+    assert second_response.json()["detail"] == (
+        "Please wait before requesting another password reset email"
+    )
+    assert len(reset_urls) == 1
+
+
+def test_password_reset_confirm_rejects_reused_token(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    reset_urls: list[str] = []
+
+    async def capture_password_reset_email(**kwargs):
+        reset_urls.append(kwargs["reset_url"])
+
+    async def capture_security_email(**kwargs):
+        del kwargs
+
+    monkeypatch.setattr(
+        auth_service, "send_password_reset_email", capture_password_reset_email
+    )
+    monkeypatch.setattr(auth_service, "send_security_email", capture_security_email)
+    client.post(
+        "/auth/register",
+        json={
+            "username": "resetonce",
+            "email": "resetonce@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    client.post("/auth/password-reset/request", json={"email": "resetonce@example.com"})
+    token = reset_token_from_url(reset_urls[0])
+
+    assert (
+        client.post(
+            "/auth/password-reset/confirm",
+            json={"token": token, "password": "N3w!StrongPass"},
+        ).status_code
+        == 200
+    )
+    reused_response = client.post(
+        "/auth/password-reset/confirm",
+        json={"token": token, "password": "N3w!StrongPass2"},
+    )
+
+    assert reused_response.status_code == 400
+    assert reused_response.json()["detail"] == "Invalid or expired reset token"
+
+
+def test_password_reset_request_for_unknown_email_is_generic(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    reset_urls: list[str] = []
+
+    async def capture_password_reset_email(**kwargs):
+        reset_urls.append(kwargs["reset_url"])
+
+    monkeypatch.setattr(
+        auth_service, "send_password_reset_email", capture_password_reset_email
+    )
+
+    response = client.post(
+        "/auth/password-reset/request", json={"email": "missing@example.com"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == (
+        "If an account exists for that email, a reset link has been sent"
+    )
+    assert reset_urls == []
 
 
 def test_user_model_extends_base():

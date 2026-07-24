@@ -17,6 +17,19 @@ def normalize_account_identifier(value: object) -> str:
     return str(value).strip().lower()
 
 
+def validate_password_strength_value(value: str) -> str:
+    letter_count = sum(character.isalpha() for character in value)
+    has_number = any(character.isdigit() for character in value)
+    has_special = any(
+        not character.isalnum() and not character.isspace() for character in value
+    )
+    if letter_count < 2 or not has_number or not has_special:
+        raise ValueError(
+            "Password must include at least two letters, one number, and one special character"
+        )
+    return value
+
+
 class UserCreate(BaseModel):
     username: str = Field(
         ...,
@@ -54,16 +67,7 @@ class UserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password_strength(cls, value: str) -> str:
-        letter_count = sum(character.isalpha() for character in value)
-        has_number = any(character.isdigit() for character in value)
-        has_special = any(
-            not character.isalnum() and not character.isspace() for character in value
-        )
-        if letter_count < 2 or not has_number or not has_special:
-            raise ValueError(
-                "Password must include at least two letters, one number, and one special character"
-            )
-        return value
+        return validate_password_strength_value(value)
 
 
 class UserLogin(BaseModel):
@@ -114,4 +118,27 @@ class EmailVerificationResponse(BaseModel):
 class ResendVerificationResponse(BaseModel):
     sent: bool
     throttled: bool = False
+    message: str
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: object) -> str:
+        return normalize_email_address(value)
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    token: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, value: str) -> str:
+        return validate_password_strength_value(value)
+
+
+class PasswordResetResponse(BaseModel):
     message: str

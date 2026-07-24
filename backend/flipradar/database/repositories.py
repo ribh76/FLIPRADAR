@@ -118,6 +118,15 @@ async def mark_user_email_verified(
     return user
 
 
+async def update_user_password_hash(
+    db: AsyncSession, user: User, hashed_password: str
+) -> User:
+    user.hashed_password = hashed_password
+    await db.flush()
+    await db.refresh(user)
+    return user
+
+
 async def create_account_token_record(
     db: AsyncSession,
     *,

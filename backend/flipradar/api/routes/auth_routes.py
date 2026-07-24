@@ -9,6 +9,9 @@ from flipradar.api.schemas import (
     EmailVerificationRequest,
     EmailVerificationResponse,
     LogoutRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
+    PasswordResetResponse,
     RefreshTokenRequest,
     ResendVerificationResponse,
     TokenResponse,
@@ -84,6 +87,36 @@ async def resend_verification(
     logger.info(
         "request finished route=resend_verification user_id=%s", current_user.id
     )
+    return response
+
+
+@router.post(
+    "/password-reset/request",
+    response_model=PasswordResetResponse,
+    summary="Request password reset",
+    description="Send a throttled password reset email when an account exists.",
+)
+async def request_password_reset(
+    payload: PasswordResetRequest, db: AsyncSession = Depends(get_db_session)
+) -> PasswordResetResponse:
+    logger.info("request started route=request_password_reset")
+    response = await auth_service.request_password_reset(db, payload)
+    logger.info("request finished route=request_password_reset")
+    return response
+
+
+@router.post(
+    "/password-reset/confirm",
+    response_model=PasswordResetResponse,
+    summary="Confirm password reset",
+    description="Reset a password with a short-lived password reset token.",
+)
+async def confirm_password_reset(
+    payload: PasswordResetConfirmRequest, db: AsyncSession = Depends(get_db_session)
+) -> PasswordResetResponse:
+    logger.info("request started route=confirm_password_reset")
+    response = await auth_service.confirm_password_reset(db, payload)
+    logger.info("request finished route=confirm_password_reset")
     return response
 
 

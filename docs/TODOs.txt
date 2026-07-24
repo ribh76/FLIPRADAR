@@ -195,7 +195,7 @@ Classification: MUST SHIP (Complete)
 15. Add full account and authorization tests.
 
 PHASE 10: EMAIL VERIFICATION AND PASSWORD RESET
-Classification: MUST SHIP
+Classification: MUST SHIP (Complete)
 
 1. Select and configure an email provider. (made fake email address) 
 2. Create an email-service abstraction. (done) 
@@ -204,13 +204,13 @@ Classification: MUST SHIP
 5. Send verification emails after registration. (Done) 
 6. Add a verification endpoint and confirmation page. (Done) 
 7. Add resend-verification with throttling. (done) 
-8. Generate password-reset tokens without exposing account existence. 4
-9. Send password-reset emails. 4
-10. Add reset-password frontend and backend flows. 4
-11. Invalidate tokens after successful use. 4
-12. Revoke sessions after password reset. 4
-13. Add verification, reset, and security email templates. 5
-14. Add mocks and tests for all email flows. 5 
+8. Generate password-reset tokens without exposing account existence. (Done)
+9. Send password-reset emails. (Done)
+10. Add reset-password frontend and backend flows. (Done)
+11. Invalidate tokens after successful use. (Done)
+12. Revoke sessions after password reset. (Done)
+13. Add verification, reset, and security email templates. (Done)
+14. Add mocks and tests for all email flows. (Done)
 
 PHASE 11: ACCOUNT SETTINGS AND EMAIL CHANGES
 Classification: MUST SHIP
