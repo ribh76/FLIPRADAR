@@ -13,12 +13,14 @@ import { LoginPage } from "./pages/LoginPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import { SetDetailPage } from "./pages/SetDetailPage";
 import { SetsPage } from "./pages/SetsPage";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import "./styles.css";
 
 const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/login" replace /> },
   { path: "/login", element: <LoginPage /> },
   { path: "/register", element: <LoginPage /> },
+  { path: "/verify-email", element: <VerifyEmailPage /> },
   {
     element: (
       <ProtectedRoute>

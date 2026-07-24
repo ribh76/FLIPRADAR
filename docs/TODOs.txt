@@ -176,7 +176,7 @@ PART III - SECURITY AND ACCOUNTS
 ==================================================
 
 PHASE 9: CORE ACCOUNT SYSTEM
-Classification: MUST SHIP
+Classification: MUST SHIP (Complete) 
 
 1. Finalize the user model. (Done) 
 2. Normalize emails and enforce case-insensitive uniqueness. (Done) 
@@ -197,25 +197,26 @@ Classification: MUST SHIP
 PHASE 10: EMAIL VERIFICATION AND PASSWORD RESET
 Classification: MUST SHIP
 
-1. Select and configure an email provider.
-2. Create an email-service abstraction.
-3. Add a model for single-use verification and reset tokens.
-4. Generate secure expiring email-verification tokens.
-5. Send verification emails after registration.
-6. Add a verification endpoint and confirmation page.
-7. Add resend-verification with throttling.
-8. Generate password-reset tokens without exposing account existence.
-9. Send password-reset emails.
-10. Add reset-password frontend and backend flows.
-11. Invalidate tokens after successful use.
-12. Revoke sessions after password reset.
-13. Add verification, reset, and security email templates.
-14. Add mocks and tests for all email flows.
+1. Select and configure an email provider. (made fake email address) 
+2. Create an email-service abstraction. (done) 
+3. Add a model for single-use verification and reset tokens. (Done) 
+4. Generate secure expiring email-verification tokens. (Done) 
+5. Send verification emails after registration. (Done) 
+6. Add a verification endpoint and confirmation page. (Done) 
+7. Add resend-verification with throttling. (done) 
+8. Generate password-reset tokens without exposing account existence. 4
+9. Send password-reset emails. 4
+10. Add reset-password frontend and backend flows. 4
+11. Invalidate tokens after successful use. 4
+12. Revoke sessions after password reset. 4
+13. Add verification, reset, and security email templates. 5
+14. Add mocks and tests for all email flows. 5 
 
 PHASE 11: ACCOUNT SETTINGS AND EMAIL CHANGES
 Classification: MUST SHIP
 
-1. Build an account settings page.
+Prompt 6: 1-7, prompt 7: 8-13 
+1. Build an account settings page. 
 2. Allow display-name updates.
 3. Allow password changes after confirming the current password.
 4. Add an email-change request workflow.

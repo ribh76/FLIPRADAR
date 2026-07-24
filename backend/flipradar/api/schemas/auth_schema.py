@@ -100,3 +100,18 @@ class RefreshTokenRequest(BaseModel):
 
 class LogoutRequest(BaseModel):
     refresh_token: str | None = Field(default=None, min_length=1)
+
+
+class EmailVerificationRequest(BaseModel):
+    token: str = Field(..., min_length=1)
+
+
+class EmailVerificationResponse(BaseModel):
+    verified: bool
+    message: str
+
+
+class ResendVerificationResponse(BaseModel):
+    sent: bool
+    throttled: bool = False
+    message: str

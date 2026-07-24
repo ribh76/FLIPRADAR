@@ -55,24 +55,32 @@ class AuthenticationSettings(BaseModel):
     jwt_algorithm: str
     access_token_expire_minutes: int
     refresh_token_expire_days: int
+    email_verification_token_expire_minutes: int
+    password_reset_token_expire_minutes: int
+    account_token_resend_cooldown_seconds: int
     password_min_length: int
 
 
 class EmailSettings(BaseModel):
     enabled: bool
     provider: str
-    from_address: str | None
-    smtp_host: str | None
+    from_address: str
+    smtp_host: str
     smtp_port: int
-    smtp_username: str | None
+    smtp_username: str
     smtp_password: str | None
+    auth_email_app_password: str | None
     timeout_seconds: int
 
     @property
     def configured(self) -> bool:
         if not self.enabled:
             return False
-        return bool(self.from_address and self.smtp_host)
+        return bool(self.smtp_host and self.smtp_username and self.password)
+
+    @property
+    def password(self) -> str | None:
+        return self.auth_email_app_password or self.smtp_password
 
 
 class ProviderSettings(BaseModel):
@@ -170,15 +178,29 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = Field(
         default=30, ge=1, alias="REFRESH_TOKEN_EXPIRE_DAYS"
     )
+    email_verification_token_expire_minutes: int = Field(
+        default=30, ge=1, alias="EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES"
+    )
+    password_reset_token_expire_minutes: int = Field(
+        default=15, ge=1, alias="PASSWORD_RESET_TOKEN_EXPIRE_MINUTES"
+    )
+    account_token_resend_cooldown_seconds: int = Field(
+        default=300, ge=1, alias="ACCOUNT_TOKEN_RESEND_COOLDOWN_SECONDS"
+    )
     password_min_length: int = Field(default=8, ge=8, alias="PASSWORD_MIN_LENGTH")
 
     email_enabled: bool = Field(default=False, alias="EMAIL_ENABLED")
     email_provider: str = Field(default="smtp", alias="EMAIL_PROVIDER")
-    email_from_address: str | None = Field(default=None, alias="EMAIL_FROM_ADDRESS")
-    smtp_host: str | None = Field(default=None, alias="SMTP_HOST")
+    email_from_address: str = Field(
+        default="auth@flipradar.com", alias="EMAIL_FROM_ADDRESS"
+    )
+    smtp_host: str = Field(default="smtp.gmail.com", alias="SMTP_HOST")
     smtp_port: int = Field(default=587, alias="SMTP_PORT")
-    smtp_username: str | None = Field(default=None, alias="SMTP_USERNAME")
+    smtp_username: str = Field(default="auth@flipradar.com", alias="SMTP_USERNAME")
     smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
+    auth_email_app_password: str | None = Field(
+        default=None, alias="AUTH_EMAIL_APP_PASSWORD"
+    )
     email_timeout_seconds: int = Field(default=10, ge=1, alias="EMAIL_TIMEOUT_SECONDS")
 
     ebay_api_enabled: bool = Field(default=False, alias="EBAY_API_ENABLED")
@@ -237,10 +259,8 @@ class Settings(BaseSettings):
     @field_validator(
         "database_url_override",
         "alembic_database_url",
-        "email_from_address",
-        "smtp_host",
-        "smtp_username",
         "smtp_password",
+        "auth_email_app_password",
         "ebay_api_key",
         "ebay_api_secret",
         "bricklink_consumer_key",
@@ -315,6 +335,13 @@ class Settings(BaseSettings):
             jwt_algorithm=self.jwt_algorithm,
             access_token_expire_minutes=self.access_token_expire_minutes,
             refresh_token_expire_days=self.refresh_token_expire_days,
+            email_verification_token_expire_minutes=(
+                self.email_verification_token_expire_minutes
+            ),
+            password_reset_token_expire_minutes=self.password_reset_token_expire_minutes,
+            account_token_resend_cooldown_seconds=(
+                self.account_token_resend_cooldown_seconds
+            ),
             password_min_length=self.password_min_length,
         )
 
@@ -328,6 +355,7 @@ class Settings(BaseSettings):
             smtp_port=self.smtp_port,
             smtp_username=self.smtp_username,
             smtp_password=self.smtp_password,
+            auth_email_app_password=self.auth_email_app_password,
             timeout_seconds=self.email_timeout_seconds,
         )
 

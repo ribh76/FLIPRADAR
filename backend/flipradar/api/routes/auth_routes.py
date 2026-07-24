@@ -6,8 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from flipradar.api.dependencies.auth import AuthenticatedUser
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
+    EmailVerificationRequest,
+    EmailVerificationResponse,
     LogoutRequest,
     RefreshTokenRequest,
+    ResendVerificationResponse,
     TokenResponse,
     UserCreate,
     UserLogin,
@@ -49,6 +52,39 @@ async def login_user(
     token = await auth_service.authenticate_user(db, payload)
     logger.info("request finished route=login_user")
     return token
+
+
+@router.post(
+    "/verify-email",
+    response_model=EmailVerificationResponse,
+    summary="Verify email address",
+    description="Verify one account email address with a short-lived verification token.",
+)
+async def verify_email(
+    payload: EmailVerificationRequest, db: AsyncSession = Depends(get_db_session)
+) -> EmailVerificationResponse:
+    logger.info("request started route=verify_email")
+    response = await auth_service.verify_email(db, payload)
+    logger.info("request finished route=verify_email")
+    return response
+
+
+@router.post(
+    "/resend-verification",
+    response_model=ResendVerificationResponse,
+    summary="Resend verification email",
+    description="Send another verification email for the authenticated user, with throttling.",
+)
+async def resend_verification(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> ResendVerificationResponse:
+    logger.info("request started route=resend_verification user_id=%s", current_user.id)
+    response = await auth_service.resend_verification_email(db, current_user)
+    logger.info(
+        "request finished route=resend_verification user_id=%s", current_user.id
+    )
+    return response
 
 
 @router.post(

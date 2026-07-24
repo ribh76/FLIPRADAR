@@ -2,6 +2,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 import jwt
@@ -17,7 +18,7 @@ from flipradar.database import Base, get_db_session
 from flipradar.domain.engines import price_estimator
 from flipradar.domain.models import User
 from flipradar.main import create_app
-from flipradar.services import recommendation_service
+from flipradar.services import auth_service, recommendation_service
 
 logger = logging.getLogger(__name__)
 VALID_PASSWORD = "Str0ng!Pass"
@@ -562,6 +563,13 @@ def bearer_headers(access_token: str) -> dict:
     return {"Authorization": f"Bearer {access_token}"}
 
 
+def verification_token_from_url(verification_url: str) -> str:
+    parsed = urlparse(verification_url)
+    tokens = parse_qs(parsed.query).get("token")
+    assert tokens, verification_url
+    return tokens[0]
+
+
 def test_register_success(client: TestClient):
     response = client.post(
         "/auth/register",
@@ -596,6 +604,141 @@ def test_register_success(client: TestClient):
     assert access_payload["typ"] == "access"
     assert refresh_payload["typ"] == "refresh"
     assert refresh_payload["exp"] > access_payload["exp"]
+
+
+def test_register_sends_verification_email_and_verify_endpoint_confirms_email(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    sent_urls: list[str] = []
+
+    async def capture_verification_email(**kwargs):
+        sent_urls.append(kwargs["verification_url"])
+
+    monkeypatch.setattr(
+        auth_service, "send_verification_email", capture_verification_email
+    )
+
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "username": "verifyme",
+            "email": "verifyme@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    register_body = register_response.json()
+
+    assert register_response.status_code == 201, register_response.text
+    assert register_body["user"]["is_email_verified"] is False
+    assert len(sent_urls) == 1
+    assert "/verify-email?token=" in sent_urls[0]
+
+    verify_response = client.post(
+        "/auth/verify-email",
+        json={"token": verification_token_from_url(sent_urls[0])},
+    )
+    profile_response = client.get(
+        "/users/me", headers=bearer_headers(register_body["access_token"])
+    )
+
+    assert verify_response.status_code == 200, verify_response.text
+    assert verify_response.json()["verified"] is True
+    assert profile_response.status_code == 200
+    assert profile_response.json()["is_email_verified"] is True
+
+
+def test_verify_email_rejects_reused_token(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    sent_urls: list[str] = []
+
+    async def capture_verification_email(**kwargs):
+        sent_urls.append(kwargs["verification_url"])
+
+    monkeypatch.setattr(
+        auth_service, "send_verification_email", capture_verification_email
+    )
+    client.post(
+        "/auth/register",
+        json={
+            "username": "verifyonce",
+            "email": "verifyonce@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    token = verification_token_from_url(sent_urls[0])
+
+    assert client.post("/auth/verify-email", json={"token": token}).status_code == 200
+    reused_response = client.post("/auth/verify-email", json={"token": token})
+
+    assert reused_response.status_code == 400
+    assert reused_response.json()["detail"] == "Invalid or expired verification token"
+
+
+def test_resend_verification_is_throttled_after_registration(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    sent_urls: list[str] = []
+
+    async def capture_verification_email(**kwargs):
+        sent_urls.append(kwargs["verification_url"])
+
+    monkeypatch.setattr(
+        auth_service, "send_verification_email", capture_verification_email
+    )
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "username": "resendwait",
+            "email": "resendwait@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+
+    response = client.post(
+        "/auth/resend-verification",
+        headers=bearer_headers(register_response.json()["access_token"]),
+    )
+
+    assert response.status_code == 429
+    assert response.json()["detail"] == (
+        "Please wait before requesting another verification email"
+    )
+    assert len(sent_urls) == 1
+
+
+def test_resend_verification_returns_already_verified(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    sent_urls: list[str] = []
+
+    async def capture_verification_email(**kwargs):
+        sent_urls.append(kwargs["verification_url"])
+
+    monkeypatch.setattr(
+        auth_service, "send_verification_email", capture_verification_email
+    )
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "username": "alreadyverified",
+            "email": "alreadyverified@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    client.post(
+        "/auth/verify-email",
+        json={"token": verification_token_from_url(sent_urls[0])},
+    )
+
+    response = client.post(
+        "/auth/resend-verification",
+        headers=bearer_headers(register_response.json()["access_token"]),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["sent"] is False
+    assert response.json()["message"] == "Email address is already verified"
 
 
 def test_user_model_extends_base():

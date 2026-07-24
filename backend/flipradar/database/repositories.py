@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from flipradar.api.schemas.validation import MarketplaceName, normalize_set_number
 from flipradar.domain.models import (
+    AccountToken,
     LegoSet,
     Marketplace,
     MarketplaceListing,
@@ -105,6 +106,112 @@ async def create_user(db: AsyncSession, user_data: dict[str, Any]) -> User:
 
 async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
     return await db.get(User, user_id)
+
+
+async def mark_user_email_verified(
+    db: AsyncSession, user: User, verified_at: datetime
+) -> User:
+    user.is_email_verified = True
+    user.email_verified_at = verified_at
+    await db.flush()
+    await db.refresh(user)
+    return user
+
+
+async def create_account_token_record(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    purpose: str,
+    token_hash: str,
+    token_jti: str,
+    expires_at: datetime,
+    last_sent_at: datetime | None = None,
+    sent_count: int = 0,
+) -> AccountToken:
+    token = AccountToken(
+        user_id=user_id,
+        purpose=purpose,
+        token_hash=token_hash,
+        token_jti=token_jti,
+        expires_at=expires_at,
+        last_sent_at=last_sent_at,
+        sent_count=sent_count,
+    )
+    db.add(token)
+    try:
+        await db.flush()
+        await db.refresh(token)
+    except IntegrityError as exc:
+        raise DuplicateRecordError("Account token already exists") from exc
+    return token
+
+
+async def get_account_token_by_hash(
+    db: AsyncSession, token_hash: str, purpose: str
+) -> AccountToken | None:
+    result = await db.execute(
+        select(AccountToken)
+        .options(selectinload(AccountToken.user))
+        .where(
+            AccountToken.token_hash == token_hash,
+            AccountToken.purpose == purpose,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_latest_account_token_for_user(
+    db: AsyncSession, user_id: UUID, purpose: str
+) -> AccountToken | None:
+    result = await db.execute(
+        select(AccountToken)
+        .where(AccountToken.user_id == user_id, AccountToken.purpose == purpose)
+        .order_by(AccountToken.created_at.desc(), AccountToken.id.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def mark_account_token_sent(
+    db: AsyncSession, token: AccountToken, sent_at: datetime
+) -> AccountToken:
+    token.last_sent_at = sent_at
+    token.sent_count += 1
+    await db.flush()
+    await db.refresh(token)
+    return token
+
+
+async def mark_account_token_used(
+    db: AsyncSession, token: AccountToken, used_at: datetime
+) -> AccountToken:
+    token.used_at = used_at
+    await db.flush()
+    await db.refresh(token)
+    return token
+
+
+async def revoke_account_tokens_for_user(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    purpose: str,
+    revoked_at: datetime,
+    reason: str,
+) -> None:
+    result = await db.execute(
+        select(AccountToken).where(
+            AccountToken.user_id == user_id,
+            AccountToken.purpose == purpose,
+            AccountToken.used_at.is_(None),
+            AccountToken.revoked_at.is_(None),
+        )
+    )
+    for token in result.scalars():
+        token.revoked_at = revoked_at
+        token.revoked_reason = reason
+    await db.flush()
 
 
 async def is_refresh_token_blacklisted(db: AsyncSession, token_hash: str) -> bool:

@@ -35,11 +35,25 @@ def _not_authenticated() -> HTTPException:
     )
 
 
-def hash_refresh_token(token: str) -> str:
+def hash_jwt_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def _create_token(subject: str, *, token_type: str, expires_at: datetime) -> str:
+def hash_refresh_token(token: str) -> str:
+    return hash_jwt_token(token)
+
+
+def hash_account_token(token: str) -> str:
+    return hash_jwt_token(token)
+
+
+def _create_token(
+    subject: str,
+    *,
+    token_type: str,
+    expires_at: datetime,
+    extra_claims: dict | None = None,
+) -> str:
     settings = get_settings().auth
     payload = {
         "sub": subject,
@@ -48,6 +62,8 @@ def _create_token(subject: str, *, token_type: str, expires_at: datetime) -> str
         "iat": datetime.now(UTC),
         "exp": expires_at,
     }
+    if extra_claims:
+        payload.update(extra_claims)
     return jwt.encode(
         payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
     )
@@ -65,6 +81,20 @@ def create_refresh_token(subject: str) -> str:
     settings = get_settings().auth
     expires_at = datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)
     return _create_token(subject, token_type="refresh", expires_at=expires_at)
+
+
+def create_account_token(subject: str, *, purpose: str) -> str:
+    settings = get_settings().auth
+    expire_minutes = settings.email_verification_token_expire_minutes
+    if purpose == "password_reset":
+        expire_minutes = settings.password_reset_token_expire_minutes
+    expires_at = datetime.now(UTC) + timedelta(minutes=expire_minutes)
+    return _create_token(
+        subject,
+        token_type="account",
+        expires_at=expires_at,
+        extra_claims={"purpose": purpose},
+    )
 
 
 def decode_token(token: str, *, expected_type: str) -> dict:
@@ -86,6 +116,13 @@ def decode_access_token(token: str) -> dict:
 
 def decode_refresh_token(token: str) -> dict:
     return decode_token(token, expected_type="refresh")
+
+
+def decode_account_token(token: str, *, expected_purpose: str) -> dict:
+    payload = decode_token(token, expected_type="account")
+    if payload.get("purpose") != expected_purpose:
+        raise _not_authenticated()
+    return payload
 
 
 async def get_current_user(

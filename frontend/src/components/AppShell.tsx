@@ -7,8 +7,9 @@ import {
   Search,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { logoutCurrentSession } from "../api/client";
+import { api, getApiError, logoutCurrentSession } from "../api/client";
 import { Logo } from "./Logo";
 
 const navItems = [
@@ -20,10 +21,33 @@ const navItems = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const [isEmailVerified, setIsEmailVerified] = useState(true);
+  const [verificationMessage, setVerificationMessage] = useState("");
+
+  useEffect(() => {
+    api
+      .get("/users/me")
+      .then((response) => {
+        setIsEmailVerified(Boolean(response.data.is_email_verified));
+      })
+      .catch(() => {
+        setIsEmailVerified(true);
+      });
+  }, []);
 
   async function logout() {
     await logoutCurrentSession();
     navigate("/login");
+  }
+
+  async function resendVerification() {
+    setVerificationMessage("");
+    try {
+      const response = await api.post("/auth/resend-verification");
+      setVerificationMessage(response.data.message);
+    } catch (error) {
+      setVerificationMessage(getApiError(error));
+    }
   }
 
   return (
@@ -65,6 +89,26 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
         </div>
       </header>
+      {!isEmailVerified ? (
+        <section className="border-b border-blue-200 bg-blue-50 px-4 py-3 text-blue-950">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 text-sm font-medium sm:px-6 lg:px-8">
+            <span>
+              Verify your email address to finish securing your FlipRadar
+              account.
+            </span>
+            <div className="flex flex-wrap items-center gap-3">
+              {verificationMessage ? <span>{verificationMessage}</span> : null}
+              <button
+                type="button"
+                onClick={resendVerification}
+                className="rounded-md bg-blue-700 px-3 py-2 text-sm font-bold text-white"
+              >
+                Resend email
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
       <main className="mx-auto min-h-[calc(100vh-73px)] max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-7 flex items-center gap-3 text-blue-100">
           <BarChart3 size={18} aria-hidden="true" />
