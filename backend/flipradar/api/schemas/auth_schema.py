@@ -1,7 +1,20 @@
+import re
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+EMAIL_FORMAT_PATTERN = re.compile(
+    r"^[a-z0-9][a-z0-9._%+-]*@[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)*\.(com|org)$"
+)
+
+
+def normalize_email_address(value: object) -> str:
+    return str(value).strip().lower()
+
+
+def normalize_account_identifier(value: object) -> str:
+    return str(value).strip().lower()
 
 
 class UserCreate(BaseModel):
@@ -18,10 +31,39 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
 
-    @field_validator("username", "email", mode="before")
+    @field_validator("username", mode="before")
     @classmethod
-    def normalize_identifier(cls, value: object) -> str:
-        return str(value).strip().lower()
+    def normalize_username(cls, value: object) -> str:
+        return normalize_account_identifier(value)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: object) -> str:
+        return normalize_email_address(value)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_format(cls, value: EmailStr) -> str:
+        normalized = normalize_email_address(value)
+        if EMAIL_FORMAT_PATTERN.fullmatch(normalized) is None:
+            raise ValueError(
+                "Email must use username@domain.com or username@domain.org"
+            )
+        return normalized
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, value: str) -> str:
+        letter_count = sum(character.isalpha() for character in value)
+        has_number = any(character.isdigit() for character in value)
+        has_special = any(
+            not character.isalnum() and not character.isspace() for character in value
+        )
+        if letter_count < 2 or not has_number or not has_special:
+            raise ValueError(
+                "Password must include at least two letters, one number, and one special character"
+            )
+        return value
 
 
 class UserLogin(BaseModel):
@@ -31,13 +73,14 @@ class UserLogin(BaseModel):
     @field_validator("username_or_email", mode="before")
     @classmethod
     def normalize_identifier(cls, value: object) -> str:
-        return str(value).strip().lower()
+        return normalize_account_identifier(value)
 
 
 class UserResponse(BaseModel):
     id: UUID
     username: str
     email: str
+    is_email_verified: bool
     created_at: datetime
     updated_at: datetime
 
@@ -46,5 +89,10 @@ class UserResponse(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(..., min_length=1)

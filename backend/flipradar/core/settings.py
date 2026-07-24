@@ -54,6 +54,7 @@ class AuthenticationSettings(BaseModel):
     jwt_secret_key: str
     jwt_algorithm: str
     access_token_expire_minutes: int
+    refresh_token_expire_days: int
     password_min_length: int
 
 
@@ -164,7 +165,10 @@ class Settings(BaseSettings):
     )
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     access_token_expire_minutes: int = Field(
-        default=60, ge=1, alias="ACCESS_TOKEN_EXPIRE_MINUTES"
+        default=15, ge=1, alias="ACCESS_TOKEN_EXPIRE_MINUTES"
+    )
+    refresh_token_expire_days: int = Field(
+        default=30, ge=1, alias="REFRESH_TOKEN_EXPIRE_DAYS"
     )
     password_min_length: int = Field(default=8, ge=8, alias="PASSWORD_MIN_LENGTH")
 
@@ -310,6 +314,7 @@ class Settings(BaseSettings):
             jwt_secret_key=self.jwt_secret_key,
             jwt_algorithm=self.jwt_algorithm,
             access_token_expire_minutes=self.access_token_expire_minutes,
+            refresh_token_expire_days=self.refresh_token_expire_days,
             password_min_length=self.password_min_length,
         )
 

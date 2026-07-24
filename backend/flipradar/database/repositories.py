@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
 
@@ -18,6 +19,7 @@ from flipradar.domain.models import (
     PortfolioItem,
     PriceSnapshot,
     Recommendation,
+    RefreshTokenBlacklist,
     User,
 )
 
@@ -103,6 +105,40 @@ async def create_user(db: AsyncSession, user_data: dict[str, Any]) -> User:
 
 async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
     return await db.get(User, user_id)
+
+
+async def is_refresh_token_blacklisted(db: AsyncSession, token_hash: str) -> bool:
+    result = await db.execute(
+        select(RefreshTokenBlacklist.id).where(
+            RefreshTokenBlacklist.token_hash == token_hash
+        )
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def blacklist_refresh_token(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    token_hash: str,
+    token_jti: str,
+    expires_at: datetime,
+    reason: str,
+) -> RefreshTokenBlacklist:
+    token = RefreshTokenBlacklist(
+        user_id=user_id,
+        token_hash=token_hash,
+        token_jti=token_jti,
+        expires_at=expires_at,
+        reason=reason,
+    )
+    db.add(token)
+    try:
+        await db.flush()
+        await db.refresh(token)
+    except IntegrityError as exc:
+        raise DuplicateRecordError("Refresh token already revoked") from exc
+    return token
 
 
 # Set repository

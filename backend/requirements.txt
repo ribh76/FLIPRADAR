@@ -10,6 +10,7 @@ pydantic
 pydantic-settings
 email-validator
 passlib[bcrypt]
+argon2-cffi
 bcrypt<5
 PyJWT
 requests

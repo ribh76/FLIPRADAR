@@ -4,6 +4,7 @@ from flipradar.domain.models.marketplace import Marketplace
 from flipradar.domain.models.portfolio import PortfolioItem
 from flipradar.domain.models.price_snapshot import PriceSnapshot
 from flipradar.domain.models.recommendation import Recommendation
+from flipradar.domain.models.refresh_token import RefreshTokenBlacklist
 from flipradar.domain.models.user import User
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "PortfolioItem",
     "PriceSnapshot",
     "Recommendation",
+    "RefreshTokenBlacklist",
     "User",
 ]

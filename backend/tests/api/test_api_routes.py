@@ -15,10 +15,12 @@ import flipradar.domain.models  # noqa: F401
 from flipradar.core.settings import get_settings
 from flipradar.database import Base, get_db_session
 from flipradar.domain.engines import price_estimator
+from flipradar.domain.models import User
 from flipradar.main import create_app
 from flipradar.services import recommendation_service
 
 logger = logging.getLogger(__name__)
+VALID_PASSWORD = "Str0ng!Pass"
 
 
 @pytest.fixture
@@ -548,7 +550,7 @@ def auth_headers(client: TestClient, username: str | None = None) -> dict:
         json={
             "username": resolved_username,
             "email": f"{resolved_username}@example.com",
-            "password": "correct-horse-battery",
+            "password": VALID_PASSWORD,
         },
     )
     assert response.status_code == 201, response.text
@@ -562,7 +564,7 @@ def test_register_success(client: TestClient):
         json={
             "username": "collector",
             "email": "collector@example.com",
-            "password": "correct-horse-battery",
+            "password": VALID_PASSWORD,
         },
     )
 
@@ -570,16 +572,79 @@ def test_register_success(client: TestClient):
     body = response.json()
     assert body["token_type"] == "bearer"
     assert body["access_token"]
+    assert body["refresh_token"]
     assert body["user"]["username"] == "collector"
+    assert body["user"]["is_email_verified"] is False
     assert "hashed_password" not in body
     assert "hashed_password" not in body["user"]
+
+    settings = get_settings()
+    access_payload = jwt.decode(
+        body["access_token"],
+        settings.jwt_secret_key,
+        algorithms=[settings.jwt_algorithm],
+    )
+    refresh_payload = jwt.decode(
+        body["refresh_token"],
+        settings.jwt_secret_key,
+        algorithms=[settings.jwt_algorithm],
+    )
+    assert access_payload["typ"] == "access"
+    assert refresh_payload["typ"] == "refresh"
+    assert refresh_payload["exp"] > access_payload["exp"]
+
+
+def test_user_model_extends_base():
+    assert issubclass(User, Base)
+    assert User.metadata is Base.metadata
+
+
+def test_register_normalizes_email_and_rejects_formatted_duplicate(
+    client: TestClient,
+):
+    response = client.post(
+        "/auth/register",
+        json={
+            "username": "emailcase",
+            "email": "EmailCase@Example.COM",
+            "password": VALID_PASSWORD,
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["user"]["email"] == "emailcase@example.com"
+
+    duplicate_response = client.post(
+        "/auth/register",
+        json={
+            "username": "emailcase2",
+            "email": " emailcase@example.com ",
+            "password": VALID_PASSWORD,
+        },
+    )
+
+    assert duplicate_response.status_code == 409
+    assert duplicate_response.json()["detail"] == "User already exists"
+
+
+def test_register_rejects_unsupported_email_domain(client: TestClient):
+    response = client.post(
+        "/auth/register",
+        json={
+            "username": "bademaildomain",
+            "email": "bademaildomain@example.net",
+            "password": VALID_PASSWORD,
+        },
+    )
+
+    assert response.status_code == 422
 
 
 def test_duplicate_register_fails(client: TestClient):
     payload = {
         "username": "duplicate",
         "email": "duplicate@example.com",
-        "password": "correct-horse-battery",
+        "password": VALID_PASSWORD,
     }
     assert client.post("/auth/register", json=payload).status_code == 201
     response = client.post("/auth/register", json=payload)
@@ -595,7 +660,7 @@ def test_duplicate_username_returns_409(client: TestClient):
             json={
                 "username": "sameuser",
                 "email": "sameuser@example.com",
-                "password": "correct-horse-battery",
+                "password": VALID_PASSWORD,
             },
         ).status_code
         == 201
@@ -605,7 +670,7 @@ def test_duplicate_username_returns_409(client: TestClient):
         json={
             "username": "sameuser",
             "email": "different-email@example.com",
-            "password": "correct-horse-battery",
+            "password": VALID_PASSWORD,
         },
     )
 
@@ -620,7 +685,7 @@ def test_duplicate_email_returns_409(client: TestClient):
             json={
                 "username": "emailowner",
                 "email": "shared-email@example.com",
-                "password": "correct-horse-battery",
+                "password": VALID_PASSWORD,
             },
         ).status_code
         == 201
@@ -630,7 +695,7 @@ def test_duplicate_email_returns_409(client: TestClient):
         json={
             "username": "differentuser",
             "email": "shared-email@example.com",
-            "password": "correct-horse-battery",
+            "password": VALID_PASSWORD,
         },
     )
 
@@ -651,13 +716,34 @@ def test_register_rejects_short_password(client: TestClient):
     assert response.status_code == 422
 
 
+@pytest.mark.parametrize(
+    "password",
+    [
+        "NoNumber!",
+        "NoSpecial1",
+        "A1!23456",
+    ],
+)
+def test_register_rejects_weak_password(client: TestClient, password: str):
+    response = client.post(
+        "/auth/register",
+        json={
+            "username": f"weakpass{uuid4().hex[:8]}",
+            "email": f"weakpass{uuid4().hex[:8]}@example.com",
+            "password": password,
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_register_rejects_invalid_username_and_email(client: TestClient):
     username_response = client.post(
         "/auth/register",
         json={
             "username": "bad username!",
             "email": "valid@example.com",
-            "password": "correct-horse-battery",
+            "password": VALID_PASSWORD,
         },
     )
     email_response = client.post(
@@ -665,7 +751,7 @@ def test_register_rejects_invalid_username_and_email(client: TestClient):
         json={
             "username": "valid-user",
             "email": "not-an-email",
-            "password": "correct-horse-battery",
+            "password": VALID_PASSWORD,
         },
     )
 
@@ -679,20 +765,21 @@ def test_login_success(client: TestClient):
         json={
             "username": "loginuser",
             "email": "loginuser@example.com",
-            "password": "correct-horse-battery",
+            "password": VALID_PASSWORD,
         },
     )
     response = client.post(
         "/auth/login",
         json={
             "username_or_email": "loginuser",
-            "password": "correct-horse-battery",
+            "password": VALID_PASSWORD,
         },
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body["access_token"]
+    assert body["refresh_token"]
     assert "hashed_password" not in body
     assert "hashed_password" not in body["user"]
 
@@ -703,7 +790,7 @@ def test_login_bad_password_fails(client: TestClient):
         json={
             "username": "badlogin",
             "email": "badlogin@example.com",
-            "password": "correct-horse-battery",
+            "password": VALID_PASSWORD,
         },
     )
     response = client.post(
@@ -713,6 +800,90 @@ def test_login_bad_password_fails(client: TestClient):
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid credentials"
+
+
+def test_refresh_token_rotation_blacklists_old_refresh_token(client: TestClient):
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "username": "refreshuser",
+            "email": "refreshuser@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    original_refresh_token = register_response.json()["refresh_token"]
+
+    refresh_response = client.post(
+        "/auth/refresh", json={"refresh_token": original_refresh_token}
+    )
+
+    assert refresh_response.status_code == 200
+    rotated_body = refresh_response.json()
+    assert rotated_body["access_token"]
+    assert rotated_body["refresh_token"] != original_refresh_token
+
+    reuse_response = client.post(
+        "/auth/refresh", json={"refresh_token": original_refresh_token}
+    )
+    profile_response = client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {rotated_body['access_token']}"},
+    )
+
+    assert reuse_response.status_code == 401
+    assert reuse_response.json()["detail"] == "Invalid refresh token"
+    assert profile_response.status_code == 200
+    assert profile_response.json()["username"] == "refreshuser"
+
+
+def test_logout_blacklists_refresh_token(client: TestClient):
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "username": "logoutuser",
+            "email": "logoutuser@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    refresh_token = register_response.json()["refresh_token"]
+
+    logout_response = client.post("/auth/logout", json={"refresh_token": refresh_token})
+    refresh_response = client.post(
+        "/auth/refresh", json={"refresh_token": refresh_token}
+    )
+
+    assert logout_response.status_code == 204
+    assert refresh_response.status_code == 401
+    assert refresh_response.json()["detail"] == "Invalid refresh token"
+
+
+def test_refresh_token_cannot_be_used_as_access_token(client: TestClient):
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "username": "refreshnotaccess",
+            "email": "refreshnotaccess@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    refresh_token = register_response.json()["refresh_token"]
+
+    response = client.get(
+        "/auth/me", headers={"Authorization": f"Bearer {refresh_token}"}
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+
+
+def test_password_hashing_uses_argon2():
+    from flipradar.api.dependencies.auth import hash_password, verify_password
+
+    hashed_password = hash_password(VALID_PASSWORD)
+
+    assert hashed_password.startswith("$argon2")
+    assert verify_password(VALID_PASSWORD, hashed_password)
+    assert not verify_password(VALID_PASSWORD.lower(), hashed_password)
 
 
 def test_bad_token_returns_401(client: TestClient):

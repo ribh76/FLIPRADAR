@@ -178,11 +178,11 @@ PART III - SECURITY AND ACCOUNTS
 PHASE 9: CORE ACCOUNT SYSTEM
 Classification: MUST SHIP
 
-1. Finalize the user model.
-2. Normalize emails and enforce case-insensitive uniqueness.
-3. Validate password length and strength.
-4. Hash passwords using Argon2 or another approved method.
-5. Implement account registration.
+1. Finalize the user model. (Done) 
+2. Normalize emails and enforce case-insensitive uniqueness. (Done) 
+3. Validate password length and strength. (Done, 8 char length, 2 case, special character)
+4. Hash passwords using Argon2 or another approved method. (Done) 
+5. Implement account registration. 
 6. Implement login.
 7. Issue short-lived access tokens.
 8. Issue refresh tokens using rotation.

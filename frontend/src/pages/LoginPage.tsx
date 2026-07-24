@@ -37,6 +37,7 @@ export function LoginPage() {
 
       const handleDevPass = () => {
         localStorage.setItem("flipradar_token", "dev-pass-token");
+        localStorage.removeItem("flipradar_refresh_token");
         navigate("/dashboard");
       };
 
@@ -60,6 +61,10 @@ export function LoginPage() {
             password: String(values.get("password") ?? ""),
           });
           localStorage.setItem("flipradar_token", response.data.access_token);
+          localStorage.setItem(
+            "flipradar_refresh_token",
+            response.data.refresh_token,
+          );
           navigate("/dashboard");
         } catch (error) {
           showError(getApiError(error));
