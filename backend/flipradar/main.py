@@ -19,6 +19,7 @@ from flipradar.api.routes import (
     portfolio_routes,
     price_snapshot_routes,
     recommendation_routes,
+    user_routes,
 )
 from flipradar.core.logging import setup_logging
 from flipradar.core.settings import Settings, get_settings
@@ -62,6 +63,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "name": "Portfolio",
                 "description": "Authenticated portfolio tracking and valuation.",
             },
+            {
+                "name": "Users",
+                "description": "Authenticated user profile routes.",
+            },
             {"name": "Sets", "description": "LEGO set metadata and set detail lookup."},
             {
                 "name": "Marketplace/Internal",
@@ -97,6 +102,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(price_snapshot_routes.router)
     app.include_router(recommendation_routes.router)
     app.include_router(portfolio_routes.router)
+    app.include_router(user_routes.router)
     app.include_router(marketplace_routes.router)
 
     register_exception_handlers(app)

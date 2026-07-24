@@ -1,4 +1,5 @@
 from flipradar.api.schemas.auth_schema import (
+    LogoutRequest,
     RefreshTokenRequest,
     TokenResponse,
     UserCreate,
@@ -61,6 +62,7 @@ __all__ = [
     "ListingCreate",
     "ListingCollectionResponse",
     "ListingResponse",
+    "LogoutRequest",
     "MarketplaceCreate",
     "MarketplaceResponse",
     "PaginationMeta",

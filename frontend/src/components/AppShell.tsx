@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { logoutCurrentSession } from "../api/client";
 import { Logo } from "./Logo";
 
 const navItems = [
@@ -20,8 +21,8 @@ const navItems = [
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
 
-  function logout() {
-    localStorage.removeItem("flipradar_token");
+  async function logout() {
+    await logoutCurrentSession();
     navigate("/login");
   }
 

@@ -1,7 +1,14 @@
 import axios from "axios";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { applyAuthToken, getApiError } from "./client";
+import {
+  applyAuthToken,
+  clearAuthSession,
+  getApiError,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  storeAuthSession,
+} from "./client";
 
 describe("getApiError", () => {
   afterEach(() => {
@@ -18,6 +25,32 @@ describe("getApiError", () => {
     });
 
     expect(config.headers.Authorization).toBe("Bearer test-token");
+  });
+
+  it("stores and clears auth session tokens", () => {
+    const storage = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn((key: string) => storage.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        storage.set(key, value);
+      }),
+      removeItem: vi.fn((key: string) => {
+        storage.delete(key);
+      }),
+    });
+
+    storeAuthSession({
+      access_token: "access-token",
+      refresh_token: "refresh-token",
+    });
+
+    expect(getStoredAccessToken()).toBe("access-token");
+    expect(getStoredRefreshToken()).toBe("refresh-token");
+
+    clearAuthSession();
+
+    expect(getStoredAccessToken()).toBeNull();
+    expect(getStoredRefreshToken()).toBeNull();
   });
 
   it("returns a string API detail when provided", () => {

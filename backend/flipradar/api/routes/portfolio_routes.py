@@ -4,8 +4,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from flipradar.api.dependencies.auth import get_current_user
+from flipradar.api.dependencies.auth import AuthenticatedUser
 from flipradar.api.dependencies.database import get_db_session
+from flipradar.api.dependencies.ownership import OwnedPortfolioItem
 from flipradar.api.schemas import (
     PortfolioItemCollectionResponse,
     PortfolioItemCreate,
@@ -14,7 +15,6 @@ from flipradar.api.schemas import (
     PortfolioSummaryResponse,
 )
 from flipradar.api.schemas.common_schema import collection_response
-from flipradar.domain.models import User
 from flipradar.services import portfolio_service
 
 router = APIRouter(prefix="/portfolio", tags=["Portfolio"])
@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
     description="List the authenticated user's LEGO portfolio items with valuation status.",
 )
 async def list_portfolio(
+    current_user: AuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(get_current_user),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     condition: str | None = Query(default=None),
@@ -57,8 +57,8 @@ async def list_portfolio(
 )
 async def add_portfolio_item(
     payload: PortfolioItemCreate,
+    current_user: AuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(get_current_user),
 ) -> dict:
     logger.info(
         "request started route=add_portfolio_item user_id=%s set_number=%s",
@@ -89,8 +89,9 @@ async def add_portfolio_item(
 async def update_portfolio_item(
     item_id: UUID,
     payload: PortfolioItemUpdate,
+    owned_item: OwnedPortfolioItem,
+    current_user: AuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(get_current_user),
 ) -> dict:
     logger.info(
         "request started route=update_portfolio_item user_id=%s item_id=%s",
@@ -116,8 +117,9 @@ async def update_portfolio_item(
 )
 async def delete_portfolio_item(
     item_id: UUID,
+    owned_item: OwnedPortfolioItem,
+    current_user: AuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(get_current_user),
 ) -> Response:
     await portfolio_service.delete_user_portfolio_item(db, current_user.id, item_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -130,7 +132,7 @@ async def delete_portfolio_item(
     description="Calculate total cost basis, estimated value, and gain/loss.",
 )
 async def get_portfolio_summary(
+    current_user: AuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(get_current_user),
 ) -> dict:
     return await portfolio_service.calculate_portfolio_summary(db, current_user.id)

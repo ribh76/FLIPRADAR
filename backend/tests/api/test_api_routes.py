@@ -558,6 +558,10 @@ def auth_headers(client: TestClient, username: str | None = None) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+def bearer_headers(access_token: str) -> dict:
+    return {"Authorization": f"Bearer {access_token}"}
+
+
 def test_register_success(client: TestClient):
     response = client.post(
         "/auth/register",
@@ -802,6 +806,38 @@ def test_login_bad_password_fails(client: TestClient):
     assert response.json()["detail"] == "Invalid credentials"
 
 
+def test_logout_requires_current_access_token(client: TestClient):
+    response = client.post("/auth/logout", json={})
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+
+
+def test_logout_current_session_with_access_token_only(client: TestClient):
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "username": "accesslogout",
+            "email": "accesslogout@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    body = register_response.json()
+
+    logout_response = client.post(
+        "/auth/logout",
+        headers=bearer_headers(body["access_token"]),
+        json={},
+    )
+    profile_response = client.get(
+        "/users/me", headers=bearer_headers(body["access_token"])
+    )
+
+    assert logout_response.status_code == 204
+    assert profile_response.status_code == 200
+    assert profile_response.json()["username"] == "accesslogout"
+
+
 def test_refresh_token_rotation_blacklists_old_refresh_token(client: TestClient):
     register_response = client.post(
         "/auth/register",
@@ -811,7 +847,8 @@ def test_refresh_token_rotation_blacklists_old_refresh_token(client: TestClient)
             "password": VALID_PASSWORD,
         },
     )
-    original_refresh_token = register_response.json()["refresh_token"]
+    body = register_response.json()
+    original_refresh_token = body["refresh_token"]
 
     refresh_response = client.post(
         "/auth/refresh", json={"refresh_token": original_refresh_token}
@@ -845,9 +882,14 @@ def test_logout_blacklists_refresh_token(client: TestClient):
             "password": VALID_PASSWORD,
         },
     )
-    refresh_token = register_response.json()["refresh_token"]
+    body = register_response.json()
+    refresh_token = body["refresh_token"]
 
-    logout_response = client.post("/auth/logout", json={"refresh_token": refresh_token})
+    logout_response = client.post(
+        "/auth/logout",
+        headers=bearer_headers(body["access_token"]),
+        json={"refresh_token": refresh_token},
+    )
     refresh_response = client.post(
         "/auth/refresh", json={"refresh_token": refresh_token}
     )
@@ -855,6 +897,34 @@ def test_logout_blacklists_refresh_token(client: TestClient):
     assert logout_response.status_code == 204
     assert refresh_response.status_code == 401
     assert refresh_response.json()["detail"] == "Invalid refresh token"
+
+
+def test_logout_rejects_refresh_token_for_another_user(client: TestClient):
+    first_response = client.post(
+        "/auth/register",
+        json={
+            "username": "logoutowner",
+            "email": "logoutowner@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    second_response = client.post(
+        "/auth/register",
+        json={
+            "username": "logoutother",
+            "email": "logoutother@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+
+    response = client.post(
+        "/auth/logout",
+        headers=bearer_headers(first_response.json()["access_token"]),
+        json={"refresh_token": second_response.json()["refresh_token"]},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid refresh token"
 
 
 def test_refresh_token_cannot_be_used_as_access_token(client: TestClient):
@@ -921,6 +991,24 @@ def test_auth_me_works_with_token(client: TestClient):
     body = response.json()
     assert body["username"] == "profileuser"
     assert "hashed_password" not in body
+
+
+def test_users_me_works_with_token(client: TestClient):
+    headers = auth_headers(client, "usersprofile")
+    response = client.get("/users/me", headers=headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["username"] == "usersprofile"
+    assert body["is_email_verified"] is False
+    assert "hashed_password" not in body
+
+
+def test_users_me_requires_token(client: TestClient):
+    response = client.get("/users/me")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
 
 
 def test_portfolio_requires_token(client: TestClient):

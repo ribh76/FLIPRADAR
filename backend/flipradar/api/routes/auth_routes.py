@@ -3,9 +3,10 @@ import logging
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from flipradar.api.dependencies.auth import get_current_user
+from flipradar.api.dependencies.auth import AuthenticatedUser
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
+    LogoutRequest,
     RefreshTokenRequest,
     TokenResponse,
     UserCreate,
@@ -72,10 +73,12 @@ async def refresh_tokens(
     description="Revoke a refresh token so it can no longer be rotated.",
 )
 async def logout_user(
-    payload: RefreshTokenRequest, db: AsyncSession = Depends(get_db_session)
+    payload: LogoutRequest,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
 ) -> Response:
     logger.info("request started route=logout_user")
-    await auth_service.logout_user(db, payload)
+    await auth_service.logout_user(db, payload, current_user)
     logger.info("request finished route=logout_user")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -86,5 +89,5 @@ async def logout_user(
     summary="Get current user",
     description="Return the profile for the authenticated JWT bearer token.",
 )
-async def get_me(current_user: User = Depends(get_current_user)) -> User:
+async def get_me(current_user: AuthenticatedUser) -> User:
     return await auth_service.get_user_profile(current_user)

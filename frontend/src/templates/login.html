@@ -37,7 +37,7 @@
           Welcome back
         </p>
         <h2 class="mt-2 text-3xl font-bold text-slate-950">
-          Sign in to FlipRadar
+          <span data-auth-title> Sign in to FlipRadar </span>
         </h2>
       </div>
 
@@ -59,12 +59,25 @@
       </div>
 
       <form data-login-form class="space-y-5">
-        <label class="block space-y-2">
+        <label data-login-field class="block space-y-2">
           <span class="field-label">Username or email</span>
           <input
             name="username_or_email"
             class="field-input"
             autocomplete="username"
+          />
+        </label>
+        <label data-register-field class="hidden space-y-2">
+          <span class="field-label">Username</span>
+          <input name="username" class="field-input" autocomplete="username" />
+        </label>
+        <label data-register-field class="hidden space-y-2">
+          <span class="field-label">Email</span>
+          <input
+            name="email"
+            class="field-input"
+            type="email"
+            autocomplete="email"
           />
         </label>
         <label class="block space-y-2">

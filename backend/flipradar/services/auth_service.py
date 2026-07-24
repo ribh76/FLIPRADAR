@@ -13,6 +13,7 @@ from flipradar.api.dependencies.auth import (
     verify_password,
 )
 from flipradar.api.schemas import (
+    LogoutRequest,
     RefreshTokenRequest,
     TokenResponse,
     UserCreate,
@@ -159,8 +160,16 @@ async def refresh_auth_tokens(
     return _token_response(user)
 
 
-async def logout_user(db: AsyncSession, payload: RefreshTokenRequest) -> None:
+async def logout_user(
+    db: AsyncSession, payload: LogoutRequest, current_user: User
+) -> None:
+    if payload.refresh_token is None:
+        return
+
     refresh_payload = decode_refresh_token(payload.refresh_token)
+    if _refresh_token_subject(refresh_payload) != current_user.id:
+        raise _invalid_refresh_token()
+
     await _revoke_refresh_token(
         db,
         refresh_token=payload.refresh_token,
