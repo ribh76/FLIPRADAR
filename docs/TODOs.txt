@@ -213,22 +213,22 @@ Classification: MUST SHIP (Complete)
 14. Add mocks and tests for all email flows. (Done)
 
 PHASE 11: ACCOUNT SETTINGS AND EMAIL CHANGES
-Classification: MUST SHIP
+Classification: MUST SHIP (Done)
 
 Prompt 6: 1-7, prompt 7: 8-13 
-1. Build an account settings page. 
-2. Allow display-name updates.
-3. Allow password changes after confirming the current password.
-4. Add an email-change request workflow.
-5. Send confirmation to the new email.
-6. Send a security notice to the old email.
-7. Keep the old email active until the new email is verified.
-8. Display recent active sessions.
-9. Allow users to revoke individual sessions.
-10. Add account deletion.
-11. Require reauthentication for sensitive actions.
-12. Define data deletion behavior.
-13. Add backend and frontend tests.
+1. Build an account settings page. -
+2. Allow display-name updates.-
+3. Allow password changes after confirming the current password. -
+4. Add an email-change request workflow. -
+5. Send confirmation to the new email. -
+6. Send a security notice to the old email. -
+7. Keep the old email active until the new email is verified. -
+8. Display recent active sessions. (Doen) 
+9. Allow users to revoke individual sessions. (Done) 
+10. Add account deletion. (Done) 
+11. Require reauthentication for sensitive actions. (Done) 
+12. Define data deletion behavior. (Defined) 
+13. Add backend and frontend tests. (Passed)
 
 PHASE 12: SECURITY HARDENING
 Classification: MUST SHIP
