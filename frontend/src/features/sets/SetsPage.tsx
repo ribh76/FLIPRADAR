@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Card, FormAlert, TextField } from "../../components/ui";
 
 export function SetsPage() {
   const navigate = useNavigate();
@@ -27,28 +28,27 @@ export function SetsPage() {
         </p>
       </div>
 
-      <section className="page-card">
+      <Card>
         <form
           className="flex flex-col gap-3 sm:flex-row"
           onSubmit={handleSubmit}
         >
-          <label className="flex-1">
-            <span className="sr-only">Set number</span>
-            <input
-              className="field-input"
+          <div className="flex-1">
+            <TextField
+              label="Set number"
               onChange={(event) => setSetNumber(event.target.value)}
               placeholder="Enter set number, for example 75192-1"
               value={setNumber}
             />
-          </label>
-          <button className="primary-button" type="submit">
+          </div>
+          <button className="primary-button self-end" type="submit">
             Search
           </button>
         </form>
-        {message ? (
-          <p className="mt-4 text-sm font-semibold text-red-700">{message}</p>
-        ) : null}
-      </section>
+        <div className="mt-4">
+          <FormAlert>{message}</FormAlert>
+        </div>
+      </Card>
     </section>
   );
 }

@@ -1,17 +1,17 @@
 import { Navigate, createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AccountSettingsPage } from "./features/account/AccountSettingsPage";
+import { AnalyzePage } from "./features/analyze/AnalyzePage";
+import { LoginPage } from "./features/auth/LoginPage";
+import { ResetPasswordPage } from "./features/auth/ResetPasswordPage";
+import { VerifyEmailPage } from "./features/auth/VerifyEmailPage";
+import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { PortfolioPage } from "./features/portfolio/PortfolioPage";
+import { SetDetailPage } from "./features/sets/SetDetailPage";
+import { SetsPage } from "./features/sets/SetsPage";
 import { AuthenticatedLayout } from "./layouts/AuthenticatedLayout";
 import { ErrorLayout } from "./layouts/ErrorLayout";
 import { PublicLayout } from "./layouts/PublicLayout";
-import { AccountSettingsPage } from "./pages/AccountSettingsPage";
-import { AnalyzePage } from "./pages/AnalyzePage";
-import { DashboardPage } from "./pages/DashboardPage";
-import { LoginPage } from "./pages/LoginPage";
-import { PortfolioPage } from "./pages/PortfolioPage";
-import { ResetPasswordPage } from "./pages/ResetPasswordPage";
-import { SetDetailPage } from "./pages/SetDetailPage";
-import { SetsPage } from "./pages/SetsPage";
-import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 
 export const router = createBrowserRouter([
   {

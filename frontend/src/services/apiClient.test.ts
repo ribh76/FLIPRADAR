@@ -8,7 +8,7 @@ import {
   getStoredAccessToken,
   getStoredRefreshToken,
   storeAuthSession,
-} from "./client";
+} from "./apiClient";
 
 describe("getApiError", () => {
   afterEach(() => {

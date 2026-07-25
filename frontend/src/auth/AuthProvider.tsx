@@ -12,7 +12,7 @@ import {
   clearAuthSession,
   getStoredAccessToken,
   storeAuthSession,
-} from "../api/client";
+} from "../services/apiClient";
 import type { AuthSession, CurrentUser } from "../types";
 
 type AuthContextValue = {

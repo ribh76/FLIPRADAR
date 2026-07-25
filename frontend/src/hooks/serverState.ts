@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getApiError } from "./client";
+import { getApiError } from "../services/apiClient";
 
 export type ServerStateKey = readonly (string | number | boolean | null)[];
 

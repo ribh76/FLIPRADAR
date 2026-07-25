@@ -1,4 +1,4 @@
-import type { Verdict } from "../types";
+import type { Verdict } from "../../types";
 
 export function verdictTone(verdict: Verdict | string) {
   if (verdict === "BUY" || verdict === "SELL") {

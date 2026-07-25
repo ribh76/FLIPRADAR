@@ -1,10 +1,16 @@
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { apiClient } from "../api/client";
-import { useServerQuery } from "../api/serverState";
-import { MetricCard } from "../components/MetricCard";
-import { currency, numberValue } from "../utils/format";
+import { apiClient } from "../../services/apiClient";
+import { useServerQuery } from "../../hooks/serverState";
+import {
+  Card,
+  ErrorState,
+  LoadingState,
+  MetricCard,
+  TextField,
+} from "../../components/ui";
+import { currency, numberValue } from "../../utils/format";
 
 export function SetDetailPage() {
   const { setNumber } = useParams();
@@ -45,34 +51,37 @@ export function SetDetailPage() {
         </p>
       </div>
 
-      <section className="page-card mb-5">
+      <Card className="mb-5">
         <form
           className="flex flex-col gap-3 sm:flex-row"
           onSubmit={handleSubmit}
         >
-          <label className="flex-1">
-            <span className="sr-only">Set number</span>
-            <input
-              className="field-input"
+          <div className="flex-1">
+            <TextField
+              label="Set number"
               onChange={(event) => setSearchValue(event.target.value)}
               placeholder="Enter set number"
               value={searchValue}
             />
-          </label>
-          <button className="primary-button" type="submit">
+          </div>
+          <button className="primary-button self-end" type="submit">
             Search
           </button>
         </form>
-      </section>
+      </Card>
 
       {detailQuery.error ? (
-        <div className="mb-5 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">
-          {detailQuery.error}
+        <div className="mb-5">
+          <ErrorState
+            message={detailQuery.error}
+            onRetry={() => void detailQuery.refetch()}
+            title="Set detail unavailable"
+          />
         </div>
       ) : null}
       {detailQuery.isLoading ? (
-        <div className="page-card flex items-center gap-3 text-sm font-semibold text-slate-600">
-          Loading set detail...
+        <div className="mb-5">
+          <LoadingState title="Loading set detail..." />
         </div>
       ) : null}
 

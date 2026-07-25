@@ -3,10 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { apiClient } from "../api/client";
+import { apiClient } from "../../services/apiClient";
 import { AccountSettingsPage } from "./AccountSettingsPage";
 
-vi.mock("../api/client", () => ({
+vi.mock("../../services/apiClient", () => ({
   apiClient: {
     users: {
       me: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock("../api/client", () => ({
   getApiError: () => "Request failed",
 }));
 
-vi.mock("../auth/AuthProvider", () => ({
+vi.mock("../../auth/AuthProvider", () => ({
   useAuth: () => ({
     logout: vi.fn(),
   }),

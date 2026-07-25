@@ -10,9 +10,9 @@ import {
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiClient, getApiError } from "../api/client";
-import { useAuth } from "../auth/AuthProvider";
-import type { CurrentUser, RefreshSession } from "../types";
+import { apiClient, getApiError } from "../../services/apiClient";
+import { useAuth } from "../../auth/AuthProvider";
+import type { CurrentUser, RefreshSession } from "../../types";
 
 export function AccountSettingsPage() {
   const navigate = useNavigate();

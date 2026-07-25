@@ -1,8 +1,9 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { apiClient, getApiError } from "../api/client";
-import { Logo } from "../components/Logo";
+import { apiClient, getApiError } from "../../services/apiClient";
+import { Logo } from "../../components/Logo";
+import { FormAlert, TextField } from "../../components/ui";
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -55,21 +56,14 @@ export function ResetPasswordPage() {
         </div>
       ) : (
         <form className="mt-6 space-y-5" onSubmit={submitReset}>
-          <label className="block space-y-2">
-            <span className="field-label">New password</span>
-            <input
-              autoComplete="new-password"
-              className="field-input"
-              onChange={(event) => setPassword(event.target.value)}
-              type="password"
-              value={password}
-            />
-          </label>
-          {message ? (
-            <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600">
-              {message}
-            </p>
-          ) : null}
+          <TextField
+            autoComplete="new-password"
+            label="New password"
+            onChange={(event) => setPassword(event.target.value)}
+            type="password"
+            value={password}
+          />
+          <FormAlert tone="neutral">{message}</FormAlert>
           <button
             className="primary-button w-full"
             disabled={isLoading}

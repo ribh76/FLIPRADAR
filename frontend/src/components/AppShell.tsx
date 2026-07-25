@@ -6,12 +6,14 @@ import {
   LogOut,
   Search,
   Settings,
+  UserRound,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { apiClient, getApiError } from "../api/client";
+import { apiClient, getApiError } from "../services/apiClient";
 import { useAuth } from "../auth/AuthProvider";
+import { Dropdown, DropdownItem } from "./ui";
 import { Logo } from "./Logo";
 
 const navItems = [
@@ -70,14 +72,23 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </NavLink>
               );
             })}
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="inline-flex h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold text-blue-100 transition hover:bg-white/10 hover:text-white"
+            <Dropdown
+              label={
+                <span className="inline-flex items-center gap-2">
+                  <UserRound size={17} aria-hidden="true" />
+                  {user?.display_name ?? user?.username ?? "Account"}
+                </span>
+              }
             >
-              <LogOut size={17} aria-hidden="true" />
-              Logout
-            </button>
+              <DropdownItem onSelect={() => navigate("/settings")}>
+                <Settings size={16} aria-hidden="true" />
+                <span className="ml-2">Settings</span>
+              </DropdownItem>
+              <DropdownItem onSelect={() => void handleLogout()}>
+                <LogOut size={16} aria-hidden="true" />
+                <span className="ml-2">Logout</span>
+              </DropdownItem>
+            </Dropdown>
           </nav>
         </div>
       </header>

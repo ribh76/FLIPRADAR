@@ -6,8 +6,8 @@ export default defineConfig({
   test: {
     coverage: {
       include: [
-        "src/api/client.ts",
-        "src/components/StatusBadge.tsx",
+        "src/components/ui/StatusBadge.tsx",
+        "src/services/apiClient.ts",
         "src/utils/format.ts",
       ],
       provider: "v8",

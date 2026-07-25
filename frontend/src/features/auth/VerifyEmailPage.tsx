@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { apiClient, getApiError } from "../api/client";
-import { Logo } from "../components/Logo";
+import { apiClient, getApiError } from "../../services/apiClient";
+import { Logo } from "../../components/Logo";
 
 type VerificationState = "loading" | "success" | "error";
 

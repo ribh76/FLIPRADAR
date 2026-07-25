@@ -1,16 +1,25 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
-import { apiClient } from "../api/client";
-import { useServerMutation } from "../api/serverState";
-import { MetricCard } from "../components/MetricCard";
-import { StatusBadge, verdictTone } from "../components/StatusBadge";
+import { apiClient } from "../../services/apiClient";
+import { useServerMutation } from "../../hooks/serverState";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  FormAlert,
+  MetricCard,
+  SelectField,
+  StatusBadge,
+  TextField,
+  verdictTone,
+} from "../../components/ui";
 import type {
   AnalyzeRequest,
   AnalyzeResponse,
   Condition,
   UserGoal,
-} from "../types";
-import { currency, numberValue } from "../utils/format";
+} from "../../types";
+import { currency, numberValue } from "../../utils/format";
 
 export function AnalyzePage() {
   const [setNumber, setSetNumber] = useState("");
@@ -49,36 +58,29 @@ export function AnalyzePage() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
-        <form className="page-card space-y-5" onSubmit={handleSubmit}>
-          <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
-            <h2 className="text-lg font-bold text-slate-950">Inputs</h2>
-          </div>
-          <label className="block space-y-2">
-            <span className="field-label">Set number</span>
-            <input
-              className="field-input"
+        <Card>
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <CardHeader>
+              <CardTitle>Inputs</CardTitle>
+            </CardHeader>
+            <TextField
+              label="Set number"
               onChange={(event) => setSetNumber(event.target.value)}
               placeholder="75192-1"
               required
               value={setNumber}
             />
-          </label>
-          <label className="block space-y-2">
-            <span className="field-label">Goal</span>
-            <select
-              className="field-input"
+            <SelectField
+              label="Goal"
               onChange={(event) => setUserGoal(event.target.value as UserGoal)}
               value={userGoal}
             >
               <option value="buy_vs_pass">Buy or Pass</option>
               <option value="hold_vs_sell">Sell or Hold</option>
               <option value="hold">General Recommendation</option>
-            </select>
-          </label>
-          <label className="block space-y-2">
-            <span className="field-label">Asking price</span>
-            <input
-              className="field-input"
+            </SelectField>
+            <TextField
+              label="Asking price"
               min="0"
               onChange={(event) => setAskingPrice(event.target.value)}
               placeholder="425.00"
@@ -86,11 +88,8 @@ export function AnalyzePage() {
               type="number"
               value={askingPrice}
             />
-          </label>
-          <label className="block space-y-2">
-            <span className="field-label">Condition</span>
-            <select
-              className="field-input"
+            <SelectField
+              label="Condition"
               onChange={(event) =>
                 setCondition(event.target.value as Condition)
               }
@@ -100,21 +99,17 @@ export function AnalyzePage() {
               <option value="used">Used</option>
               <option value="sealed">Sealed</option>
               <option value="unknown">Unknown</option>
-            </select>
-          </label>
-          {analyzeMutation.error ? (
-            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">
-              {analyzeMutation.error}
-            </div>
-          ) : null}
-          <button
-            className="primary-button w-full"
-            disabled={analyzeMutation.isPending}
-            type="submit"
-          >
-            {analyzeMutation.isPending ? "Analyzing..." : "Analyze"}
-          </button>
-        </form>
+            </SelectField>
+            <FormAlert>{analyzeMutation.error}</FormAlert>
+            <button
+              className="primary-button w-full"
+              disabled={analyzeMutation.isPending}
+              type="submit"
+            >
+              {analyzeMutation.isPending ? "Analyzing..." : "Analyze"}
+            </button>
+          </form>
+        </Card>
 
         <section className="space-y-5">
           <div className="page-card">
