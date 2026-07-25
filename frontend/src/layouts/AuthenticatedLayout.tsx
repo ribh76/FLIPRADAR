@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom";
-import { AppShell } from "./components/AppShell";
+import { AppShell } from "../components/AppShell";
 
-export default function App() {
+export function AuthenticatedLayout() {
   return (
     <AppShell>
       <Outlet />

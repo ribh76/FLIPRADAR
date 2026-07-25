@@ -2,6 +2,36 @@ export type Condition = "new" | "used" | "sealed" | "unknown";
 export type UserGoal = "buy_vs_pass" | "hold_vs_sell" | "buy" | "sell" | "hold";
 export type Verdict = "BUY" | "PASS" | "SELL" | "HOLD" | "WATCH";
 
+export type PaginationMeta = {
+  limit: number;
+  offset: number;
+  count: number;
+  has_more: boolean;
+};
+
+export type CollectionResponse<T> = {
+  data: T[];
+  pagination: PaginationMeta;
+};
+
+export type AuthSession = {
+  access_token: string;
+  refresh_token: string;
+  token_type?: string;
+  user?: CurrentUser;
+};
+
+export type ApiMessage = {
+  message: string;
+};
+
+export type AnalyzeRequest = {
+  set_number: string;
+  user_goal: UserGoal;
+  condition: Condition;
+  asking_price: number | null;
+};
+
 export type AnalyzeResponse = {
   set_number: string;
   user_goal: UserGoal;
@@ -18,18 +48,30 @@ export type AnalyzeResponse = {
 
 export type PortfolioItem = {
   id: string;
+  user_id?: string;
   set_number: string;
   quantity: number;
   purchase_price: string | number;
   condition: string;
   acquired_at: string | null;
   notes: string | null;
+  created_at?: string;
+  updated_at?: string;
   set_name: string | null;
   current_unit_value: string | number | null;
   current_total_value: string | number | null;
   cost_basis: string | number;
   unrealized_gain_loss: string | number | null;
   valuation_status: string;
+};
+
+export type PortfolioItemCreate = {
+  set_number: string;
+  quantity: number;
+  purchase_price: number;
+  condition: Condition;
+  acquired_at: string | null;
+  notes: string | null;
 };
 
 export type PortfolioSummary = {

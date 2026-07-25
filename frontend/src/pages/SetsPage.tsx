@@ -1,37 +1,54 @@
-import { useCallback } from "react";
+import type { FormEvent } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { HtmlTemplate } from "../components/HtmlTemplate";
-import setsHtml from "../templates/sets.html?raw";
 
 export function SetsPage() {
   const navigate = useNavigate();
+  const [setNumber, setSetNumber] = useState("");
+  const [message, setMessage] = useState("");
 
-  const onMount = useCallback(
-    (root: HTMLDivElement) => {
-      const form = root.querySelector<HTMLFormElement>(
-        "[data-set-search-form]",
-      );
-      const message = root.querySelector<HTMLElement>("[data-message]");
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedSetNumber = setNumber.trim();
+    if (!trimmedSetNumber) {
+      setMessage("Enter a LEGO set number.");
+      return;
+    }
+    navigate(`/sets/${encodeURIComponent(trimmedSetNumber)}`);
+  }
 
-      const handleSubmit = (event: SubmitEvent) => {
-        event.preventDefault();
-        const values = new FormData(form ?? undefined);
-        const setNumber = String(values.get("set_number") ?? "").trim();
-        if (!setNumber) {
-          if (message) {
-            message.textContent = "Enter a LEGO set number.";
-            message.classList.remove("hidden");
-          }
-          return;
-        }
-        navigate(`/sets/${encodeURIComponent(setNumber)}`);
-      };
+  return (
+    <section>
+      <div className="mb-7">
+        <h1 className="text-3xl font-bold text-white">Set Detail Lookup</h1>
+        <p className="mt-2 text-blue-100">
+          Search a LEGO set number to view metadata, valuation, and market
+          status.
+        </p>
+      </div>
 
-      form?.addEventListener("submit", handleSubmit);
-      return () => form?.removeEventListener("submit", handleSubmit);
-    },
-    [navigate],
+      <section className="page-card">
+        <form
+          className="flex flex-col gap-3 sm:flex-row"
+          onSubmit={handleSubmit}
+        >
+          <label className="flex-1">
+            <span className="sr-only">Set number</span>
+            <input
+              className="field-input"
+              onChange={(event) => setSetNumber(event.target.value)}
+              placeholder="Enter set number, for example 75192-1"
+              value={setNumber}
+            />
+          </label>
+          <button className="primary-button" type="submit">
+            Search
+          </button>
+        </form>
+        {message ? (
+          <p className="mt-4 text-sm font-semibold text-red-700">{message}</p>
+        ) : null}
+      </section>
+    </section>
   );
-
-  return <HtmlTemplate html={setsHtml} onMount={onMount} />;
 }

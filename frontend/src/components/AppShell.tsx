@@ -8,9 +8,10 @@ import {
   Settings,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { api, getApiError, logoutCurrentSession } from "../api/client";
+import { apiClient, getApiError } from "../api/client";
+import { useAuth } from "../auth/AuthProvider";
 import { Logo } from "./Logo";
 
 const navItems = [
@@ -23,30 +24,19 @@ const navItems = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
-  const [isEmailVerified, setIsEmailVerified] = useState(true);
+  const { logout, user } = useAuth();
   const [verificationMessage, setVerificationMessage] = useState("");
 
-  useEffect(() => {
-    api
-      .get("/users/me")
-      .then((response) => {
-        setIsEmailVerified(Boolean(response.data.is_email_verified));
-      })
-      .catch(() => {
-        setIsEmailVerified(true);
-      });
-  }, []);
-
-  async function logout() {
-    await logoutCurrentSession();
+  async function handleLogout() {
+    await logout();
     navigate("/login");
   }
 
   async function resendVerification() {
     setVerificationMessage("");
     try {
-      const response = await api.post("/auth/resend-verification");
-      setVerificationMessage(response.data.message);
+      const response = await apiClient.auth.resendVerification();
+      setVerificationMessage(response.message);
     } catch (error) {
       setVerificationMessage(getApiError(error));
     }
@@ -82,7 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             })}
             <button
               type="button"
-              onClick={logout}
+              onClick={handleLogout}
               className="inline-flex h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold text-blue-100 transition hover:bg-white/10 hover:text-white"
             >
               <LogOut size={17} aria-hidden="true" />
@@ -91,7 +81,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
         </div>
       </header>
-      {!isEmailVerified ? (
+      {user && !user.is_email_verified ? (
         <section className="border-b border-blue-200 bg-blue-50 px-4 py-3 text-blue-950">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 text-sm font-medium sm:px-6 lg:px-8">
             <span>

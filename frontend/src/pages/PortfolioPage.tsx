@@ -1,149 +1,269 @@
-import { useCallback } from "react";
-import { api, getApiError } from "../api/client";
-import { HtmlTemplate } from "../components/HtmlTemplate";
-import portfolioHtml from "../templates/portfolio.html?raw";
-import type { PortfolioItem, PortfolioSummary } from "../types";
+import type { FormEvent } from "react";
+import { useCallback, useState } from "react";
+import { apiClient } from "../api/client";
+import {
+  invalidateServerState,
+  useServerMutation,
+  useServerQuery,
+} from "../api/serverState";
+import { MetricCard } from "../components/MetricCard";
+import type { Condition, PortfolioItemCreate } from "../types";
 import { currency, signedCurrency } from "../utils/format";
 
-function setText(root: HTMLElement, selector: string, value: string) {
-  const element = root.querySelector<HTMLElement>(selector);
-  if (element) {
-    element.textContent = value;
-  }
-}
+const portfolioKey = ["portfolio"];
+const portfolioSummaryKey = ["portfolio-summary"];
 
 export function PortfolioPage() {
-  const onMount = useCallback((root: HTMLDivElement) => {
-    const form = root.querySelector<HTMLFormElement>("[data-portfolio-form]");
-    const errorBox = root.querySelector<HTMLElement>("[data-error]");
-    const tableBody = root.querySelector<HTMLElement>("[data-holdings-body]");
-    const submitButton = root.querySelector<HTMLButtonElement>("[data-submit]");
+  const [setNumber, setSetNumber] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [condition, setCondition] = useState<Condition>("new");
+  const [acquiredAt, setAcquiredAt] = useState("");
+  const [notes, setNotes] = useState("");
+  const loadPortfolio = useCallback(() => apiClient.portfolio.list(), []);
+  const loadSummary = useCallback(() => apiClient.portfolio.summary(), []);
+  const itemsQuery = useServerQuery(portfolioKey, loadPortfolio);
+  const summaryQuery = useServerQuery(portfolioSummaryKey, loadSummary);
+  const refreshPortfolio = useCallback(async () => {
+    invalidateServerState(portfolioKey);
+    invalidateServerState(portfolioSummaryKey);
+    await Promise.all([itemsQuery.refetch(), summaryQuery.refetch()]);
+  }, [itemsQuery, summaryQuery]);
+  const addMutation = useServerMutation(apiClient.portfolio.addItem, {
+    onSuccess: async () => {
+      setSetNumber("");
+      setQuantity(1);
+      setPurchasePrice("");
+      setCondition("new");
+      setAcquiredAt("");
+      setNotes("");
+      await refreshPortfolio();
+    },
+  });
+  const deleteMutation = useServerMutation(apiClient.portfolio.deleteItem, {
+    onSuccess: refreshPortfolio,
+  });
+  const items = itemsQuery.data?.data ?? [];
+  const error =
+    itemsQuery.error ||
+    summaryQuery.error ||
+    addMutation.error ||
+    deleteMutation.error;
 
-    const showError = (message: string) => {
-      if (!errorBox) {
-        return;
-      }
-      errorBox.textContent = message;
-      errorBox.classList.toggle("hidden", !message);
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const payload: PortfolioItemCreate = {
+      set_number: setNumber,
+      quantity,
+      purchase_price: Number(purchasePrice),
+      condition,
+      acquired_at: acquiredAt ? new Date(acquiredAt).toISOString() : null,
+      notes: notes || null,
     };
+    void addMutation.mutate(payload);
+  }
 
-    const renderRows = (items: PortfolioItem[]) => {
-      if (!tableBody) {
-        return;
-      }
-      if (items.length === 0) {
-        tableBody.innerHTML =
-          '<tr><td class="px-4 py-8 text-center font-semibold text-slate-500" colspan="8">No holdings yet.</td></tr>';
-        return;
-      }
-      tableBody.innerHTML = items
-        .map((item) => {
-          const gain = Number(item.unrealized_gain_loss ?? 0);
-          return `
-            <tr class="bg-white">
-              <td class="px-4 py-3 font-bold text-slate-950">${item.set_number}</td>
-              <td class="px-4 py-3 text-slate-700">${item.set_name ?? "--"}</td>
-              <td class="px-4 py-3 capitalize text-slate-700">${item.condition}</td>
-              <td class="px-4 py-3 text-slate-700">${item.quantity}</td>
-              <td class="px-4 py-3 text-slate-700">${currency(item.purchase_price)}</td>
-              <td class="px-4 py-3 text-slate-700">${currency(item.current_total_value)}</td>
-              <td class="px-4 py-3 font-bold ${gain >= 0 ? "text-emerald-700" : "text-red-700"}">${signedCurrency(item.unrealized_gain_loss)}</td>
-              <td class="px-4 py-3"><button data-delete-id="${item.id}" class="secondary-button" type="button">Delete</button></td>
-            </tr>
-          `;
-        })
-        .join("");
-    };
+  return (
+    <section>
+      <div className="mb-7">
+        <h1 className="text-3xl font-bold text-white">Portfolio</h1>
+        <p className="mt-2 text-blue-100">
+          Track your LEGO collection value, basis, and holdings.
+        </p>
+      </div>
 
-    const loadPortfolio = async () => {
-      showError("");
-      try {
-        const [itemsResponse, summaryResponse] = await Promise.all([
-          api.get<PortfolioItem[]>("/portfolio"),
-          api.get<PortfolioSummary>("/portfolio/summary"),
-        ]);
-        renderRows(itemsResponse.data);
-        setText(
-          root,
-          "[data-total-value]",
-          currency(summaryResponse.data.estimated_current_value),
-        );
-        setText(
-          root,
-          "[data-total-cost]",
-          currency(summaryResponse.data.total_cost_basis),
-        );
-        setText(
-          root,
-          "[data-gain-loss]",
-          signedCurrency(summaryResponse.data.unrealized_gain_loss),
-        );
-        setText(
-          root,
-          "[data-total-sets]",
-          String(summaryResponse.data.total_quantity),
-        );
-      } catch (error) {
-        renderRows([]);
-        showError(getApiError(error));
-      }
-    };
+      {error ? (
+        <div className="mb-5 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">
+          {error}
+        </div>
+      ) : null}
 
-    const handleSubmit = async (event: SubmitEvent) => {
-      event.preventDefault();
-      if (!form) {
-        return;
-      }
-      const values = new FormData(form);
-      if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.textContent = "Adding...";
-      }
-      try {
-        const acquiredAt = String(values.get("acquired_at") ?? "");
-        await api.post("/portfolio/items", {
-          set_number: String(values.get("set_number") ?? ""),
-          quantity: Number(values.get("quantity") ?? 1),
-          purchase_price: Number(values.get("purchase_price") ?? 0),
-          condition: String(values.get("condition") ?? "unknown"),
-          acquired_at: acquiredAt ? new Date(acquiredAt).toISOString() : null,
-          notes: String(values.get("notes") ?? "") || null,
-        });
-        form.reset();
-        await loadPortfolio();
-      } catch (error) {
-        showError(getApiError(error));
-      } finally {
-        if (submitButton) {
-          submitButton.disabled = false;
-          submitButton.textContent = "Add item";
-        }
-      }
-    };
+      <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Total Portfolio Value"
+          tone="hold"
+          value={currency(summaryQuery.data?.estimated_current_value)}
+        />
+        <MetricCard
+          label="Total Cost Basis"
+          value={currency(summaryQuery.data?.total_cost_basis)}
+        />
+        <MetricCard
+          label="Unrealized Gain/Loss"
+          tone="good"
+          value={signedCurrency(summaryQuery.data?.unrealized_gain_loss)}
+        />
+        <MetricCard
+          label="Total Sets"
+          tone="watch"
+          value={String(summaryQuery.data?.total_quantity ?? 0)}
+        />
+      </div>
 
-    const handleDelete = async (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      const button = target?.closest<HTMLButtonElement>("[data-delete-id]");
-      if (!button) {
-        return;
-      }
-      try {
-        await api.delete(`/portfolio/items/${button.dataset.deleteId}`);
-        await loadPortfolio();
-      } catch (error) {
-        showError(getApiError(error));
-      }
-    };
+      <form className="page-card mb-5" onSubmit={handleSubmit}>
+        <div className="mb-4 flex items-center gap-3">
+          <h2 className="text-lg font-bold text-slate-950">Add item</h2>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+          <label className="space-y-2">
+            <span className="field-label">Set number</span>
+            <input
+              className="field-input"
+              onChange={(event) => setSetNumber(event.target.value)}
+              required
+              value={setNumber}
+            />
+          </label>
+          <label className="space-y-2">
+            <span className="field-label">Quantity</span>
+            <input
+              className="field-input"
+              min="1"
+              onChange={(event) => setQuantity(Number(event.target.value))}
+              required
+              type="number"
+              value={quantity}
+            />
+          </label>
+          <label className="space-y-2">
+            <span className="field-label">Purchase price</span>
+            <input
+              className="field-input"
+              min="0"
+              onChange={(event) => setPurchasePrice(event.target.value)}
+              required
+              step="0.01"
+              type="number"
+              value={purchasePrice}
+            />
+          </label>
+          <label className="space-y-2">
+            <span className="field-label">Condition</span>
+            <select
+              className="field-input"
+              onChange={(event) =>
+                setCondition(event.target.value as Condition)
+              }
+              value={condition}
+            >
+              <option value="new">New</option>
+              <option value="used">Used</option>
+              <option value="sealed">Sealed</option>
+              <option value="unknown">Unknown</option>
+            </select>
+          </label>
+          <label className="space-y-2">
+            <span className="field-label">Acquired date</span>
+            <input
+              className="field-input"
+              onChange={(event) => setAcquiredAt(event.target.value)}
+              type="date"
+              value={acquiredAt}
+            />
+          </label>
+          <label className="space-y-2 md:col-span-2 xl:col-span-1">
+            <span className="field-label">Notes</span>
+            <input
+              className="field-input"
+              onChange={(event) => setNotes(event.target.value)}
+              value={notes}
+            />
+          </label>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button
+            className="primary-button"
+            disabled={addMutation.isPending}
+            type="submit"
+          >
+            {addMutation.isPending ? "Adding..." : "Add item"}
+          </button>
+        </div>
+      </form>
 
-    form?.addEventListener("submit", handleSubmit);
-    tableBody?.addEventListener("click", handleDelete);
-    void loadPortfolio();
-
-    return () => {
-      form?.removeEventListener("submit", handleSubmit);
-      tableBody?.removeEventListener("click", handleDelete);
-    };
-  }, []);
-
-  return <HtmlTemplate html={portfolioHtml} onMount={onMount} />;
+      <section className="page-card overflow-hidden p-0">
+        <div className="border-b border-slate-200 p-5">
+          <h2 className="text-lg font-bold text-slate-950">Holdings</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[920px] border-collapse text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-normal text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Set Number</th>
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Condition</th>
+                <th className="px-4 py-3">Quantity</th>
+                <th className="px-4 py-3">Purchase Price</th>
+                <th className="px-4 py-3">Current Value</th>
+                <th className="px-4 py-3">Gain/Loss</th>
+                <th className="px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {itemsQuery.isLoading ? (
+                <tr>
+                  <td
+                    className="px-4 py-8 text-center font-semibold text-slate-500"
+                    colSpan={8}
+                  >
+                    Loading portfolio...
+                  </td>
+                </tr>
+              ) : null}
+              {!itemsQuery.isLoading && items.length === 0 ? (
+                <tr>
+                  <td
+                    className="px-4 py-8 text-center font-semibold text-slate-500"
+                    colSpan={8}
+                  >
+                    No holdings yet.
+                  </td>
+                </tr>
+              ) : null}
+              {items.map((item) => {
+                const gain = Number(item.unrealized_gain_loss ?? 0);
+                return (
+                  <tr className="bg-white" key={item.id}>
+                    <td className="px-4 py-3 font-bold text-slate-950">
+                      {item.set_number}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {item.set_name ?? "--"}
+                    </td>
+                    <td className="px-4 py-3 capitalize text-slate-700">
+                      {item.condition}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {item.quantity}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {currency(item.purchase_price)}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {currency(item.current_total_value)}
+                    </td>
+                    <td
+                      className={`px-4 py-3 font-bold ${gain >= 0 ? "text-emerald-700" : "text-red-700"}`}
+                    >
+                      {signedCurrency(item.unrealized_gain_loss)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        className="secondary-button"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => void deleteMutation.mutate(item.id)}
+                        type="button"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  );
 }

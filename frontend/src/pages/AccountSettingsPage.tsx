@@ -10,11 +10,13 @@ import {
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, clearAuthSession, getApiError } from "../api/client";
+import { apiClient, getApiError } from "../api/client";
+import { useAuth } from "../auth/AuthProvider";
 import type { CurrentUser, RefreshSession } from "../types";
 
 export function AccountSettingsPage() {
   const navigate = useNavigate();
+  const auth = useAuth();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [sessions, setSessions] = useState<RefreshSession[]>([]);
   const [displayName, setDisplayName] = useState("");
@@ -35,10 +37,10 @@ export function AccountSettingsPage() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   useEffect(() => {
-    api.get<CurrentUser>("/users/me").then((response) => {
-      setUser(response.data);
-      setDisplayName(response.data.display_name ?? response.data.username);
-      setNewEmail(response.data.pending_email ?? "");
+    apiClient.users.me().then((response) => {
+      setUser(response);
+      setDisplayName(response.display_name ?? response.username);
+      setNewEmail(response.pending_email ?? "");
     });
   }, []);
 
@@ -47,11 +49,11 @@ export function AccountSettingsPage() {
     setIsLoadingProfile(true);
     setProfileMessage("");
     try {
-      const response = await api.patch<CurrentUser>("/users/me", {
+      const response = await apiClient.users.updateMe({
         display_name: displayName,
       });
-      setUser(response.data);
-      setDisplayName(response.data.display_name ?? response.data.username);
+      setUser(response);
+      setDisplayName(response.display_name ?? response.username);
       setProfileMessage("Display name updated.");
     } catch (error) {
       setProfileMessage(getApiError(error));
@@ -65,13 +67,13 @@ export function AccountSettingsPage() {
     setIsLoadingPassword(true);
     setPasswordMessage("");
     try {
-      const response = await api.post("/users/me/password", {
+      const response = await apiClient.users.changePassword({
         current_password: currentPassword,
         new_password: newPassword,
       });
       setCurrentPassword("");
       setNewPassword("");
-      setPasswordMessage(response.data.message);
+      setPasswordMessage(response.message);
     } catch (error) {
       setPasswordMessage(getApiError(error));
     } finally {
@@ -84,14 +86,14 @@ export function AccountSettingsPage() {
     setIsLoadingEmail(true);
     setEmailMessage("");
     try {
-      const response = await api.post("/users/me/email-change/request", {
+      const response = await apiClient.users.requestEmailChange({
         new_email: newEmail,
         current_password: emailPassword,
       });
-      const profile = await api.get<CurrentUser>("/users/me");
-      setUser(profile.data);
+      const profile = await apiClient.users.me();
+      setUser(profile);
       setEmailPassword("");
-      setEmailMessage(response.data.message);
+      setEmailMessage(response.message);
     } catch (error) {
       setEmailMessage(getApiError(error));
     } finally {
@@ -103,11 +105,9 @@ export function AccountSettingsPage() {
     setIsLoadingSessions(true);
     setSessionMessage("");
     try {
-      const response = await api.get<RefreshSession[]>("/users/me/sessions");
-      setSessions(response.data);
-      setSessionMessage(
-        response.data.length > 0 ? "" : "No active sessions found.",
-      );
+      const response = await apiClient.users.listSessions();
+      setSessions(response);
+      setSessionMessage(response.length > 0 ? "" : "No active sessions found.");
     } catch (error) {
       setSessionMessage(getApiError(error));
     } finally {
@@ -118,8 +118,8 @@ export function AccountSettingsPage() {
   async function revokeSession(sessionId: string) {
     setSessionMessage("");
     try {
-      const response = await api.delete(`/users/me/sessions/${sessionId}`);
-      setSessionMessage(response.data.message);
+      const response = await apiClient.users.revokeSession(sessionId);
+      setSessionMessage(response.message);
       await loadSessions();
     } catch (error) {
       setSessionMessage(getApiError(error));
@@ -130,8 +130,8 @@ export function AccountSettingsPage() {
     setIsLoadingSessions(true);
     setSessionMessage("");
     try {
-      await api.delete("/users/me/sessions");
-      clearAuthSession();
+      await apiClient.users.revokeAllSessions();
+      await auth.logout();
       navigate("/login");
     } catch (error) {
       setSessionMessage(getApiError(error));
@@ -144,18 +144,12 @@ export function AccountSettingsPage() {
     setIsDeletingAccount(true);
     setDeleteMessage("");
     try {
-      const response = await api.post("/users/me/deletion-request", {
-        current_password: deletePassword,
-      });
-      const scheduledAt = formatSessionDate(
-        response.data.deletion_scheduled_at,
-      );
+      const response = await apiClient.users.requestDeletion(deletePassword);
+      const scheduledAt = formatSessionDate(response.deletion_scheduled_at);
       setDeletePassword("");
-      setDeleteMessage(
-        `${response.data.message} Scheduled for ${scheduledAt}.`,
-      );
-      const profile = await api.get<CurrentUser>("/users/me");
-      setUser(profile.data);
+      setDeleteMessage(`${response.message} Scheduled for ${scheduledAt}.`);
+      const profile = await apiClient.users.me();
+      setUser(profile);
     } catch (error) {
       setDeleteMessage(getApiError(error));
     } finally {

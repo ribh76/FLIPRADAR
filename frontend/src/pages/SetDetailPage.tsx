@@ -1,144 +1,171 @@
-import { useCallback } from "react";
+import type { FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api, getApiError } from "../api/client";
-import { HtmlTemplate } from "../components/HtmlTemplate";
-import setDetailHtml from "../templates/set-detail.html?raw";
-import type { SetDetail } from "../types";
+import { apiClient } from "../api/client";
+import { useServerQuery } from "../api/serverState";
+import { MetricCard } from "../components/MetricCard";
 import { currency, numberValue } from "../utils/format";
-
-function setText(root: HTMLElement, selector: string, value: string) {
-  const element = root.querySelector<HTMLElement>(selector);
-  if (element) {
-    element.textContent = value;
-  }
-}
 
 export function SetDetailPage() {
   const { setNumber } = useParams();
   const navigate = useNavigate();
-
-  const onMount = useCallback(
-    (root: HTMLDivElement) => {
-      const form = root.querySelector<HTMLFormElement>(
-        "[data-set-search-form]",
-      );
-      const input = root.querySelector<HTMLInputElement>(
-        "input[name='set_number']",
-      );
-      const errorBox = root.querySelector<HTMLElement>("[data-error]");
-      const loading = root.querySelector<HTMLElement>("[data-loading]");
-      const detailShell = root.querySelector<HTMLElement>("[data-detail]");
-      const refreshButton = root.querySelector<HTMLElement>("[data-refresh]");
-
-      const showError = (message: string) => {
-        if (!errorBox) {
-          return;
-        }
-        errorBox.textContent = message;
-        errorBox.classList.toggle("hidden", !message);
-      };
-
-      const setLoading = (isLoading: boolean) => {
-        loading?.classList.toggle("hidden", !isLoading);
-        loading?.classList.toggle("flex", isLoading);
-      };
-
-      const renderDetail = (detail: SetDetail) => {
-        const hasMarketData = detail.valuation_status === "available";
-        const status = root.querySelector<HTMLElement>(
-          "[data-valuation-status]",
-        );
-        const noMarket = root.querySelector<HTMLElement>("[data-no-market]");
-
-        detailShell?.classList.remove("hidden");
-        if (input) {
-          input.value = detail.set_number;
-        }
-
-        setText(root, "[data-name]", detail.name);
-        setText(root, "[data-set-number]", detail.set_number);
-        setText(root, "[data-theme]", detail.theme ?? "--");
-        setText(root, "[data-subtheme]", detail.subtheme ?? "--");
-        setText(
-          root,
-          "[data-release-year]",
-          detail.release_year?.toString() ?? "--",
-        );
-        setText(
-          root,
-          "[data-retirement-year]",
-          detail.retirement_year?.toString() ?? "--",
-        );
-        setText(root, "[data-piece-count]", numberValue(detail.piece_count));
-        setText(
-          root,
-          "[data-minifig-count]",
-          numberValue(detail.minifig_count),
-        );
-        setText(root, "[data-fair-value]", currency(detail.fair_value));
-        setText(root, "[data-market-low]", currency(detail.market_low));
-        setText(root, "[data-market-high]", currency(detail.market_high));
-        setText(
-          root,
-          "[data-listing-count]",
-          numberValue(detail.listing_count),
-        );
-        setText(
-          root,
-          "[data-confidence]",
-          detail.confidence?.toUpperCase() ?? "--",
-        );
-
-        if (status) {
-          status.textContent = detail.valuation_status;
-          status.className = `mt-3 inline-flex rounded-md border px-3 py-2 text-sm font-bold ${
-            hasMarketData
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border-amber-200 bg-amber-50 text-amber-900"
-          }`;
-        }
-
-        noMarket?.classList.toggle("hidden", hasMarketData);
-        refreshButton?.classList.toggle("hidden", !import.meta.env.DEV);
-      };
-
-      const loadDetail = async (number: string) => {
-        showError("");
-        setLoading(true);
-        detailShell?.classList.add("hidden");
-        try {
-          const response = await api.get<SetDetail>(
-            `/sets/${encodeURIComponent(number)}`,
-          );
-          renderDetail(response.data);
-        } catch (error) {
-          showError(getApiError(error));
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      const handleSubmit = (event: SubmitEvent) => {
-        event.preventDefault();
-        const values = new FormData(form ?? undefined);
-        const nextSetNumber = String(values.get("set_number") ?? "").trim();
-        if (nextSetNumber) {
-          navigate(`/sets/${encodeURIComponent(nextSetNumber)}`);
-        }
-      };
-
-      form?.addEventListener("submit", handleSubmit);
-      if (setNumber) {
-        if (input) {
-          input.value = setNumber;
-        }
-        void loadDetail(setNumber);
-      }
-
-      return () => form?.removeEventListener("submit", handleSubmit);
-    },
-    [navigate, setNumber],
+  const [searchValue, setSearchValue] = useState(setNumber ?? "");
+  const loadDetail = useCallback(
+    () => apiClient.sets.detail(setNumber ?? ""),
+    [setNumber],
   );
+  const detailQuery = useServerQuery(
+    ["set-detail", setNumber ?? ""],
+    loadDetail,
+    {
+      enabled: Boolean(setNumber),
+    },
+  );
+  const detail = detailQuery.data;
+  const hasMarketData = detail?.valuation_status === "available";
 
-  return <HtmlTemplate html={setDetailHtml} onMount={onMount} />;
+  useEffect(() => {
+    setSearchValue(setNumber ?? "");
+  }, [setNumber]);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextSetNumber = searchValue.trim();
+    if (nextSetNumber) {
+      navigate(`/sets/${encodeURIComponent(nextSetNumber)}`);
+    }
+  }
+
+  return (
+    <section>
+      <div className="mb-7">
+        <h1 className="text-3xl font-bold text-white">Set Detail Lookup</h1>
+        <p className="mt-2 text-blue-100">
+          Metadata and current valuation for a single LEGO set.
+        </p>
+      </div>
+
+      <section className="page-card mb-5">
+        <form
+          className="flex flex-col gap-3 sm:flex-row"
+          onSubmit={handleSubmit}
+        >
+          <label className="flex-1">
+            <span className="sr-only">Set number</span>
+            <input
+              className="field-input"
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder="Enter set number"
+              value={searchValue}
+            />
+          </label>
+          <button className="primary-button" type="submit">
+            Search
+          </button>
+        </form>
+      </section>
+
+      {detailQuery.error ? (
+        <div className="mb-5 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">
+          {detailQuery.error}
+        </div>
+      ) : null}
+      {detailQuery.isLoading ? (
+        <div className="page-card flex items-center gap-3 text-sm font-semibold text-slate-600">
+          Loading set detail...
+        </div>
+      ) : null}
+
+      {detail ? (
+        <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
+          <section className="page-card">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <p className="metric-label">Set metadata</p>
+                <h2 className="mt-2 text-3xl font-bold text-slate-950">
+                  {detail.name}
+                </h2>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  {detail.set_number}
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <MetricCard label="Theme" value={detail.theme ?? "--"} />
+              <MetricCard label="Subtheme" value={detail.subtheme ?? "--"} />
+              <MetricCard
+                label="Release Year"
+                value={detail.release_year?.toString() ?? "--"}
+              />
+              <MetricCard
+                label="Retirement Year"
+                value={detail.retirement_year?.toString() ?? "--"}
+              />
+              <MetricCard
+                label="Pieces"
+                value={numberValue(detail.piece_count)}
+              />
+              <MetricCard
+                label="Minifigs"
+                value={numberValue(detail.minifig_count)}
+              />
+            </div>
+          </section>
+
+          <aside className="page-card">
+            <p className="metric-label">Valuation status</p>
+            <div
+              className={`mt-3 inline-flex rounded-md border px-3 py-2 text-sm font-bold ${
+                hasMarketData
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-amber-200 bg-amber-50 text-amber-900"
+              }`}
+            >
+              {detail.valuation_status}
+            </div>
+            {!hasMarketData ? (
+              <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-900">
+                Set found, but no market valuation is available yet.
+              </div>
+            ) : null}
+            {import.meta.env.DEV ? (
+              <button className="secondary-button mt-5 w-full" type="button">
+                Refresh Market Data
+              </button>
+            ) : null}
+          </aside>
+
+          <section className="page-card lg:col-span-2">
+            <h2 className="text-lg font-bold text-slate-950">
+              Latest market snapshot
+            </h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+              <MetricCard
+                label="Fair Value"
+                tone="hold"
+                value={currency(detail.fair_value)}
+              />
+              <MetricCard
+                label="Market Low"
+                value={currency(detail.market_low)}
+              />
+              <MetricCard
+                label="Market High"
+                value={currency(detail.market_high)}
+              />
+              <MetricCard
+                label="Listing Count"
+                value={numberValue(detail.listing_count)}
+              />
+              <MetricCard
+                label="Confidence"
+                tone="watch"
+                value={detail.confidence?.toUpperCase() ?? "--"}
+              />
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </section>
+  );
 }

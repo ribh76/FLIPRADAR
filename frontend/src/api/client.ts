@@ -1,17 +1,68 @@
 import axios from "axios";
 import type { AxiosResponse, InternalAxiosRequestConfig } from "axios";
+import type {
+  AnalyzeRequest,
+  AnalyzeResponse,
+  ApiMessage,
+  AuthSession,
+  CollectionResponse,
+  CurrentUser,
+  PortfolioItem,
+  PortfolioItemCreate,
+  PortfolioSummary,
+  RefreshSession,
+  SetDetail,
+} from "../types";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const ACCESS_TOKEN_KEY = "flipradar_token";
 const REFRESH_TOKEN_KEY = "flipradar_refresh_token";
 
-type AuthSession = {
-  access_token: string;
-  refresh_token: string;
-};
-
 type RetriableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
+};
+
+type LoginRequest = {
+  username_or_email: string;
+  password: string;
+};
+
+type RegisterRequest = {
+  username: string;
+  email: string;
+  password: string;
+};
+
+type UpdateProfileRequest = {
+  display_name: string | null;
+};
+
+type ChangePasswordRequest = {
+  current_password: string;
+  new_password: string;
+};
+
+type EmailChangeRequest = {
+  new_email: string;
+  current_password: string;
+};
+
+type PasswordResetConfirmRequest = {
+  token: string;
+  password: string;
+};
+
+type AccountDeletionResponse = ApiMessage & {
+  deletion_scheduled_at: string;
+};
+
+type EmailVerificationResponse = ApiMessage & {
+  verified: boolean;
+};
+
+type ResendVerificationResponse = ApiMessage & {
+  sent: boolean;
+  throttled: boolean;
 };
 
 export const api = axios.create({
@@ -130,6 +181,107 @@ export async function logoutCurrentSession(): Promise<void> {
     clearAuthSession();
   }
 }
+
+async function requestData<TData>(
+  request: Promise<AxiosResponse<TData>>,
+): Promise<TData> {
+  const response = await request;
+  return response.data;
+}
+
+export const apiClient = {
+  analyze(payload: AnalyzeRequest) {
+    return requestData(api.post<AnalyzeResponse>("/analyze", payload));
+  },
+  auth: {
+    login(payload: LoginRequest) {
+      return requestData(api.post<AuthSession>("/auth/login", payload));
+    },
+    register(payload: RegisterRequest) {
+      return requestData(api.post<AuthSession>("/auth/register", payload));
+    },
+    resendVerification() {
+      return requestData(
+        api.post<ResendVerificationResponse>("/auth/resend-verification"),
+      );
+    },
+    verifyEmail(token: string) {
+      return requestData(
+        api.post<EmailVerificationResponse>("/auth/verify-email", { token }),
+      );
+    },
+    confirmEmailChange(token: string) {
+      return requestData(
+        api.post<EmailVerificationResponse>("/auth/email-change/confirm", {
+          token,
+        }),
+      );
+    },
+    confirmPasswordReset(payload: PasswordResetConfirmRequest) {
+      return requestData(
+        api.post<ApiMessage>("/auth/password-reset/confirm", payload),
+      );
+    },
+    logout: logoutCurrentSession,
+  },
+  users: {
+    me() {
+      return requestData(api.get<CurrentUser>("/users/me"));
+    },
+    updateMe(payload: UpdateProfileRequest) {
+      return requestData(api.patch<CurrentUser>("/users/me", payload));
+    },
+    changePassword(payload: ChangePasswordRequest) {
+      return requestData(api.post<ApiMessage>("/users/me/password", payload));
+    },
+    requestEmailChange(payload: EmailChangeRequest) {
+      return requestData(
+        api.post<ApiMessage>("/users/me/email-change/request", payload),
+      );
+    },
+    listSessions() {
+      return requestData(api.get<RefreshSession[]>("/users/me/sessions"));
+    },
+    revokeSession(sessionId: string) {
+      return requestData(
+        api.delete<ApiMessage>(`/users/me/sessions/${sessionId}`),
+      );
+    },
+    revokeAllSessions() {
+      return requestData(api.delete<ApiMessage>("/users/me/sessions"));
+    },
+    requestDeletion(currentPassword: string) {
+      return requestData(
+        api.post<AccountDeletionResponse>("/users/me/deletion-request", {
+          current_password: currentPassword,
+        }),
+      );
+    },
+  },
+  portfolio: {
+    list() {
+      return requestData(
+        api.get<CollectionResponse<PortfolioItem>>("/portfolio"),
+      );
+    },
+    summary() {
+      return requestData(api.get<PortfolioSummary>("/portfolio/summary"));
+    },
+    addItem(payload: PortfolioItemCreate) {
+      return requestData(api.post<PortfolioItem>("/portfolio/items", payload));
+    },
+    deleteItem(itemId: string) {
+      return requestData(api.delete<void>(`/portfolio/items/${itemId}`));
+    },
+  },
+  sets: {
+    detail(setNumber: string) {
+      return requestData(
+        api.get<SetDetail>(`/sets/${encodeURIComponent(setNumber)}`),
+      );
+    },
+  },
+};
 
 export function getApiError(error: unknown): string {
   if (axios.isAxiosError(error)) {
