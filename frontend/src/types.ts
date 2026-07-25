@@ -69,3 +69,14 @@ export type SetDetail = {
     snapshot_at: string;
   } | null;
 };
+
+export type CurrentUser = {
+  id: string;
+  username: string;
+  display_name: string | null;
+  email: string;
+  pending_email: string | null;
+  is_email_verified: boolean;
+  created_at: string;
+  updated_at: string;
+};

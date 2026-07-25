@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   LogOut,
   Search,
+  Settings,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -17,6 +18,7 @@ const navItems = [
   { to: "/analyze", label: "Analyze", icon: Calculator },
   { to: "/portfolio", label: "Portfolio", icon: Boxes },
   { to: "/sets", label: "Sets", icon: Search },
+  { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

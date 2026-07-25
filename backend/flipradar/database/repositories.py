@@ -108,6 +108,21 @@ async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
     return await db.get(User, user_id)
 
 
+async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
+    normalized = email.strip().lower()
+    result = await db.execute(select(User).where(User.email == normalized))
+    return result.scalar_one_or_none()
+
+
+async def update_user_display_name(
+    db: AsyncSession, user: User, display_name: str | None
+) -> User:
+    user.display_name = display_name
+    await db.flush()
+    await db.refresh(user)
+    return user
+
+
 async def mark_user_email_verified(
     db: AsyncSession, user: User, verified_at: datetime
 ) -> User:
@@ -124,6 +139,33 @@ async def update_user_password_hash(
     user.hashed_password = hashed_password
     await db.flush()
     await db.refresh(user)
+    return user
+
+
+async def stage_user_email_change(
+    db: AsyncSession, user: User, pending_email: str
+) -> User:
+    user.pending_email = pending_email
+    try:
+        await db.flush()
+        await db.refresh(user)
+    except IntegrityError as exc:
+        raise DuplicateRecordError("Email already exists") from exc
+    return user
+
+
+async def apply_user_email_change(
+    db: AsyncSession, user: User, new_email: str, verified_at: datetime
+) -> User:
+    user.email = new_email
+    user.pending_email = None
+    user.is_email_verified = True
+    user.email_verified_at = verified_at
+    try:
+        await db.flush()
+        await db.refresh(user)
+    except IntegrityError as exc:
+        raise DuplicateRecordError("Email already exists") from exc
     return user
 
 

@@ -83,7 +83,9 @@ class UserLogin(BaseModel):
 class UserResponse(BaseModel):
     id: UUID
     username: str
+    display_name: str | None = None
     email: str
+    pending_email: str | None = None
     is_email_verified: bool
     created_at: datetime
     updated_at: datetime
@@ -141,4 +143,54 @@ class PasswordResetConfirmRequest(BaseModel):
 
 
 class PasswordResetResponse(BaseModel):
+    message: str
+
+
+class AccountSettingsUpdate(BaseModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=120)
+
+    @field_validator("display_name", mode="before")
+    @classmethod
+    def normalize_display_name(cls, value: object) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, value: str) -> str:
+        return validate_password_strength_value(value)
+
+
+class EmailChangeRequest(BaseModel):
+    new_email: EmailStr
+    current_password: str = Field(..., min_length=1, max_length=128)
+
+    @field_validator("new_email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: object) -> str:
+        return normalize_email_address(value)
+
+    @field_validator("new_email")
+    @classmethod
+    def validate_email_format(cls, value: EmailStr) -> str:
+        normalized = normalize_email_address(value)
+        if EMAIL_FORMAT_PATTERN.fullmatch(normalized) is None:
+            raise ValueError(
+                "Email must use username@domain.com or username@domain.org"
+            )
+        return normalized
+
+
+class EmailChangeConfirmRequest(BaseModel):
+    token: str = Field(..., min_length=1)
+
+
+class AccountActionResponse(BaseModel):
     message: str

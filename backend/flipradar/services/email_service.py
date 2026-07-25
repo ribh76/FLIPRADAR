@@ -124,6 +124,26 @@ def password_reset_email_template(*, username: str, reset_url: str) -> EmailTemp
     return EmailTemplate(subject=subject, text_body=text_body, html_body=html_body)
 
 
+def email_change_confirmation_template(
+    *, username: str, new_email: str, confirmation_url: str
+) -> EmailTemplate:
+    subject = "Confirm your new FlipRadar email"
+    text_body = (
+        f"Hi {username},\n\n"
+        f"Confirm {new_email} as your FlipRadar account email with this link:\n"
+        f"{confirmation_url}\n\n"
+        "Your current account email stays active until this link is verified. "
+        "If you did not request this change, you can ignore this email."
+    )
+    html_body = f"""
+    <p>Hi {username},</p>
+    <p>Confirm <strong>{new_email}</strong> as your FlipRadar account email with this link:</p>
+    <p><a href="{confirmation_url}">Confirm new email</a></p>
+    <p>Your current account email stays active until this link is verified. If you did not request this change, you can ignore this email.</p>
+    """
+    return EmailTemplate(subject=subject, text_body=text_body, html_body=html_body)
+
+
 def security_email_template(*, username: str, event_label: str) -> EmailTemplate:
     subject = f"Security alert: {event_label}"
     text_body = (
@@ -194,6 +214,25 @@ async def send_password_reset_email(
     return await _send_template(
         to_address=to_address,
         template=password_reset_email_template(username=username, reset_url=reset_url),
+        email_service=email_service,
+    )
+
+
+async def send_email_change_confirmation_email(
+    *,
+    to_address: str,
+    username: str,
+    new_email: str,
+    confirmation_url: str,
+    email_service: EmailService | None = None,
+) -> EmailSendResult:
+    return await _send_template(
+        to_address=to_address,
+        template=email_change_confirmation_template(
+            username=username,
+            new_email=new_email,
+            confirmation_url=confirmation_url,
+        ),
         email_service=email_service,
     )
 

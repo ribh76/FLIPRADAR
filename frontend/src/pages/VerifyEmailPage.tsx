@@ -12,6 +12,7 @@ export function VerifyEmailPage() {
 
   useEffect(() => {
     const token = searchParams.get("token");
+    const isEmailChange = searchParams.get("flow") === "email-change";
     if (!token) {
       setState("error");
       setMessage("Verification link is missing a token.");
@@ -19,7 +20,12 @@ export function VerifyEmailPage() {
     }
 
     api
-      .post("/auth/verify-email", { token })
+      .post(
+        isEmailChange ? "/auth/email-change/confirm" : "/auth/verify-email",
+        {
+          token,
+        },
+      )
       .then((response) => {
         setState("success");
         setMessage(response.data.message ?? "Email address verified.");
@@ -37,10 +43,12 @@ export function VerifyEmailPage() {
           <Logo />
         </div>
         <p className="text-sm font-semibold uppercase tracking-normal text-blue-700">
-          Email verification
+          {searchParams.get("flow") === "email-change"
+            ? "Email change"
+            : "Email verification"}
         </p>
         <h1 className="mt-2 text-3xl font-bold text-slate-950">
-          {state === "success" ? "You are verified" : "Verification status"}
+          {state === "success" ? "Confirmed" : "Verification status"}
         </h1>
         <p className="mt-4 text-sm leading-6 text-slate-600">{message}</p>
         <div className="mt-8">

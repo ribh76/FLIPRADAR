@@ -83,7 +83,9 @@ def create_refresh_token(subject: str) -> str:
     return _create_token(subject, token_type="refresh", expires_at=expires_at)
 
 
-def create_account_token(subject: str, *, purpose: str) -> str:
+def create_account_token(
+    subject: str, *, purpose: str, extra_claims: dict | None = None
+) -> str:
     settings = get_settings().auth
     expire_minutes = settings.email_verification_token_expire_minutes
     if purpose == "password_reset":
@@ -93,7 +95,7 @@ def create_account_token(subject: str, *, purpose: str) -> str:
         subject,
         token_type="account",
         expires_at=expires_at,
-        extra_claims={"purpose": purpose},
+        extra_claims={"purpose": purpose, **(extra_claims or {})},
     )
 
 

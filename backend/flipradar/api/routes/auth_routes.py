@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from flipradar.api.dependencies.auth import AuthenticatedUser
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
+    EmailChangeConfirmRequest,
     EmailVerificationRequest,
     EmailVerificationResponse,
     LogoutRequest,
@@ -69,6 +70,21 @@ async def verify_email(
     logger.info("request started route=verify_email")
     response = await auth_service.verify_email(db, payload)
     logger.info("request finished route=verify_email")
+    return response
+
+
+@router.post(
+    "/email-change/confirm",
+    response_model=EmailVerificationResponse,
+    summary="Confirm email change",
+    description="Verify the new account email address before applying it.",
+)
+async def confirm_email_change(
+    payload: EmailChangeConfirmRequest, db: AsyncSession = Depends(get_db_session)
+) -> EmailVerificationResponse:
+    logger.info("request started route=confirm_email_change")
+    response = await auth_service.confirm_email_change(db, payload)
+    logger.info("request finished route=confirm_email_change")
     return response
 
 

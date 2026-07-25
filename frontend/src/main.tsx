@@ -12,6 +12,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { AccountSettingsPage } from "./pages/AccountSettingsPage";
 import { SetDetailPage } from "./pages/SetDetailPage";
 import { SetsPage } from "./pages/SetsPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
@@ -35,6 +36,7 @@ const router = createBrowserRouter([
       { path: "/portfolio", element: <PortfolioPage /> },
       { path: "/sets", element: <SetsPage /> },
       { path: "/sets/:setNumber", element: <SetDetailPage /> },
+      { path: "/settings", element: <AccountSettingsPage /> },
     ],
   },
 ]);

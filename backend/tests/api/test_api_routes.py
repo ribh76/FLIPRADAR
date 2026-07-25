@@ -577,6 +577,13 @@ def reset_token_from_url(reset_url: str) -> str:
     return tokens[0]
 
 
+def email_change_token_from_url(confirmation_url: str) -> str:
+    parsed = urlparse(confirmation_url)
+    tokens = parse_qs(parsed.query).get("token")
+    assert tokens, confirmation_url
+    return tokens[0]
+
+
 def test_register_success(client: TestClient):
     response = client.post(
         "/auth/register",
@@ -593,6 +600,7 @@ def test_register_success(client: TestClient):
     assert body["access_token"]
     assert body["refresh_token"]
     assert body["user"]["username"] == "collector"
+    assert body["user"]["display_name"] == "collector"
     assert body["user"]["is_email_verified"] is False
     assert "hashed_password" not in body
     assert "hashed_password" not in body["user"]
@@ -1334,8 +1342,242 @@ def test_users_me_works_with_token(client: TestClient):
     assert response.status_code == 200
     body = response.json()
     assert body["username"] == "usersprofile"
+    assert body["display_name"] == "usersprofile"
     assert body["is_email_verified"] is False
     assert "hashed_password" not in body
+
+
+def test_update_users_me_display_name(client: TestClient):
+    headers = auth_headers(client, "settingsprofile")
+
+    response = client.patch(
+        "/users/me",
+        headers=headers,
+        json={"display_name": "  Settings Collector  "},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["display_name"] == "Settings Collector"
+
+
+def test_change_password_requires_current_password(client: TestClient):
+    headers = auth_headers(client, "passwordsettings")
+
+    response = client.post(
+        "/users/me/password",
+        headers=headers,
+        json={
+            "current_password": "wrong-password",
+            "new_password": "N3w!StrongPass",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Current password is incorrect"
+
+
+def test_change_password_updates_login_and_sends_security_email(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    security_events: list[dict] = []
+
+    async def capture_security_email(**kwargs):
+        security_events.append(kwargs)
+
+    monkeypatch.setattr(auth_service, "send_security_email", capture_security_email)
+    headers = auth_headers(client, "passwordchanged")
+
+    response = client.post(
+        "/users/me/password",
+        headers=headers,
+        json={
+            "current_password": VALID_PASSWORD,
+            "new_password": "N3w!StrongPass",
+        },
+    )
+    old_login = client.post(
+        "/auth/login",
+        json={"username_or_email": "passwordchanged", "password": VALID_PASSWORD},
+    )
+    new_login = client.post(
+        "/auth/login",
+        json={"username_or_email": "passwordchanged", "password": "N3w!StrongPass"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["message"] == "Password changed successfully"
+    assert old_login.status_code == 401
+    assert new_login.status_code == 200
+    assert security_events == [
+        {
+            "to_address": "passwordchanged@example.com",
+            "username": "passwordchanged",
+            "event_label": "Your password was changed",
+        }
+    ]
+
+
+def test_email_change_request_sends_new_confirmation_and_old_security_notice(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    confirmation_urls: list[str] = []
+    security_events: list[dict] = []
+
+    async def capture_email_change_confirmation(**kwargs):
+        confirmation_urls.append(kwargs["confirmation_url"])
+        assert kwargs["to_address"] == "next-email@example.com"
+        assert kwargs["new_email"] == "next-email@example.com"
+
+    async def capture_security_email(**kwargs):
+        security_events.append(kwargs)
+
+    monkeypatch.setattr(
+        auth_service,
+        "send_email_change_confirmation_email",
+        capture_email_change_confirmation,
+    )
+    monkeypatch.setattr(auth_service, "send_security_email", capture_security_email)
+    headers = auth_headers(client, "emailsettings")
+
+    response = client.post(
+        "/users/me/email-change/request",
+        headers=headers,
+        json={
+            "new_email": " Next-Email@Example.COM ",
+            "current_password": VALID_PASSWORD,
+        },
+    )
+    profile_response = client.get("/users/me", headers=headers)
+
+    assert response.status_code == 200, response.text
+    assert response.json()["message"] == "Confirmation email sent to the new address"
+    assert len(confirmation_urls) == 1
+    assert "/verify-email?token=" in confirmation_urls[0]
+    assert "flow=email-change" in confirmation_urls[0]
+    assert profile_response.json()["email"] == "emailsettings@example.com"
+    assert profile_response.json()["pending_email"] == "next-email@example.com"
+    assert security_events == [
+        {
+            "to_address": "emailsettings@example.com",
+            "username": "emailsettings",
+            "event_label": "Email change requested for next-email@example.com",
+        }
+    ]
+
+
+def test_email_change_confirmation_applies_new_email_after_verification(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    confirmation_urls: list[str] = []
+
+    async def capture_email_change_confirmation(**kwargs):
+        confirmation_urls.append(kwargs["confirmation_url"])
+
+    async def capture_security_email(**kwargs):
+        del kwargs
+
+    monkeypatch.setattr(
+        auth_service,
+        "send_email_change_confirmation_email",
+        capture_email_change_confirmation,
+    )
+    monkeypatch.setattr(auth_service, "send_security_email", capture_security_email)
+    headers = auth_headers(client, "emailconfirm")
+    client.post(
+        "/users/me/email-change/request",
+        headers=headers,
+        json={
+            "new_email": "emailconfirm-next@example.com",
+            "current_password": VALID_PASSWORD,
+        },
+    )
+    token = email_change_token_from_url(confirmation_urls[0])
+
+    confirm_response = client.post("/auth/email-change/confirm", json={"token": token})
+    profile_response = client.get("/users/me", headers=headers)
+    old_email_login = client.post(
+        "/auth/login",
+        json={
+            "username_or_email": "emailconfirm@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    new_email_login = client.post(
+        "/auth/login",
+        json={
+            "username_or_email": "emailconfirm-next@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+
+    assert confirm_response.status_code == 200, confirm_response.text
+    assert confirm_response.json()["message"] == "Email address changed successfully"
+    assert profile_response.json()["email"] == "emailconfirm-next@example.com"
+    assert profile_response.json()["pending_email"] is None
+    assert profile_response.json()["is_email_verified"] is True
+    assert old_email_login.status_code == 401
+    assert new_email_login.status_code == 200
+
+
+def test_email_change_request_is_throttled(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    confirmation_urls: list[str] = []
+
+    async def capture_email_change_confirmation(**kwargs):
+        confirmation_urls.append(kwargs["confirmation_url"])
+
+    async def capture_security_email(**kwargs):
+        del kwargs
+
+    monkeypatch.setattr(
+        auth_service,
+        "send_email_change_confirmation_email",
+        capture_email_change_confirmation,
+    )
+    monkeypatch.setattr(auth_service, "send_security_email", capture_security_email)
+    headers = auth_headers(client, "emailwait")
+
+    first_response = client.post(
+        "/users/me/email-change/request",
+        headers=headers,
+        json={
+            "new_email": "emailwait-next@example.com",
+            "current_password": VALID_PASSWORD,
+        },
+    )
+    second_response = client.post(
+        "/users/me/email-change/request",
+        headers=headers,
+        json={
+            "new_email": "emailwait-other@example.com",
+            "current_password": VALID_PASSWORD,
+        },
+    )
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 429
+    assert second_response.json()["detail"] == (
+        "Please wait before requesting another email change"
+    )
+    assert len(confirmation_urls) == 1
+
+
+def test_email_change_rejects_existing_email(client: TestClient):
+    headers = auth_headers(client, "emailduplicate")
+    auth_headers(client, "emailtaken")
+
+    response = client.post(
+        "/users/me/email-change/request",
+        headers=headers,
+        json={
+            "new_email": "emailtaken@example.com",
+            "current_password": VALID_PASSWORD,
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Email already exists"
 
 
 def test_users_me_requires_token(client: TestClient):
