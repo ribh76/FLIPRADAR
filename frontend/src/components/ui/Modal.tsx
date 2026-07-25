@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export function Modal({
   children,
@@ -13,18 +13,13 @@ export function Modal({
   onClose: () => void;
   title: string;
 }) {
+  const modalRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    if (!isOpen) {
-      return;
+    if (isOpen) {
+      modalRef.current?.focus();
     }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;
@@ -34,7 +29,14 @@ export function Modal({
     <div
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          onClose();
+        }
+      }}
+      ref={modalRef}
       role="dialog"
+      tabIndex={-1}
     >
       <section className="w-full max-w-lg rounded-lg bg-white p-5 shadow-soft">
         <div className="flex items-start justify-between gap-4">

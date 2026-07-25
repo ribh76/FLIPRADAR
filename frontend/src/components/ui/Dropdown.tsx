@@ -1,6 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 export function Dropdown({
   children,
@@ -10,20 +10,16 @@ export function Dropdown({
   label: ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, []);
 
   return (
-    <div className="relative inline-block text-left" ref={rootRef}>
+    <div
+      className="relative inline-block text-left"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setIsOpen(false);
+        }
+      }}
+    >
       <button
         aria-expanded={isOpen}
         className="secondary-button"
@@ -35,7 +31,7 @@ export function Dropdown({
       </button>
       {isOpen ? (
         <div className="absolute right-0 z-20 mt-2 min-w-44 rounded-md border border-slate-200 bg-white p-1 shadow-soft">
-          {children}
+          <div onClick={() => setIsOpen(false)}>{children}</div>
         </div>
       ) : null}
     </div>

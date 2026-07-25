@@ -4,9 +4,11 @@ import {
   Calculator,
   LayoutDashboard,
   LogOut,
+  Menu,
   Search,
   Settings,
   UserRound,
+  X,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -27,10 +29,12 @@ const navItems = [
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
 
   async function handleLogout() {
     await logout();
+    setIsMobileNavOpen(false);
     navigate("/login");
   }
 
@@ -47,11 +51,24 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-navy-950 text-slate-950">
       <header className="border-b border-white/10 bg-navy-900">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <Link to="/dashboard" aria-label="FlipRadar dashboard">
             <Logo />
           </Link>
-          <nav className="flex flex-wrap items-center gap-2">
+          <button
+            aria-expanded={isMobileNavOpen}
+            aria-label="Toggle navigation"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-blue-100 transition hover:bg-white/10 hover:text-white md:hidden"
+            onClick={() => setIsMobileNavOpen((current) => !current)}
+            type="button"
+          >
+            {isMobileNavOpen ? (
+              <X size={20} aria-hidden="true" />
+            ) : (
+              <Menu size={20} aria-hidden="true" />
+            )}
+          </button>
+          <nav className="hidden flex-wrap items-center gap-2 md:flex">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -91,6 +108,41 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Dropdown>
           </nav>
         </div>
+        {isMobileNavOpen ? (
+          <nav className="border-t border-white/10 px-4 py-3 md:hidden">
+            <div className="mx-auto flex max-w-7xl flex-col gap-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className={({ isActive }) =>
+                      [
+                        "inline-flex h-11 items-center gap-2 rounded-md px-3 text-sm font-semibold transition",
+                        isActive
+                          ? "bg-white text-navy-950"
+                          : "text-blue-100 hover:bg-white/10 hover:text-white",
+                      ].join(" ")
+                    }
+                  >
+                    <Icon size={17} aria-hidden="true" />
+                    {item.label}
+                  </NavLink>
+                );
+              })}
+              <button
+                className="inline-flex h-11 items-center gap-2 rounded-md px-3 text-left text-sm font-semibold text-blue-100 transition hover:bg-white/10 hover:text-white"
+                onClick={() => void handleLogout()}
+                type="button"
+              >
+                <LogOut size={17} aria-hidden="true" />
+                Logout
+              </button>
+            </div>
+          </nav>
+        ) : null}
       </header>
       {user && !user.is_email_verified ? (
         <section className="border-b border-blue-200 bg-blue-50 px-4 py-3 text-blue-950">

@@ -255,21 +255,21 @@ PART IV - FRONTEND FOUNDATION
 PHASE 13: REACT ARCHITECTURE REFACTOR
 Classification: MUST SHIP
 
-1. Remove manual HTML-template page rendering.
-2. Convert the application shell into normal React components.
-3. Add frontend routing.
-4. Create public, authenticated, and error layouts.
-5. Add a typed API-client layer.
-6. Add centralized authentication and token refresh.
-7. Add consistent server-state hooks or a server-state library.
-8. Add reusable loading, error, empty, and unauthorized states.
-9. Build reusable form controls and validation messages.
-10. Build reusable cards, tables, badges, modals, dropdowns, and confirmations.
-11. Organize code into features, components, hooks, services, types, and utilities.
-12. Remove querySelector, innerHTML, and manual event listeners.
-13. Add responsive navigation.
-14. Add global toast notifications.
-15. Add tests for routing and authentication state.
+1. Remove manual HTML-template page rendering. -
+2. Convert the application shell into normal React components. -
+3. Add frontend routing. -
+4. Create public, authenticated, and error layouts. - 
+5. Add a typed API-client layer. -
+6. Add centralized authentication and token refresh. -
+7. Add consistent server-state hooks or a server-state library. -
+8. Add reusable loading, error, empty, and unauthorized states. -
+9. Build reusable form controls and validation messages. -
+10. Build reusable cards, tables, badges, modals, dropdowns, and confirmations. -
+11. Organize code into features, components, hooks, services, types, and utilities. -
+12. Remove querySelector, innerHTML, and manual event listeners.  -
+13. Add responsive navigation. -
+14. Add global toast notifications. x
+15. Add tests for routing and authentication state. -
 
 PHASE 14: DESIGN SYSTEM AND RESPONSIVE SHELL
 Classification: MUST SHIP

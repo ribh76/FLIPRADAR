@@ -1,4 +1,8 @@
-import { Navigate, createBrowserRouter } from "react-router-dom";
+import {
+  Navigate,
+  createBrowserRouter,
+  type RouteObject,
+} from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AccountSettingsPage } from "./features/account/AccountSettingsPage";
 import { AnalyzePage } from "./features/analyze/AnalyzePage";
@@ -13,7 +17,7 @@ import { AuthenticatedLayout } from "./layouts/AuthenticatedLayout";
 import { ErrorLayout } from "./layouts/ErrorLayout";
 import { PublicLayout } from "./layouts/PublicLayout";
 
-export const router = createBrowserRouter([
+export const appRoutes: RouteObject[] = [
   {
     errorElement: <ErrorLayout />,
     children: [
@@ -45,4 +49,6 @@ export const router = createBrowserRouter([
       { path: "*", element: <ErrorLayout /> },
     ],
   },
-]);
+];
+
+export const router = createBrowserRouter(appRoutes);
