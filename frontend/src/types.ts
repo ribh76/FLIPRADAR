@@ -77,6 +77,15 @@ export type CurrentUser = {
   email: string;
   pending_email: string | null;
   is_email_verified: boolean;
+  deletion_requested_at: string | null;
+  deletion_scheduled_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type RefreshSession = {
+  id: string;
+  created_at: string;
+  last_seen_at: string | null;
+  expires_at: string;
 };

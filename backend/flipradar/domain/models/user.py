@@ -37,6 +37,12 @@ class User(Base):
         Boolean, nullable=False, default=False, server_default=false()
     )
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deletion_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    deletion_scheduled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -55,6 +61,12 @@ class User(Base):
     )
     revoked_refresh_tokens = relationship(
         "RefreshTokenBlacklist",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    refresh_token_sessions = relationship(
+        "RefreshTokenSession",
         back_populates="user",
         cascade="all, delete-orphan",
         passive_deletes=True,

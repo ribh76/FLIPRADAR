@@ -17,6 +17,8 @@ from flipradar.api.dependencies.auth import (
 )
 from flipradar.api.schemas import (
     AccountActionResponse,
+    AccountDeletionRequest,
+    AccountDeletionResponse,
     AccountSettingsUpdate,
     EmailChangeConfirmRequest,
     EmailChangeRequest,
@@ -27,6 +29,7 @@ from flipradar.api.schemas import (
     PasswordResetConfirmRequest,
     PasswordResetRequest,
     PasswordResetResponse,
+    RefreshSessionResponse,
     RefreshTokenRequest,
     ResendVerificationResponse,
     TokenResponse,
@@ -41,23 +44,32 @@ from flipradar.database.repositories import (
     apply_user_email_change,
     blacklist_refresh_token,
     create_account_token_record,
+    create_refresh_token_session,
     create_user,
     get_account_token_by_hash,
     get_latest_account_token_for_user,
+    get_refresh_token_session_by_hash,
+    get_refresh_token_session_for_user,
     get_user_by_email,
     get_user_by_id,
     get_user_by_username_or_email,
     is_refresh_token_blacklisted,
+    list_active_refresh_token_sessions_for_user,
     mark_account_token_sent,
     mark_account_token_used,
     mark_user_email_verified,
     revoke_account_tokens_for_user,
+    revoke_active_refresh_token_sessions_for_user,
+    revoke_refresh_token_session,
+    schedule_user_deletion,
     stage_user_email_change,
     update_user_display_name,
     update_user_password_hash,
 )
 from flipradar.domain.models import User
+from flipradar.domain.models.refresh_token import RefreshTokenSession
 from flipradar.services.email_service import (
+    send_account_deletion_confirmation_email,
     send_email_change_confirmation_email,
     send_password_reset_email,
     send_registration_email,
@@ -68,6 +80,7 @@ from flipradar.services.email_service import (
 EMAIL_VERIFICATION_PURPOSE = "email_verification"
 PASSWORD_RESET_PURPOSE = "password_reset"
 EMAIL_CHANGE_PURPOSE = "email_change"
+ACCOUNT_DELETION_DELAY = timedelta(hours=24)
 
 
 def _invalid_refresh_token() -> HTTPException:
@@ -76,10 +89,20 @@ def _invalid_refresh_token() -> HTTPException:
     )
 
 
-def _token_response(user: User) -> TokenResponse:
+async def _token_response(db: AsyncSession, user: User) -> TokenResponse:
+    refresh_token = create_refresh_token(str(user.id))
+    refresh_payload = decode_refresh_token(refresh_token)
+    await create_refresh_token_session(
+        db,
+        user_id=user.id,
+        token_hash=hash_refresh_token(refresh_token),
+        token_jti=_refresh_token_jti(refresh_payload),
+        expires_at=_refresh_token_expiry(refresh_payload),
+        last_seen_at=datetime.now(UTC),
+    )
     return TokenResponse(
         access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
+        refresh_token=refresh_token,
         user=UserResponse.model_validate(user),
     )
 
@@ -262,7 +285,7 @@ async def register_user(db: AsyncSession, payload: UserCreate) -> TokenResponse:
 
     await _send_email_verification_token(db, user)
     await send_registration_email(to_address=user.email, username=user.username)
-    return _token_response(user)
+    return await _token_response(db, user)
 
 
 async def authenticate_user(db: AsyncSession, payload: UserLogin) -> TokenResponse:
@@ -271,7 +294,7 @@ async def authenticate_user(db: AsyncSession, payload: UserLogin) -> TokenRespon
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
         )
-    return _token_response(user)
+    return await _token_response(db, user)
 
 
 async def get_user_profile(user: User) -> User:
@@ -307,6 +330,34 @@ async def change_password(
         event_label="Your password was changed",
     )
     return AccountActionResponse(message="Password changed successfully")
+
+
+async def request_account_deletion(
+    db: AsyncSession, current_user: User, payload: AccountDeletionRequest
+) -> AccountDeletionResponse:
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    now = datetime.now(UTC)
+    scheduled_at = now + ACCOUNT_DELETION_DELAY
+    await schedule_user_deletion(
+        db,
+        current_user,
+        requested_at=now,
+        scheduled_at=scheduled_at,
+    )
+    await send_account_deletion_confirmation_email(
+        to_address=current_user.email,
+        username=current_user.username,
+        deletion_scheduled_at=scheduled_at.isoformat(),
+    )
+    return AccountDeletionResponse(
+        message="Account deletion confirmed. Your user data is scheduled for removal in 24 hours.",
+        deletion_scheduled_at=scheduled_at,
+    )
 
 
 async def verify_email(
@@ -596,6 +647,22 @@ def _refresh_token_jti(payload: dict) -> str:
     return token_jti
 
 
+async def _blacklist_session_token(
+    db: AsyncSession, *, session: RefreshTokenSession, reason: str
+) -> None:
+    try:
+        await blacklist_refresh_token(
+            db,
+            user_id=session.user_id,
+            token_hash=session.token_hash,
+            token_jti=session.token_jti,
+            expires_at=session.expires_at,
+            reason=reason,
+        )
+    except DuplicateRecordError:
+        return
+
+
 async def _revoke_refresh_token(
     db: AsyncSession,
     *,
@@ -617,6 +684,17 @@ async def _revoke_refresh_token(
     user = await get_user_by_id(db, user_id)
     if user is None:
         raise _invalid_refresh_token()
+
+    now = datetime.now(UTC)
+    session = await get_refresh_token_session_by_hash(db, token_hash)
+    if session is not None:
+        if (
+            session.user_id != user.id
+            or session.revoked_at is not None
+            or _aware_utc(session.expires_at) <= now
+        ):
+            raise _invalid_refresh_token()
+        await revoke_refresh_token_session(db, session, revoked_at=now, reason=reason)
 
     try:
         await blacklist_refresh_token(
@@ -644,7 +722,7 @@ async def refresh_auth_tokens(
         payload=refresh_payload,
         reason="rotation",
     )
-    return _token_response(user)
+    return await _token_response(db, user)
 
 
 async def logout_user(
@@ -664,3 +742,50 @@ async def logout_user(
         reason="logout",
         ignore_existing=True,
     )
+
+
+async def list_active_sessions(
+    db: AsyncSession, current_user: User
+) -> list[RefreshSessionResponse]:
+    sessions = await list_active_refresh_token_sessions_for_user(
+        db, current_user.id, datetime.now(UTC)
+    )
+    return [RefreshSessionResponse.model_validate(session) for session in sessions]
+
+
+async def revoke_session(
+    db: AsyncSession, current_user: User, session_id: UUID
+) -> AccountActionResponse:
+    session = await get_refresh_token_session_for_user(db, current_user.id, session_id)
+    now = datetime.now(UTC)
+    if (
+        session is None
+        or session.revoked_at is not None
+        or _aware_utc(session.expires_at) <= now
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+
+    await revoke_refresh_token_session(
+        db, session, revoked_at=now, reason="user_revoked_session"
+    )
+    await _blacklist_session_token(db, session=session, reason="user_revoked_session")
+    return AccountActionResponse(message="Session revoked")
+
+
+async def revoke_all_sessions(
+    db: AsyncSession, current_user: User
+) -> AccountActionResponse:
+    now = datetime.now(UTC)
+    sessions = await revoke_active_refresh_token_sessions_for_user(
+        db,
+        user_id=current_user.id,
+        revoked_at=now,
+        reason="user_revoked_all_sessions",
+    )
+    for session in sessions:
+        await _blacklist_session_token(
+            db, session=session, reason="user_revoked_all_sessions"
+        )
+    return AccountActionResponse(message="All sessions revoked")

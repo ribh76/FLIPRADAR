@@ -1269,6 +1269,105 @@ def test_logout_rejects_refresh_token_for_another_user(client: TestClient):
     assert response.json()["detail"] == "Invalid refresh token"
 
 
+def test_list_active_sessions_includes_current_refresh_session(client: TestClient):
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "username": "sessionlist",
+            "email": "sessionlist@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    body = register_response.json()
+
+    response = client.get(
+        "/users/me/sessions", headers=bearer_headers(body["access_token"])
+    )
+
+    assert response.status_code == 200, response.text
+    sessions = response.json()
+    assert len(sessions) == 1
+    assert sessions[0]["id"]
+    assert sessions[0]["created_at"]
+    assert sessions[0]["last_seen_at"]
+    assert sessions[0]["expires_at"]
+
+
+def test_revoke_individual_session_blocks_refresh_token(client: TestClient):
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "username": "sessionrevoke",
+            "email": "sessionrevoke@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    body = register_response.json()
+    sessions = client.get(
+        "/users/me/sessions", headers=bearer_headers(body["access_token"])
+    ).json()
+
+    revoke_response = client.delete(
+        f"/users/me/sessions/{sessions[0]['id']}",
+        headers=bearer_headers(body["access_token"]),
+    )
+    refresh_response = client.post(
+        "/auth/refresh", json={"refresh_token": body["refresh_token"]}
+    )
+    list_response = client.get(
+        "/users/me/sessions", headers=bearer_headers(body["access_token"])
+    )
+
+    assert revoke_response.status_code == 200, revoke_response.text
+    assert revoke_response.json()["message"] == "Session revoked"
+    assert refresh_response.status_code == 401
+    assert refresh_response.json()["detail"] == "Invalid refresh token"
+    assert list_response.status_code == 200
+    assert list_response.json() == []
+
+
+def test_revoke_all_sessions_blocks_every_refresh_token(client: TestClient):
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "username": "sessionendall",
+            "email": "sessionendall@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    first_body = register_response.json()
+    second_login = client.post(
+        "/auth/login",
+        json={"username_or_email": "sessionendall", "password": VALID_PASSWORD},
+    )
+    second_body = second_login.json()
+    list_before = client.get(
+        "/users/me/sessions", headers=bearer_headers(first_body["access_token"])
+    )
+
+    revoke_response = client.delete(
+        "/users/me/sessions", headers=bearer_headers(first_body["access_token"])
+    )
+    first_refresh = client.post(
+        "/auth/refresh", json={"refresh_token": first_body["refresh_token"]}
+    )
+    second_refresh = client.post(
+        "/auth/refresh", json={"refresh_token": second_body["refresh_token"]}
+    )
+    list_after = client.get(
+        "/users/me/sessions", headers=bearer_headers(first_body["access_token"])
+    )
+
+    assert list_before.status_code == 200
+    assert len(list_before.json()) == 2
+    assert revoke_response.status_code == 200, revoke_response.text
+    assert revoke_response.json()["message"] == "All sessions revoked"
+    assert first_refresh.status_code == 401
+    assert second_refresh.status_code == 401
+    assert list_after.status_code == 200
+    assert list_after.json() == []
+
+
 def test_refresh_token_cannot_be_used_as_access_token(client: TestClient):
     register_response = client.post(
         "/auth/register",
@@ -1415,6 +1514,69 @@ def test_change_password_updates_login_and_sends_security_email(
             "event_label": "Your password was changed",
         }
     ]
+
+
+def test_account_deletion_requires_current_password(client: TestClient):
+    headers = auth_headers(client, "deletionwrongpass")
+
+    response = client.post(
+        "/users/me/deletion-request",
+        headers=headers,
+        json={"current_password": "wrong-password"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Current password is incorrect"
+
+
+def test_account_deletion_schedules_removal_and_sends_confirmation_email(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    deletion_emails: list[dict] = []
+
+    async def capture_deletion_email(**kwargs):
+        deletion_emails.append(kwargs)
+
+    monkeypatch.setattr(
+        auth_service,
+        "send_account_deletion_confirmation_email",
+        capture_deletion_email,
+    )
+    headers = auth_headers(client, "deletionuser")
+
+    response = client.post(
+        "/users/me/deletion-request",
+        headers=headers,
+        json={"current_password": VALID_PASSWORD},
+    )
+    profile_response = client.get("/users/me", headers=headers)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    scheduled_at = datetime.fromisoformat(body["deletion_scheduled_at"])
+    requested_at = datetime.fromisoformat(
+        profile_response.json()["deletion_requested_at"]
+    )
+    assert body["message"] == (
+        "Account deletion confirmed. Your user data is scheduled for removal in 24 hours."
+    )
+    assert scheduled_at.replace(tzinfo=None) - requested_at.replace(
+        tzinfo=None
+    ) == timedelta(hours=24)
+    profile_scheduled_at = datetime.fromisoformat(
+        profile_response.json()["deletion_scheduled_at"]
+    )
+    assert profile_scheduled_at.replace(tzinfo=None) == scheduled_at.replace(
+        tzinfo=None
+    )
+    assert deletion_emails[0]["to_address"] == "deletionuser@example.com"
+    assert deletion_emails[0]["username"] == "deletionuser"
+    emailed_scheduled_at = datetime.fromisoformat(
+        deletion_emails[0]["deletion_scheduled_at"]
+    )
+    assert emailed_scheduled_at.replace(tzinfo=None) == scheduled_at.replace(
+        tzinfo=None
+    )
 
 
 def test_email_change_request_sends_new_confirmation_and_old_security_notice(

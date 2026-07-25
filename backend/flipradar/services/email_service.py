@@ -144,6 +144,25 @@ def email_change_confirmation_template(
     return EmailTemplate(subject=subject, text_body=text_body, html_body=html_body)
 
 
+def account_deletion_confirmation_template(
+    *, username: str, deletion_scheduled_at: str
+) -> EmailTemplate:
+    subject = "FlipRadar account deletion scheduled"
+    text_body = (
+        f"Hi {username},\n\n"
+        "Your FlipRadar account deletion was confirmed. Your user data is "
+        f"scheduled to be removed after {deletion_scheduled_at}.\n\n"
+        "If you did not request this, contact FlipRadar support immediately."
+    )
+    html_body = f"""
+    <p>Hi {username},</p>
+    <p>Your FlipRadar account deletion was confirmed.</p>
+    <p>Your user data is scheduled to be removed after <strong>{deletion_scheduled_at}</strong>.</p>
+    <p>If you did not request this, contact FlipRadar support immediately.</p>
+    """
+    return EmailTemplate(subject=subject, text_body=text_body, html_body=html_body)
+
+
 def security_email_template(*, username: str, event_label: str) -> EmailTemplate:
     subject = f"Security alert: {event_label}"
     text_body = (
@@ -232,6 +251,23 @@ async def send_email_change_confirmation_email(
             username=username,
             new_email=new_email,
             confirmation_url=confirmation_url,
+        ),
+        email_service=email_service,
+    )
+
+
+async def send_account_deletion_confirmation_email(
+    *,
+    to_address: str,
+    username: str,
+    deletion_scheduled_at: str,
+    email_service: EmailService | None = None,
+) -> EmailSendResult:
+    return await _send_template(
+        to_address=to_address,
+        template=account_deletion_confirmation_template(
+            username=username,
+            deletion_scheduled_at=deletion_scheduled_at,
         ),
         email_service=email_service,
     )

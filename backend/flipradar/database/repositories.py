@@ -21,6 +21,7 @@ from flipradar.domain.models import (
     PriceSnapshot,
     Recommendation,
     RefreshTokenBlacklist,
+    RefreshTokenSession,
     User,
 )
 
@@ -140,6 +141,31 @@ async def update_user_password_hash(
     await db.flush()
     await db.refresh(user)
     return user
+
+
+async def schedule_user_deletion(
+    db: AsyncSession,
+    user: User,
+    *,
+    requested_at: datetime,
+    scheduled_at: datetime,
+) -> User:
+    user.deletion_requested_at = requested_at
+    user.deletion_scheduled_at = scheduled_at
+    await db.flush()
+    await db.refresh(user)
+    return user
+
+
+async def delete_users_scheduled_for_deletion(db: AsyncSession, now: datetime) -> int:
+    result = await db.execute(
+        delete(User).where(
+            User.deletion_scheduled_at.is_not(None),
+            User.deletion_scheduled_at <= now,
+        )
+    )
+    await db.flush()
+    return cast(CursorResult, result).rowcount or 0
 
 
 async def stage_user_email_change(
@@ -297,6 +323,110 @@ async def blacklist_refresh_token(
     except IntegrityError as exc:
         raise DuplicateRecordError("Refresh token already revoked") from exc
     return token
+
+
+async def create_refresh_token_session(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    token_hash: str,
+    token_jti: str,
+    expires_at: datetime,
+    last_seen_at: datetime,
+) -> RefreshTokenSession:
+    session = RefreshTokenSession(
+        user_id=user_id,
+        token_hash=token_hash,
+        token_jti=token_jti,
+        expires_at=expires_at,
+        last_seen_at=last_seen_at,
+    )
+    db.add(session)
+    try:
+        await db.flush()
+        await db.refresh(session)
+    except IntegrityError as exc:
+        raise DuplicateRecordError("Refresh token session already exists") from exc
+    return session
+
+
+async def get_refresh_token_session_by_hash(
+    db: AsyncSession, token_hash: str
+) -> RefreshTokenSession | None:
+    result = await db.execute(
+        select(RefreshTokenSession).where(RefreshTokenSession.token_hash == token_hash)
+    )
+    return result.scalar_one_or_none()
+
+
+async def list_active_refresh_token_sessions_for_user(
+    db: AsyncSession, user_id: UUID, now: datetime
+) -> list[RefreshTokenSession]:
+    result = await db.execute(
+        select(RefreshTokenSession)
+        .where(
+            RefreshTokenSession.user_id == user_id,
+            RefreshTokenSession.revoked_at.is_(None),
+            RefreshTokenSession.expires_at > now,
+        )
+        .order_by(
+            RefreshTokenSession.last_seen_at.desc(),
+            RefreshTokenSession.created_at.desc(),
+        )
+    )
+    return list(result.scalars())
+
+
+async def get_refresh_token_session_for_user(
+    db: AsyncSession, user_id: UUID, session_id: UUID
+) -> RefreshTokenSession | None:
+    result = await db.execute(
+        select(RefreshTokenSession).where(
+            RefreshTokenSession.id == session_id,
+            RefreshTokenSession.user_id == user_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def mark_refresh_token_session_seen(
+    db: AsyncSession, session: RefreshTokenSession, seen_at: datetime
+) -> RefreshTokenSession:
+    session.last_seen_at = seen_at
+    await db.flush()
+    await db.refresh(session)
+    return session
+
+
+async def revoke_refresh_token_session(
+    db: AsyncSession,
+    session: RefreshTokenSession,
+    *,
+    revoked_at: datetime,
+    reason: str,
+) -> RefreshTokenSession:
+    session.revoked_at = revoked_at
+    session.revoked_reason = reason
+    await db.flush()
+    await db.refresh(session)
+    return session
+
+
+async def revoke_active_refresh_token_sessions_for_user(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    revoked_at: datetime,
+    reason: str,
+) -> list[RefreshTokenSession]:
+    sessions = await list_active_refresh_token_sessions_for_user(
+        db, user_id, revoked_at
+    )
+    for session in sessions:
+        session.revoked_at = revoked_at
+        session.revoked_reason = reason
+    await db.flush()
+    return sessions
 
 
 # Set repository

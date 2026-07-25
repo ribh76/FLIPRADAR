@@ -87,6 +87,8 @@ class UserResponse(BaseModel):
     email: str
     pending_email: str | None = None
     is_email_verified: bool
+    deletion_requested_at: datetime | None = None
+    deletion_scheduled_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -194,3 +196,21 @@ class EmailChangeConfirmRequest(BaseModel):
 
 class AccountActionResponse(BaseModel):
     message: str
+
+
+class AccountDeletionRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+
+
+class AccountDeletionResponse(BaseModel):
+    message: str
+    deletion_scheduled_at: datetime
+
+
+class RefreshSessionResponse(BaseModel):
+    id: UUID
+    created_at: datetime
+    last_seen_at: datetime | None = None
+    expires_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
