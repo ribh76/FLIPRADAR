@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 import flipradar.domain.models  # noqa: F401
+from flipradar.api.schemas import LegoSetCreate
 from flipradar.database import Base
 from flipradar.database.repositories import (
     DuplicateRecordError,
@@ -33,6 +34,10 @@ from flipradar.services import marketplace_service, portfolio_service
 from flipradar.services.listing_normalizer import normalize
 from flipradar.services.price_snapshot_service import (
     get_latest_price_snapshot_by_set_number,
+)
+from flipradar.services.set_catalog_service import (
+    InMemoryLegoSetCache,
+    LegoSetCatalogService,
 )
 
 logger = logging.getLogger(__name__)
@@ -111,6 +116,34 @@ async def test_insert_randomized_lego_set(db_session: AsyncSession):
     assert saved_set.set_number == lego_set.set_number
     assert saved_set.name.startswith("Random Test Set")
     assert saved_set.piece_count == 1250
+
+
+@pytest.mark.asyncio
+async def test_catalog_upsert_caches_and_updates_seed_set(db_session: AsyncSession):
+    cache = InMemoryLegoSetCache()
+    service = LegoSetCatalogService(cache=cache)
+    payload = {
+        "set_number": "42071",
+        "name": "Extreme Adventure",
+        "theme": "Technic",
+        "release_year": 2018,
+        "retirement_year": 2018,
+        "piece_count": 2382,
+        "minifig_count": 0,
+        "data_quality_flag": True,
+        "completeness_flag": True,
+    }
+
+    created = await service.upsert(db_session, LegoSetCreate(**payload))
+    assert created.set_number == "42071"
+    assert created.completeness_flag is True
+    assert await service.get(db_session, " 42071 ") is created
+
+    payload["name"] = "Extreme Adventure (catalog refresh)"
+    updated = await service.upsert(db_session, LegoSetCreate(**payload))
+    assert updated.id == created.id
+    assert updated.name == "Extreme Adventure (catalog refresh)"
+    assert cache.get("42071") is updated
 
 
 @pytest.mark.asyncio

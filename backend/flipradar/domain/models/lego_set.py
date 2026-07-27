@@ -4,6 +4,7 @@ from uuid import UUID as PyUUID
 from uuid import uuid4
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     Index,
@@ -48,6 +49,10 @@ class LegoSet(Base):
         CheckConstraint(
             "region IS NULL OR region = upper(region)", name="region_uppercase"
         ),
+        CheckConstraint(
+            "completeness_flag = false OR (theme IS NOT NULL AND release_year IS NOT NULL AND piece_count IS NOT NULL)",
+            name="completeness_flag_requirements",
+        ),
         Index("ix_lego_sets_theme_release_year", "theme", "release_year"),
     )
 
@@ -70,6 +75,12 @@ class LegoSet(Base):
     image_urls: Mapped[list[str] | None] = mapped_column(JsonDocument)
     source_name: Mapped[str | None] = mapped_column(String(120))
     source_url: Mapped[str | None] = mapped_column(String(1000))
+    data_quality_flag: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    completeness_flag: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

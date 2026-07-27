@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
@@ -6,6 +8,8 @@ from typing import Any, cast
 from uuid import UUID
 
 from sqlalchemy import delete, func, or_, select
+from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,6 +49,54 @@ class ConflictRecordError(RepositoryError):
 
 class WatchlistRepositoryUnavailableError(RepositoryError):
     """Raised until a watchlist persistence model is added."""
+
+
+class LegoSetCatalogRepository:
+    """Persistence boundary for catalog reads and conflict-safe writes."""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def get_by_number(self, set_number: str) -> LegoSet | None:
+        return await get_set_by_number(self.db, set_number)
+
+    async def list(
+        self,
+        *,
+        pagination: Pagination | None = None,
+        theme: str | None = None,
+        query: str | None = None,
+        order: str = "set_number",
+    ) -> list[LegoSet]:
+        return await list_sets(
+            self.db,
+            pagination=pagination,
+            theme=theme,
+            query=query,
+            order=order,
+        )
+
+    async def upsert(self, set_data: dict[str, Any]) -> LegoSet:
+        """Insert a set or update its catalog metadata by canonical set number."""
+        payload = dict(set_data)
+        payload["set_number"] = normalize_set_number(payload["set_number"])
+        dialect_name = self.db.bind.dialect.name if self.db.bind is not None else ""
+        insert = postgresql_insert if dialect_name == "postgresql" else sqlite_insert
+        statement = insert(LegoSet).values(**payload)
+        update_values = {
+            key: value for key, value in payload.items() if key != "set_number"
+        }
+        update_values["updated_at"] = func.now()
+        statement = statement.on_conflict_do_update(
+            index_elements=[LegoSet.set_number], set_=update_values
+        )
+        await self.db.execute(statement)
+        await self.db.flush()
+        result = await self.get_by_number(payload["set_number"])
+        if result is None:  # pragma: no cover - defensive database invariant
+            raise RepositoryError("LEGO set upsert did not return a record")
+        await self.db.refresh(result)
+        return result
 
 
 @dataclass(frozen=True)

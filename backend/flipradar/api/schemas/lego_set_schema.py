@@ -22,6 +22,8 @@ class LegoSetCreate(BaseModel):
     image_urls: list[str] | None = Field(default=None)
     source_name: str | None = Field(default=None, max_length=120)
     source_url: str | None = Field(default=None, max_length=1000)
+    data_quality_flag: bool = False
+    completeness_flag: bool = False
 
     @field_validator("original_currency", "region", mode="before")
     @classmethod

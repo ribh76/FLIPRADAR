@@ -297,7 +297,7 @@ PART V - LEGO CATALOG AND PRICING
 
 PHASE 15: LEGO SET CATALOG MODEL
 Classification: MUST SHIP
-Prompt 1: (5.6 terra, medium) 
+Prompt 1: (5.6 terra, medium) (Done) 
 1. Finalize the LEGO set model.
 2. Store set number, name, theme, subtheme, release year, pieces, and minifigures.
 3. Store MSRP, original currency, and regional information.
