@@ -30,7 +30,11 @@ from flipradar.api.schemas.common_schema import (
     PortfolioItemCollectionResponse,
     PriceSnapshotCollectionResponse,
 )
-from flipradar.api.schemas.lego_set_schema import LegoSetCreate, LegoSetResponse
+from flipradar.api.schemas.lego_set_schema import (
+    CatalogSearchResponse,
+    LegoSetCreate,
+    LegoSetResponse,
+)
 from flipradar.api.schemas.listing_schema import (
     ListingCreate,
     ListingResponse,
@@ -71,6 +75,7 @@ __all__ = [
     "AccountSettingsUpdate",
     "ApiError",
     "ApiErrorResponse",
+    "CatalogSearchResponse",
     "CollectionResponse",
     "ConfidenceBand",
     "EmailChangeConfirmRequest",

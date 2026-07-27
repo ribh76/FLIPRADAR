@@ -25,6 +25,11 @@ class ServiceValidationError(ServiceError):
         super().__init__(message=message, status_code=400)
 
 
+class ServiceIncompleteDataError(ServiceError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message=message, status_code=422)
+
+
 class ServiceDatabaseError(ServiceError):
     def __init__(self, message: str = "Database operation failed") -> None:
         super().__init__(message=message, status_code=500)

@@ -306,7 +306,7 @@ Prompt 1: (5.6 terra, medium) (Done)
 6. Store provider-specific identifiers. (Skip)
 7. Store retrieval timestamps. (Skip) 
 
-Prompt 2: (5.6 luna medium) 
+Prompt 2: (5.6 luna medium) (Done) 
 8. Add data-quality and completeness flags.
 9. Add unique and indexed set-number fields.
 10. Build catalog repository and service methods.

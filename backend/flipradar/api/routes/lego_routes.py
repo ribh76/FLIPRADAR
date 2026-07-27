@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
+    CatalogSearchResponse,
     LegoSetCollectionResponse,
     LegoSetCreate,
     LegoSetResponse,
@@ -50,6 +51,30 @@ async def create_lego_set(
         "request finished route=create_lego_set set_number=%s", payload.set_number
     )
     return lego_set
+
+
+@router.get(
+    "/sets/search",
+    response_model=CatalogSearchResponse,
+    summary="Search the LEGO set catalog",
+    description=(
+        "Searches the local catalog by full or partial set number first. "
+        "On a local miss, retrieves and caches an exact set match from the selected provider."
+    ),
+)
+async def search_lego_set_catalog(
+    query: str = Query(..., min_length=1, max_length=32),
+    provider: str = Query(default="bricklink", min_length=1, max_length=40),
+    limit: int = Query(default=25, ge=1, le=100),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """Search local sets and hydrate an exact provider miss into the catalog cache."""
+    try:
+        return await set_catalog_service.search_lego_sets(
+            db, query, provider=provider, limit=limit
+        )
+    except ServiceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
 # Fetches one LEGO set. It accepts a set number in the path and returns matching metadata.

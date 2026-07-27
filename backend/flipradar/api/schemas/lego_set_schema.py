@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -49,3 +50,11 @@ class LegoSetResponse(LegoSetCreate):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CatalogSearchResponse(BaseModel):
+    query: str
+    provider: str | None
+    source: Literal["local", "provider"]
+    exact_match: bool
+    results: list[LegoSetResponse]
