@@ -325,7 +325,7 @@ Classification: MUST SHIP
 5. Cache retrieved records.
 6. Return useful not-found and incomplete-data responses.
 
-
+7-13 complete
 7. Create the set-search frontend page.
 8. Add autocomplete for known set numbers and names.
 9. Create the set-detail page.
@@ -333,6 +333,8 @@ Classification: MUST SHIP
 11. Add actions to add the set to the portfolio or watchlist.
 12. Show source and last-updated details.
 13. Add loading, invalid-input, provider-error, and no-result states.
+
+tests made and ran, full pass. 
 14. Add backend and frontend tests.
 
 PHASE 17: MARKETPLACE NORMALIZATION

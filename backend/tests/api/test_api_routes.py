@@ -17,6 +17,7 @@ from flipradar.core.settings import get_settings
 from flipradar.database import Base, get_db_session
 from flipradar.domain.engines import price_estimator
 from flipradar.domain.models import User
+from flipradar.integrations import bricklink_mock_client
 from flipradar.main import create_app
 from flipradar.services import auth_service, recommendation_service
 
@@ -309,6 +310,49 @@ def test_list_sets_endpoint_supports_pagination_filtering_and_ordering(
         "has_more": False,
     }
     assert body["data"][0]["set_number"] == "100002"
+
+
+def test_set_search_supports_partial_local_lookup_and_provider_hydration(
+    client: TestClient,
+):
+    create_lego_set(client, "42071")
+
+    local_response = client.get("/sets/search", params={"query": "420"})
+    assert local_response.status_code == 200
+    local_body = local_response.json()
+    assert local_body["source"] == "local"
+    assert local_body["exact_match"] is False
+    assert [item["set_number"] for item in local_body["results"]] == ["42071"]
+
+    provider_response = client.get("/sets/search", params={"query": "75192"})
+    assert provider_response.status_code == 200
+    provider_body = provider_response.json()
+    assert provider_body["source"] == "provider"
+    assert provider_body["exact_match"] is True
+    assert isinstance(provider_body["results"], list)
+    assert provider_body["results"][0]["name"] == "Millennium Falcon"
+    assert provider_body["results"][0]["source_name"] == "Bricklink catalog"
+
+    cached_response = client.get("/sets/search", params={"query": "75192"})
+    assert cached_response.status_code == 200
+    assert cached_response.json()["source"] == "local"
+
+
+def test_set_search_returns_not_found_and_incomplete_provider_errors(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    not_found = client.get("/sets/search", params={"query": "99999"})
+    assert not_found.status_code == 404
+    assert "not found" in not_found.json()["error"]["message"].lower()
+
+    monkeypatch.setattr(
+        bricklink_mock_client,
+        "fetch_set_metadata",
+        lambda set_number: {"set_number": set_number, "name": "Incomplete"},
+    )
+    incomplete = client.get("/sets/search", params={"query": "99999"})
+    assert incomplete.status_code == 422
+    assert "incomplete" in incomplete.json()["error"]["message"].lower()
 
 
 def test_create_listing_endpoint(client: TestClient):
