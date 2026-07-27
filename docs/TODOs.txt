@@ -297,14 +297,16 @@ PART V - LEGO CATALOG AND PRICING
 
 PHASE 15: LEGO SET CATALOG MODEL
 Classification: MUST SHIP
-
+Prompt 1: (5.6 terra, medium) 
 1. Finalize the LEGO set model.
 2. Store set number, name, theme, subtheme, release year, pieces, and minifigures.
 3. Store MSRP, original currency, and regional information.
 4. Store release and retirement information.
 5. Store image URLs and source attribution.
-6. Store provider-specific identifiers.
-7. Store retrieval timestamps.
+6. Store provider-specific identifiers. (Skip)
+7. Store retrieval timestamps. (Skip) 
+
+Prompt 2: (5.6 luna medium) 
 8. Add data-quality and completeness flags.
 9. Add unique and indexed set-number fields.
 10. Build catalog repository and service methods.
@@ -1312,3 +1314,20 @@ Do not begin the next phase until:
 5. Documentation is updated.
 6. The feature can operate without manual developer intervention.
 7. No critical defect from the current phase remains unresolved.
+
+
+
+
+One lint/type error	5.4 Mini	Low
+Repository lint cleanup	5.4 Mini	Medium
+Generate routine tests	5.4 Mini or Luna	Medium
+Investigate failing tests	Luna	Medium
+Small bug	Luna	Medium
+Small, clear feature	Luna	Medium
+Standard feature	Terra	Medium
+Multi-file feature	Terra	Medium or High
+Medium refactor	Terra	High
+Difficult debugging	Terra	High
+Terra failed twice	Sol	High
+Architecture/security/migration	Sol	High
+Truly brutal problem	Sol	Very High

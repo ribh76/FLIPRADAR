@@ -1,7 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from flipradar.api.schemas.validation import SetNumber
 
@@ -15,6 +16,17 @@ class LegoSetCreate(BaseModel):
     retirement_year: int | None = Field(default=None, ge=1949, le=2100)
     piece_count: int | None = Field(default=None, ge=0)
     minifig_count: int | None = Field(default=None, ge=0)
+    msrp: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
+    original_currency: str | None = Field(default=None, min_length=3, max_length=3)
+    region: str | None = Field(default=None, min_length=2, max_length=16)
+    image_urls: list[str] | None = Field(default=None)
+    source_name: str | None = Field(default=None, max_length=120)
+    source_url: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("original_currency", "region", mode="before")
+    @classmethod
+    def normalize_uppercase_metadata(cls, value: str | None) -> str | None:
+        return value.strip().upper() if value is not None else None
 
     @model_validator(mode="after")
     def validate_retirement_year(self):

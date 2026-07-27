@@ -187,6 +187,34 @@ def test_create_set_endpoint(client: TestClient):
     assert response.json()["set_number"] == payload["set_number"]
 
 
+def test_create_set_persists_catalog_metadata(client: TestClient):
+    payload = create_set_payload()
+    payload.update(
+        {
+            "msrp": "229.99",
+            "original_currency": "usd",
+            "region": "us",
+            "image_urls": [
+                "https://images.example.test/primary.jpg",
+                "https://images.example.test/alternate.jpg",
+            ],
+            "source_name": "LEGO Shop",
+            "source_url": "https://www.lego.com/en-us/product/test-set",
+        }
+    )
+
+    response = client.post("/sets", json=payload)
+
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["msrp"] == "229.99"
+    assert body["original_currency"] == "USD"
+    assert body["region"] == "US"
+    assert body["image_urls"] == payload["image_urls"]
+    assert body["source_name"] == payload["source_name"]
+    assert body["source_url"] == payload["source_url"]
+
+
 def test_get_set_endpoint(client: TestClient):
     lego_set = create_lego_set(client)
     response = client.get(f"/set/{lego_set['set_number']}")
