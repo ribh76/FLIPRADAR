@@ -4,6 +4,12 @@ export default {
   theme: {
     extend: {
       colors: {
+        brand: {
+          black: "#050000",
+          accent: "#49fce2",
+          amber: "#eb881e",
+          warning: "#910303",
+        },
         navy: {
           950: "#07111f",
           900: "#0b1728",

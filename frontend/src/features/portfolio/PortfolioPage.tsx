@@ -85,42 +85,50 @@ export function PortfolioPage() {
       header: "Set Number",
       key: "set-number",
       render: (item: PortfolioItem) => (
-        <span className="font-bold text-slate-950">{item.set_number}</span>
+        <span className="font-bold text-[var(--color-text)]">
+          {item.set_number}
+        </span>
       ),
     },
     {
       header: "Name",
       key: "name",
       render: (item: PortfolioItem) => (
-        <span className="text-slate-700">{item.set_name ?? "--"}</span>
+        <span className="text-[var(--color-text-muted)]">
+          {item.set_name ?? "--"}
+        </span>
       ),
     },
     {
       header: "Condition",
       key: "condition",
       render: (item: PortfolioItem) => (
-        <span className="capitalize text-slate-700">{item.condition}</span>
+        <span className="capitalize text-[var(--color-text-muted)]">
+          {item.condition}
+        </span>
       ),
     },
     {
       header: "Quantity",
       key: "quantity",
       render: (item: PortfolioItem) => (
-        <span className="text-slate-700">{item.quantity}</span>
+        <span className="text-[var(--color-text-muted)]">{item.quantity}</span>
       ),
     },
     {
       header: "Purchase Price",
       key: "purchase-price",
       render: (item: PortfolioItem) => (
-        <span className="text-slate-700">{currency(item.purchase_price)}</span>
+        <span className="text-[var(--color-text-muted)]">
+          {currency(item.purchase_price)}
+        </span>
       ),
     },
     {
       header: "Current Value",
       key: "current-value",
       render: (item: PortfolioItem) => (
-        <span className="text-slate-700">
+        <span className="text-[var(--color-text-muted)]">
           {currency(item.current_total_value)}
         </span>
       ),
@@ -132,7 +140,7 @@ export function PortfolioPage() {
         const gain = Number(item.unrealized_gain_loss ?? 0);
         return (
           <span
-            className={`font-bold ${gain >= 0 ? "text-emerald-700" : "text-red-700"}`}
+            className={`font-bold ${gain >= 0 ? "semantic-gain" : "semantic-loss"}`}
           >
             {signedCurrency(item.unrealized_gain_loss)}
           </span>
@@ -157,13 +165,6 @@ export function PortfolioPage() {
 
   return (
     <section>
-      <div className="mb-7">
-        <h1 className="text-3xl font-bold text-white">Portfolio</h1>
-        <p className="mt-2 text-blue-100">
-          Track your LEGO collection value, basis, and holdings.
-        </p>
-      </div>
-
       {error ? (
         <div className="mb-5">
           <FormAlert>{error}</FormAlert>
@@ -259,8 +260,10 @@ export function PortfolioPage() {
       </Card>
 
       <section className="page-card overflow-hidden p-0">
-        <div className="border-b border-slate-200 p-5">
-          <h2 className="text-lg font-bold text-slate-950">Holdings</h2>
+        <div className="border-b border-[var(--color-border-soft)] p-5">
+          <h2 className="text-lg font-bold text-[var(--color-text)]">
+            Holdings
+          </h2>
         </div>
         <DataTable
           columns={columns}

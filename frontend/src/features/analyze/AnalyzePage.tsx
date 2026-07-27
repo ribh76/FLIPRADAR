@@ -45,18 +45,6 @@ export function AnalyzePage() {
 
   return (
     <section>
-      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Analyze Set</h1>
-          <p className="mt-2 text-blue-100">
-            A calculator-style recommendation tool for LEGO set decisions.
-          </p>
-        </div>
-        <div className="rounded-md bg-white/10 px-3 py-2 text-sm font-bold text-blue-100">
-          BUY / PASS / HOLD / WATCH
-        </div>
-      </div>
-
       <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
         <Card>
           <form className="space-y-5" onSubmit={handleSubmit}>
@@ -116,14 +104,14 @@ export function AnalyzePage() {
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="metric-label">Main verdict</p>
-                <h2 className="mt-2 text-2xl font-bold text-slate-950">
+                <h2 className="mt-2 text-2xl font-bold text-[var(--color-text)]">
                   {result?.set_number ?? "Waiting for set"}
                 </h2>
               </div>
               <StatusBadge value={verdict} />
             </div>
             <div
-              className={`rounded-lg border p-8 text-center ${result ? verdictTone(verdict) : "border-slate-200 bg-slate-50 text-slate-600"}`}
+              className={`rounded-[var(--radius-card)] border p-8 text-center ${result ? verdictTone(verdict) : "border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]"}`}
             >
               <div className="text-6xl font-black tracking-normal">
                 {result?.recommendation ?? "READY"}
@@ -166,10 +154,10 @@ export function AnalyzePage() {
           </div>
 
           <div className="page-card">
-            <h2 className="text-lg font-bold text-slate-950">
+            <h2 className="text-lg font-bold text-[var(--color-text)]">
               Formatted explanation
             </h2>
-            <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-700">
+            <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[var(--color-text-muted)]">
               {result?.reasoning ??
                 "Run an analysis to see how fair value, asking price, confidence, and listing depth shaped the recommendation."}
             </p>

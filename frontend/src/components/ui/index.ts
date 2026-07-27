@@ -6,5 +6,7 @@ export * from "./Dropdown";
 export * from "./FormControls";
 export * from "./MetricCard";
 export * from "./Modal";
+export * from "./PageHeader";
 export * from "./PageState";
+export * from "./Skeleton";
 export * from "./StatusBadge";

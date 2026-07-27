@@ -37,19 +37,21 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <section className="w-full max-w-md rounded-lg bg-white p-8 shadow-soft">
-      <div className="mb-8">
+    <section className="w-full max-w-md rounded-[var(--radius-card)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-soft)]">
+      <div className="mb-8 rounded-[var(--radius-card)] bg-brand-black p-4">
         <Logo />
       </div>
-      <p className="text-sm font-semibold uppercase tracking-normal text-blue-700">
+      <p className="text-sm font-semibold uppercase tracking-normal text-[var(--color-info)]">
         Account security
       </p>
-      <h1 className="mt-2 text-3xl font-bold text-slate-950">
+      <h1 className="mt-2 text-3xl font-bold text-[var(--color-text)]">
         Reset your password
       </h1>
       {isComplete ? (
         <div className="mt-6 space-y-5">
-          <p className="text-sm leading-6 text-slate-600">{message}</p>
+          <p className="text-sm leading-6 text-[var(--color-text-muted)]">
+            {message}
+          </p>
           <Link className="primary-button inline-flex px-5" to="/login">
             Continue
           </Link>

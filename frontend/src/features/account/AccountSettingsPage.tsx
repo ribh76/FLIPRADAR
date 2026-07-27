@@ -169,23 +169,26 @@ export function AccountSettingsPage() {
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="metric-label">Account</p>
-          <h1 className="mt-2 text-3xl font-bold text-white">Settings</h1>
+      {user ? (
+        <div className="inline-flex rounded-[var(--radius-control)] border border-[var(--color-border-soft)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text-muted)]">
+          Signed in as{" "}
+          <span className="ml-1 font-semibold text-[var(--color-text)]">
+            {user.username}
+          </span>
         </div>
-        {user ? (
-          <div className="rounded-md border border-white/10 bg-white/5 px-4 py-3 text-sm text-blue-100">
-            Signed in as <span className="font-semibold">{user.username}</span>
-          </div>
-        ) : null}
-      </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <form className="page-card space-y-5" onSubmit={saveProfile}>
           <div className="flex items-center gap-3">
-            <UserRound className="text-blue-700" size={20} aria-hidden="true" />
-            <h2 className="text-lg font-bold text-slate-950">Profile</h2>
+            <UserRound
+              className="text-[var(--color-info)]"
+              size={20}
+              aria-hidden="true"
+            />
+            <h2 className="text-lg font-bold text-[var(--color-text)]">
+              Profile
+            </h2>
           </div>
           <label className="block space-y-2">
             <span className="field-label">Display name</span>
@@ -197,7 +200,7 @@ export function AccountSettingsPage() {
             />
           </label>
           {profileMessage ? (
-            <p className="text-sm font-medium text-slate-600">
+            <p className="text-sm font-medium text-[var(--color-text-muted)]">
               {profileMessage}
             </p>
           ) : null}
@@ -213,8 +216,14 @@ export function AccountSettingsPage() {
 
         <form className="page-card space-y-5" onSubmit={changePassword}>
           <div className="flex items-center gap-3">
-            <KeyRound className="text-blue-700" size={20} aria-hidden="true" />
-            <h2 className="text-lg font-bold text-slate-950">Password</h2>
+            <KeyRound
+              className="text-[var(--color-info)]"
+              size={20}
+              aria-hidden="true"
+            />
+            <h2 className="text-lg font-bold text-[var(--color-text)]">
+              Password
+            </h2>
           </div>
           <label className="block space-y-2">
             <span className="field-label">Current password</span>
@@ -237,7 +246,7 @@ export function AccountSettingsPage() {
             />
           </label>
           {passwordMessage ? (
-            <p className="text-sm font-medium text-slate-600">
+            <p className="text-sm font-medium text-[var(--color-text-muted)]">
               {passwordMessage}
             </p>
           ) : null}
@@ -253,17 +262,23 @@ export function AccountSettingsPage() {
 
         <form className="page-card space-y-5" onSubmit={requestEmailChange}>
           <div className="flex items-center gap-3">
-            <Mail className="text-blue-700" size={20} aria-hidden="true" />
-            <h2 className="text-lg font-bold text-slate-950">Email</h2>
+            <Mail
+              className="text-[var(--color-info)]"
+              size={20}
+              aria-hidden="true"
+            />
+            <h2 className="text-lg font-bold text-[var(--color-text)]">
+              Email
+            </h2>
           </div>
-          <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+          <div className="rounded-[var(--radius-control)] border border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm text-[var(--color-text-muted)]">
             Current email
-            <div className="font-semibold text-slate-950">
+            <div className="font-semibold text-[var(--color-text)]">
               {user?.email ?? ""}
             </div>
           </div>
           {user?.pending_email ? (
-            <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-950">
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-accent)] bg-[rgba(73,252,226,0.12)] px-3 py-2 text-sm text-[var(--color-info)]">
               Pending confirmation
               <div className="font-semibold">{user.pending_email}</div>
             </div>
@@ -289,7 +304,9 @@ export function AccountSettingsPage() {
             />
           </label>
           {emailMessage ? (
-            <p className="text-sm font-medium text-slate-600">{emailMessage}</p>
+            <p className="text-sm font-medium text-[var(--color-text-muted)]">
+              {emailMessage}
+            </p>
           ) : null}
           <button
             className="primary-button w-full"
@@ -306,11 +323,11 @@ export function AccountSettingsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <ShieldCheck
-              className="text-blue-700"
+              className="text-[var(--color-info)]"
               size={20}
               aria-hidden="true"
             />
-            <h2 className="text-lg font-bold text-slate-950">
+            <h2 className="text-lg font-bold text-[var(--color-text)]">
               Active sessions
             </h2>
           </div>
@@ -327,7 +344,7 @@ export function AccountSettingsPage() {
                 : "Display recent active sessions"}
             </button>
             <button
-              className="secondary-button border-red-200 text-red-700 hover:bg-red-50"
+              className="secondary-button border-[var(--color-warning)] text-[var(--color-warning)] hover:bg-[rgba(145,3,3,0.1)]"
               type="button"
               onClick={revokeAllSessions}
               disabled={isLoadingSessions}
@@ -338,26 +355,28 @@ export function AccountSettingsPage() {
           </div>
         </div>
         {sessionMessage ? (
-          <p className="text-sm font-medium text-slate-600">{sessionMessage}</p>
+          <p className="text-sm font-medium text-[var(--color-text-muted)]">
+            {sessionMessage}
+          </p>
         ) : null}
         {sessions.length > 0 ? (
-          <div className="divide-y divide-slate-200 rounded-md border border-slate-200">
+          <div className="divide-y divide-[var(--color-border-soft)] rounded-[var(--radius-control)] border border-[var(--color-border-soft)]">
             {sessions.map((session) => (
               <div
                 className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                 key={session.id}
               >
                 <div className="text-sm">
-                  <p className="font-semibold text-slate-950">
+                  <p className="font-semibold text-[var(--color-text)]">
                     Last active {formatSessionDate(session.last_seen_at)}
                   </p>
-                  <p className="mt-1 text-slate-500">
+                  <p className="mt-1 text-[var(--color-text-muted)]">
                     Created {formatSessionDate(session.created_at)} · Expires{" "}
                     {formatSessionDate(session.expires_at)}
                   </p>
                 </div>
                 <button
-                  className="secondary-button border-red-200 text-red-700 hover:bg-red-50"
+                  className="secondary-button border-[var(--color-warning)] text-[var(--color-warning)] hover:bg-[rgba(145,3,3,0.1)]"
                   type="button"
                   onClick={() => void revokeSession(session.id)}
                 >
@@ -370,10 +389,16 @@ export function AccountSettingsPage() {
         ) : null}
       </section>
 
-      <section className="rounded-lg border border-red-200 bg-white p-5 shadow-soft">
+      <section className="rounded-[var(--radius-card)] border border-[var(--color-warning)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-soft)]">
         <div className="flex items-center gap-3">
-          <ShieldAlert className="text-red-700" size={20} aria-hidden="true" />
-          <h2 className="text-lg font-bold text-slate-950">Danger zone</h2>
+          <ShieldAlert
+            className="text-[var(--color-warning)]"
+            size={20}
+            aria-hidden="true"
+          />
+          <h2 className="text-lg font-bold text-[var(--color-text)]">
+            Danger zone
+          </h2>
         </div>
         <form
           className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto]"
@@ -390,7 +415,7 @@ export function AccountSettingsPage() {
             />
           </label>
           <button
-            className="primary-button self-end bg-red-700 hover:bg-red-800"
+            className="primary-button self-end bg-[var(--color-warning)] text-white hover:brightness-110"
             type="submit"
             disabled={isDeletingAccount || !user}
           >
@@ -399,13 +424,13 @@ export function AccountSettingsPage() {
           </button>
         </form>
         {user?.deletion_scheduled_at ? (
-          <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-950">
+          <p className="mt-4 rounded-[var(--radius-control)] border border-[var(--color-warning)] bg-[rgba(145,3,3,0.1)] px-3 py-2 text-sm font-medium text-[var(--color-loss)]">
             Account deletion scheduled for{" "}
             {formatSessionDate(user.deletion_scheduled_at)}.
           </p>
         ) : null}
         {deleteMessage ? (
-          <p className="mt-4 text-sm font-medium text-slate-600">
+          <p className="mt-4 text-sm font-medium text-[var(--color-text-muted)]">
             {deleteMessage}
           </p>
         ) : null}

@@ -20,14 +20,6 @@ export function SetsPage() {
 
   return (
     <section>
-      <div className="mb-7">
-        <h1 className="text-3xl font-bold text-white">Set Detail Lookup</h1>
-        <p className="mt-2 text-blue-100">
-          Search a LEGO set number to view metadata, valuation, and market
-          status.
-        </p>
-      </div>
-
       <Card>
         <form
           className="flex flex-col gap-3 sm:flex-row"

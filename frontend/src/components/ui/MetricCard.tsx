@@ -8,15 +8,15 @@ export function MetricCard({
   tone?: "neutral" | "good" | "bad" | "watch" | "hold";
 }) {
   const toneClass = {
-    neutral: "border-slate-200",
-    good: "border-emerald-200 bg-emerald-50",
-    bad: "border-red-200 bg-red-50",
-    watch: "border-amber-200 bg-amber-50",
-    hold: "border-blue-200 bg-blue-50",
+    neutral: "border-[var(--color-border-soft)]",
+    good: "border-[var(--color-accent)] bg-[rgba(73,252,226,0.12)]",
+    bad: "border-[var(--color-warning)] bg-[rgba(145,3,3,0.1)]",
+    watch: "border-[var(--color-accent-warm)] bg-[rgba(235,136,30,0.14)]",
+    hold: "border-[var(--color-accent)] bg-[rgba(73,252,226,0.08)]",
   }[tone];
 
   return (
-    <div className={`rounded-lg border p-5 ${toneClass}`}>
+    <div className={`rounded-[var(--radius-card)] border p-5 ${toneClass}`}>
       <div className="metric-label">{label}</div>
       <div className="metric-value">{value}</div>
     </div>

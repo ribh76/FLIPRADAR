@@ -16,7 +16,11 @@ export function ValidationMessage({ children }: { children?: ReactNode }) {
   if (!children) {
     return null;
   }
-  return <p className="text-sm font-semibold text-red-700">{children}</p>;
+  return (
+    <p className="text-sm font-semibold text-[var(--color-warning)]">
+      {children}
+    </p>
+  );
 }
 
 export function FieldShell({
@@ -33,7 +37,9 @@ export function FieldShell({
       {error ? (
         <ValidationMessage>{error}</ValidationMessage>
       ) : helpText ? (
-        <p className="text-xs font-medium text-slate-500">{helpText}</p>
+        <p className="text-xs font-medium text-[var(--color-text-muted)]">
+          {helpText}
+        </p>
       ) : null}
     </label>
   );
@@ -114,9 +120,12 @@ export function FormAlert({
     return null;
   }
   const className = {
-    error: "border-red-200 bg-red-50 text-red-800",
-    neutral: "border-slate-200 bg-slate-50 text-slate-600",
-    success: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    error:
+      "border-[var(--color-warning)] bg-[rgba(145,3,3,0.1)] text-[var(--color-loss)]",
+    neutral:
+      "border-[var(--color-border-soft)] bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]",
+    success:
+      "border-[var(--color-accent)] bg-[rgba(73,252,226,0.12)] text-[var(--color-gain)]",
   }[tone];
   return (
     <div className={`rounded-md border p-3 text-sm font-semibold ${className}`}>

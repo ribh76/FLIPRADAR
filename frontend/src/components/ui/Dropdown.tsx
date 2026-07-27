@@ -30,7 +30,7 @@ export function Dropdown({
         <ChevronDown size={16} aria-hidden="true" />
       </button>
       {isOpen ? (
-        <div className="absolute right-0 z-20 mt-2 min-w-44 rounded-md border border-slate-200 bg-white p-1 shadow-soft">
+        <div className="absolute right-0 z-20 mt-2 min-w-44 rounded-[var(--radius-control)] border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-1 shadow-[var(--shadow-soft)]">
           <div onClick={() => setIsOpen(false)}>{children}</div>
         </div>
       ) : null}
@@ -47,7 +47,7 @@ export function DropdownItem({
 }) {
   return (
     <button
-      className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+      className="flex w-full items-center rounded-[var(--radius-control)] px-3 py-2 text-left text-sm font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-muted)]"
       onClick={onSelect}
       type="button"
     >

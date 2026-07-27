@@ -13,6 +13,7 @@ import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { PortfolioPage } from "./features/portfolio/PortfolioPage";
 import { SetDetailPage } from "./features/sets/SetDetailPage";
 import { SetsPage } from "./features/sets/SetsPage";
+import { ShowcasePage } from "./features/showcase/ShowcasePage";
 import { AuthenticatedLayout } from "./layouts/AuthenticatedLayout";
 import { ErrorLayout } from "./layouts/ErrorLayout";
 import { PublicLayout } from "./layouts/PublicLayout";
@@ -43,6 +44,7 @@ export const appRoutes: RouteObject[] = [
           { path: "/portfolio", element: <PortfolioPage /> },
           { path: "/sets", element: <SetsPage /> },
           { path: "/sets/:setNumber", element: <SetDetailPage /> },
+          { path: "/showcase", element: <ShowcasePage /> },
           { path: "/settings", element: <AccountSettingsPage /> },
         ],
       },

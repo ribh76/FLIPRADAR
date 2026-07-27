@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { EmptyState, LoadingState } from "./PageState";
+import { EmptyState } from "./PageState";
+import { Skeleton } from "./Skeleton";
 
 export type DataTableColumn<TRow> = {
   align?: "left" | "right";
@@ -24,7 +25,13 @@ export function DataTable<TRow>({
   rows: TRow[];
 }) {
   if (isLoading) {
-    return <LoadingState title="Loading rows..." />;
+    return (
+      <div className="space-y-3 p-4" aria-label="Loading rows">
+        <Skeleton className="h-10" />
+        <Skeleton className="h-10" />
+        <Skeleton className="h-10" />
+      </div>
+    );
   }
 
   if (rows.length === 0) {
@@ -32,38 +39,62 @@ export function DataTable<TRow>({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table
-        className="w-full border-collapse text-left text-sm"
-        style={{ minWidth }}
-      >
-        <thead className="bg-slate-50 text-xs uppercase tracking-normal text-slate-500">
-          <tr>
+    <>
+      <div className="grid gap-3 md:hidden">
+        {rows.map((row) => (
+          <article
+            className="rounded-[var(--radius-card)] border border-[var(--color-border-soft)] bg-[var(--color-surface)] p-4"
+            key={getRowKey(row)}
+          >
             {columns.map((column) => (
-              <th
-                className={`px-4 py-3 ${column.align === "right" ? "text-right" : ""}`}
+              <div
+                className="grid grid-cols-[7.5rem_1fr] gap-3 py-2"
                 key={column.key}
               >
-                {column.header}
-              </th>
+                <div className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
+                  {column.header}
+                </div>
+                <div className={column.align === "right" ? "text-right" : ""}>
+                  {column.render(row)}
+                </div>
+              </div>
             ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-200">
-          {rows.map((row) => (
-            <tr className="bg-white" key={getRowKey(row)}>
+          </article>
+        ))}
+      </div>
+      <div className="hidden overflow-x-auto md:block">
+        <table
+          className="w-full border-collapse text-left text-sm"
+          style={{ minWidth }}
+        >
+          <thead className="bg-[var(--color-surface-muted)] text-xs uppercase tracking-normal text-[var(--color-text-muted)]">
+            <tr>
               {columns.map((column) => (
-                <td
+                <th
                   className={`px-4 py-3 ${column.align === "right" ? "text-right" : ""}`}
                   key={column.key}
                 >
-                  {column.render(row)}
-                </td>
+                  {column.header}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody className="divide-y divide-[var(--color-border-soft)]">
+            {rows.map((row) => (
+              <tr className="bg-[var(--color-surface)]" key={getRowKey(row)}>
+                {columns.map((column) => (
+                  <td
+                    className={`px-4 py-3 ${column.align === "right" ? "text-right" : ""}`}
+                    key={column.key}
+                  >
+                    {column.render(row)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

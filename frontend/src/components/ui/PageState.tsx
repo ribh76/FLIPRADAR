@@ -17,9 +17,12 @@ type PageStateProps = {
 };
 
 const toneClass: Record<StateTone, string> = {
-  error: "border-red-200 bg-red-50 text-red-900",
-  neutral: "border-slate-200 bg-white text-slate-700",
-  warning: "border-amber-200 bg-amber-50 text-amber-900",
+  error:
+    "border-[var(--color-warning)] bg-[rgba(145,3,3,0.1)] text-[var(--color-text)]",
+  neutral:
+    "border-[var(--color-border-soft)] bg-[var(--color-surface)] text-[var(--color-text-muted)]",
+  warning:
+    "border-[var(--color-accent-warm)] bg-[rgba(235,136,30,0.14)] text-[var(--color-text)]",
 };
 
 export function PageState({
@@ -36,7 +39,9 @@ export function PageState({
       <div className="flex items-start gap-3">
         {icon ? <div className="mt-0.5 shrink-0">{icon}</div> : null}
         <div className="min-w-0">
-          <h2 className="text-base font-bold text-slate-950">{title}</h2>
+          <h2 className="text-base font-bold text-[var(--color-text)]">
+            {title}
+          </h2>
           {children ? <div className="mt-2 leading-6">{children}</div> : null}
           {action ? <div className="mt-4">{action}</div> : null}
         </div>
@@ -48,7 +53,12 @@ export function PageState({
 export function LoadingState({ title = "Loading..." }: { title?: string }) {
   return (
     <PageState
-      icon={<RefreshCw className="animate-spin text-blue-700" size={19} />}
+      icon={
+        <RefreshCw
+          className="animate-spin text-[var(--color-accent)]"
+          size={19}
+        />
+      }
       title={title}
     />
   );
@@ -72,7 +82,7 @@ export function ErrorState({
           </button>
         ) : null
       }
-      icon={<AlertTriangle className="text-red-700" size={20} />}
+      icon={<AlertTriangle className="text-[var(--color-warning)]" size={20} />}
       title={title}
       tone="error"
     >
@@ -90,7 +100,9 @@ export function EmptyState({
 }) {
   return (
     <PageState
-      icon={<PackageOpen className="text-slate-500" size={20} />}
+      icon={
+        <PackageOpen className="text-[var(--color-text-muted)]" size={20} />
+      }
       title={title}
     >
       {message}
@@ -107,7 +119,9 @@ export function UnauthorizedState({
 }) {
   return (
     <PageState
-      icon={<LockKeyhole className="text-amber-700" size={20} />}
+      icon={
+        <LockKeyhole className="text-[var(--color-accent-warm)]" size={20} />
+      }
       title={title}
       tone="warning"
     >

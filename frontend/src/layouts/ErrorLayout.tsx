@@ -12,23 +12,27 @@ export function ErrorLayout() {
     : "That route is not part of the current workspace.";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-navy-950 px-4 py-8">
-      <section className="w-full max-w-md rounded-lg bg-white p-8 shadow-soft">
-        <div className="mb-8">
+    <main className="flex min-h-screen items-center justify-center bg-[var(--color-background)] px-4 py-8">
+      <section className="w-full max-w-md rounded-[var(--radius-card)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-soft)]">
+        <div className="mb-8 rounded-[var(--radius-card)] bg-brand-black p-4">
           <Logo />
         </div>
         <div className="flex items-center gap-3">
           <AlertTriangle
-            className="text-amber-600"
+            className="text-[var(--color-accent-warm)]"
             size={22}
             aria-hidden="true"
           />
-          <p className="text-sm font-semibold uppercase tracking-normal text-blue-700">
+          <p className="text-sm font-semibold uppercase tracking-normal text-[var(--color-info)]">
             Error
           </p>
         </div>
-        <h1 className="mt-3 text-3xl font-bold text-slate-950">{title}</h1>
-        <p className="mt-4 text-sm leading-6 text-slate-600">{message}</p>
+        <h1 className="mt-3 text-3xl font-bold text-[var(--color-text)]">
+          {title}
+        </h1>
+        <p className="mt-4 text-sm leading-6 text-[var(--color-text-muted)]">
+          {message}
+        </p>
         <Link className="primary-button mt-8 inline-flex px-5" to="/dashboard">
           <Home size={17} aria-hidden="true" />
           Dashboard

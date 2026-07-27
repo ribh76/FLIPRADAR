@@ -24,18 +24,24 @@ export function ConfirmationDialog({
     <Modal isOpen={isOpen} onClose={onCancel} title={title}>
       <div className="flex items-start gap-3">
         <AlertTriangle
-          className={tone === "danger" ? "text-red-700" : "text-amber-700"}
+          className={
+            tone === "danger"
+              ? "text-[var(--color-warning)]"
+              : "text-[var(--color-accent-warm)]"
+          }
           size={21}
           aria-hidden="true"
         />
-        <p className="text-sm leading-6 text-slate-600">{description}</p>
+        <p className="text-sm leading-6 text-[var(--color-text-muted)]">
+          {description}
+        </p>
       </div>
       <div className="mt-6 flex flex-wrap justify-end gap-3">
         <button className="secondary-button" onClick={onCancel} type="button">
           Cancel
         </button>
         <button
-          className={`primary-button ${tone === "danger" ? "bg-red-700 hover:bg-red-800" : ""}`}
+          className={`primary-button ${tone === "danger" ? "bg-[var(--color-warning)] text-white hover:brightness-110" : ""}`}
           disabled={isBusy}
           onClick={onConfirm}
           type="button"

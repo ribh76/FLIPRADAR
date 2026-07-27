@@ -35,19 +35,21 @@ export function VerifyEmailPage() {
   }, [searchParams]);
 
   return (
-    <section className="w-full max-w-md rounded-lg bg-white p-8 shadow-soft">
-      <div className="mb-8">
+    <section className="w-full max-w-md rounded-[var(--radius-card)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-soft)]">
+      <div className="mb-8 rounded-[var(--radius-card)] bg-brand-black p-4">
         <Logo />
       </div>
-      <p className="text-sm font-semibold uppercase tracking-normal text-blue-700">
+      <p className="text-sm font-semibold uppercase tracking-normal text-[var(--color-info)]">
         {searchParams.get("flow") === "email-change"
           ? "Email change"
           : "Email verification"}
       </p>
-      <h1 className="mt-2 text-3xl font-bold text-slate-950">
+      <h1 className="mt-2 text-3xl font-bold text-[var(--color-text)]">
         {state === "success" ? "Confirmed" : "Verification status"}
       </h1>
-      <p className="mt-4 text-sm leading-6 text-slate-600">{message}</p>
+      <p className="mt-4 text-sm leading-6 text-[var(--color-text-muted)]">
+        {message}
+      </p>
       <div className="mt-8">
         <Link className="primary-button inline-flex px-5" to="/login">
           Continue

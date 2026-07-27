@@ -44,13 +44,6 @@ export function SetDetailPage() {
 
   return (
     <section>
-      <div className="mb-7">
-        <h1 className="text-3xl font-bold text-white">Set Detail Lookup</h1>
-        <p className="mt-2 text-blue-100">
-          Metadata and current valuation for a single LEGO set.
-        </p>
-      </div>
-
       <Card className="mb-5">
         <form
           className="flex flex-col gap-3 sm:flex-row"
@@ -91,10 +84,10 @@ export function SetDetailPage() {
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <p className="metric-label">Set metadata</p>
-                <h2 className="mt-2 text-3xl font-bold text-slate-950">
+                <h2 className="mt-2 text-3xl font-bold text-[var(--color-text)]">
                   {detail.name}
                 </h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500">
+                <p className="mt-1 text-sm font-semibold text-[var(--color-text-muted)]">
                   {detail.set_number}
                 </p>
               </div>
@@ -126,14 +119,14 @@ export function SetDetailPage() {
             <div
               className={`mt-3 inline-flex rounded-md border px-3 py-2 text-sm font-bold ${
                 hasMarketData
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                  : "border-amber-200 bg-amber-50 text-amber-900"
+                  ? "border-[var(--color-accent)] bg-[rgba(73,252,226,0.12)] text-[var(--color-gain)]"
+                  : "border-[var(--color-accent-warm)] bg-[rgba(235,136,30,0.14)] text-[var(--color-accent-warm)]"
               }`}
             >
               {detail.valuation_status}
             </div>
             {!hasMarketData ? (
-              <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-900">
+              <div className="mt-5 rounded-[var(--radius-card)] border border-[var(--color-accent-warm)] bg-[rgba(235,136,30,0.14)] p-4 text-sm font-semibold leading-6 text-[var(--color-accent-warm)]">
                 Set found, but no market valuation is available yet.
               </div>
             ) : null}
@@ -145,7 +138,7 @@ export function SetDetailPage() {
           </aside>
 
           <section className="page-card lg:col-span-2">
-            <h2 className="text-lg font-bold text-slate-950">
+            <h2 className="text-lg font-bold text-[var(--color-text)]">
               Latest market snapshot
             </h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">

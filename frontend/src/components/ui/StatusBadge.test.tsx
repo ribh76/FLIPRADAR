@@ -11,9 +11,9 @@ describe("StatusBadge", () => {
   });
 
   it("maps known verdicts to stable tone classes", () => {
-    expect(verdictTone("BUY")).toContain("emerald");
-    expect(verdictTone("PASS")).toContain("red");
-    expect(verdictTone("WATCH")).toContain("amber");
-    expect(verdictTone("HOLD")).toContain("blue");
+    expect(verdictTone("BUY")).toContain("--color-gain");
+    expect(verdictTone("PASS")).toContain("--color-loss");
+    expect(verdictTone("WATCH")).toContain("--color-accent-warm");
+    expect(verdictTone("HOLD")).toContain("--color-info");
   });
 });

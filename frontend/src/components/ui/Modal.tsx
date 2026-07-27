@@ -28,7 +28,7 @@ export function Modal({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-brand-black/75 px-4 py-4 sm:items-center sm:py-8"
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           onClose();
@@ -38,9 +38,11 @@ export function Modal({
       role="dialog"
       tabIndex={-1}
     >
-      <section className="w-full max-w-lg rounded-lg bg-white p-5 shadow-soft">
+      <section className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-[var(--radius-card)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-lifted)]">
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-lg font-bold text-slate-950">{title}</h2>
+          <h2 className="text-lg font-bold text-[var(--color-text)]">
+            {title}
+          </h2>
           <button
             aria-label="Close"
             className="secondary-button h-9 w-9 px-0"

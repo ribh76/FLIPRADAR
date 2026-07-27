@@ -24,6 +24,13 @@ vi.mock("./auth/AuthProvider", () => ({
   }),
 }));
 
+vi.mock("./theme/ThemeProvider", () => ({
+  useTheme: () => ({
+    theme: "dark",
+    toggleTheme: vi.fn(),
+  }),
+}));
+
 function renderRoute(path: string) {
   const router = createMemoryRouter(appRoutes, {
     initialEntries: [path],
@@ -67,7 +74,7 @@ describe("routing authentication", () => {
       await screen.findByRole("heading", { name: "Dashboard" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Collector valuation workspace"),
+      screen.getByText("Workspace overview and shortcuts."),
     ).toBeInTheDocument();
   });
 });

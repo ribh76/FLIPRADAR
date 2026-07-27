@@ -79,26 +79,26 @@ export function LoginPage() {
   }
 
   return (
-    <section className="grid w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-soft lg:grid-cols-[0.95fr_1.05fr]">
-      <div className="bg-navy-900 p-8 text-white sm:p-10">
+    <section className="grid w-full max-w-5xl overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-surface)] shadow-[var(--shadow-lifted)] lg:grid-cols-[0.95fr_1.05fr]">
+      <div className="bg-brand-black p-8 text-[var(--color-text-inverse)] sm:p-10">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-600 text-white shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] bg-brand-accent text-brand-black shadow-sm">
             FR
           </div>
           <div>
-            <div className="text-lg font-bold leading-none text-white">
+            <div className="text-lg font-black leading-none text-[var(--color-text-inverse)]">
               FlipRadar
             </div>
-            <div className="mt-1 text-xs font-medium text-blue-100">
-              LEGO set decisions without the spreadsheet fog
+            <div className="mt-1 text-xs font-semibold text-[rgba(255,247,237,0.72)]">
+              LEGO decisions, priced with signal
             </div>
           </div>
         </div>
         <div className="mt-20 max-w-sm">
-          <h1 className="text-4xl font-bold tracking-normal">
+          <h1 className="text-4xl font-black tracking-normal">
             Buy, pass, hold, or sell with cleaner signals.
           </h1>
-          <p className="mt-4 text-base leading-7 text-blue-100">
+          <p className="mt-4 text-base leading-7 text-[rgba(255,247,237,0.76)]">
             FlipRadar turns LEGO set metadata, asking price, and market
             snapshots into fast collector decisions.
           </p>
@@ -107,24 +107,24 @@ export function LoginPage() {
 
       <div className="p-8 sm:p-10">
         <div className="mb-8">
-          <p className="text-sm font-semibold uppercase tracking-normal text-blue-700">
+          <p className="text-sm font-semibold uppercase tracking-normal text-[var(--color-info)]">
             Welcome back
           </p>
-          <h2 className="mt-2 text-3xl font-bold text-slate-950">
+          <h2 className="mt-2 text-3xl font-bold text-[var(--color-text)]">
             {mode === "login" ? "Sign in to FlipRadar" : "Create your account"}
           </h2>
         </div>
 
-        <div className="mb-6 grid grid-cols-2 rounded-md bg-slate-100 p-1">
+        <div className="mb-6 grid grid-cols-2 rounded-[var(--radius-control)] bg-[var(--color-surface-muted)] p-1">
           <button
-            className={`h-10 rounded-md text-sm font-bold ${mode === "login" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500"}`}
+            className={`h-10 rounded-[var(--radius-control)] text-sm font-bold ${mode === "login" ? "bg-brand-accent text-brand-black shadow-sm" : "text-[var(--color-text-muted)]"}`}
             onClick={() => selectMode("login")}
             type="button"
           >
             Login
           </button>
           <button
-            className={`h-10 rounded-md text-sm font-bold ${mode === "register" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500"}`}
+            className={`h-10 rounded-[var(--radius-control)] text-sm font-bold ${mode === "register" ? "bg-brand-accent text-brand-black shadow-sm" : "text-[var(--color-text-muted)]"}`}
             onClick={() => selectMode("register")}
             type="button"
           >
@@ -171,9 +171,9 @@ export function LoginPage() {
             {error}
           </FormAlert>
 
-          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-2 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
             <div
-              className={`h-full rounded-full bg-blue-600 transition-all duration-500 ${isLoading ? "w-full" : "w-0"}`}
+              className={`h-full rounded-full bg-brand-accent transition-all duration-500 ${isLoading ? "w-full" : "w-0"}`}
             />
           </div>
 
@@ -192,7 +192,7 @@ export function LoginPage() {
                   : "Register"}
             </button>
             <button
-              className="secondary-button h-11 w-full border-blue-200 bg-blue-50 text-blue-800"
+              className="secondary-button h-11 w-full"
               onClick={handleDevPass}
               type="button"
             >

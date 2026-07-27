@@ -16,7 +16,7 @@ export function CardHeader({
 }: CardProps & { action?: ReactNode }) {
   return (
     <div
-      className={`flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4 ${className}`}
+      className={`flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] pb-4 ${className}`}
     >
       <div>{children}</div>
       {action ? <div>{action}</div> : null}
@@ -25,5 +25,7 @@ export function CardHeader({
 }
 
 export function CardTitle({ children }: { children: ReactNode }) {
-  return <h2 className="text-lg font-bold text-slate-950">{children}</h2>;
+  return (
+    <h2 className="text-lg font-bold text-[var(--color-text)]">{children}</h2>
+  );
 }
