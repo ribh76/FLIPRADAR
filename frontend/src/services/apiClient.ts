@@ -5,12 +5,14 @@ import type {
   AnalyzeResponse,
   ApiMessage,
   AuthSession,
+  CatalogSearchResponse,
   CollectionResponse,
   CurrentUser,
   PortfolioItem,
   PortfolioItemCreate,
   PortfolioSummary,
   RefreshSession,
+  LegoSet,
   SetDetail,
 } from "../types";
 
@@ -275,6 +277,20 @@ export const apiClient = {
     },
   },
   sets: {
+    list(query: string, limit = 8) {
+      return requestData(
+        api.get<CollectionResponse<LegoSet>>("/sets", {
+          params: { limit, query },
+        }),
+      );
+    },
+    search(query: string, provider = "bricklink", limit = 25) {
+      return requestData(
+        api.get<CatalogSearchResponse>("/sets/search", {
+          params: { limit, provider, query },
+        }),
+      );
+    },
     detail(setNumber: string) {
       return requestData(
         api.get<SetDetail>(`/sets/${encodeURIComponent(setNumber)}`),

@@ -1,21 +1,61 @@
 import type { FormEvent } from "react";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Card, FormAlert, TextField } from "../../components/ui";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Card,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  SelectField,
+  TextField,
+} from "../../components/ui";
+import { useServerQuery } from "../../hooks/serverState";
+import { apiClient } from "../../services/apiClient";
+import { SetCatalogCard } from "./SetCatalogCard";
 
 export function SetsPage() {
   const navigate = useNavigate();
-  const [setNumber, setSetNumber] = useState("");
-  const [message, setMessage] = useState("");
+  const [searchParams] = useSearchParams();
+  const submittedQuery = searchParams.get("query")?.trim() ?? "";
+  const [searchValue, setSearchValue] = useState(submittedQuery);
+  const [provider, setProvider] = useState("bricklink");
+  const [validationMessage, setValidationMessage] = useState("");
+  const loadSuggestions = useCallback(
+    () => apiClient.sets.list(searchValue.trim()),
+    [searchValue],
+  );
+  const suggestionsQuery = useServerQuery(
+    ["set-suggestions", searchValue.trim()],
+    loadSuggestions,
+    { enabled: searchValue.trim().length >= 2 },
+  );
+  const loadSearch = useCallback(
+    () => apiClient.sets.search(submittedQuery, provider),
+    [provider, submittedQuery],
+  );
+  const searchQuery = useServerQuery(
+    ["set-search", submittedQuery, provider],
+    loadSearch,
+    { enabled: Boolean(submittedQuery) },
+  );
+
+  useEffect(() => {
+    setSearchValue(submittedQuery);
+  }, [submittedQuery]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const trimmedSetNumber = setNumber.trim();
-    if (!trimmedSetNumber) {
-      setMessage("Enter a LEGO set number.");
+    const query = searchValue.trim();
+    if (!query) {
+      setValidationMessage("Enter a LEGO set number or a known set name.");
       return;
     }
-    navigate(`/sets/${encodeURIComponent(trimmedSetNumber)}`);
+    if (!/^[a-z0-9\s-]+$/i.test(query)) {
+      setValidationMessage("Use letters, numbers, spaces, and hyphens only.");
+      return;
+    }
+    setValidationMessage("");
+    navigate(`/sets?query=${encodeURIComponent(query)}`);
   }
 
   return (
@@ -27,20 +67,78 @@ export function SetsPage() {
         >
           <div className="flex-1">
             <TextField
-              label="Set number"
-              onChange={(event) => setSetNumber(event.target.value)}
-              placeholder="Enter set number, for example 75192-1"
-              value={setNumber}
+              label="Set number or name"
+              list="known-lego-sets"
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder="Try 75192, 420, or Millennium Falcon"
+              value={searchValue}
             />
+            <datalist id="known-lego-sets">
+              {suggestionsQuery.data?.data.flatMap((set) => [
+                <option
+                  key={`${set.id}-number`}
+                  label={set.name}
+                  value={set.set_number}
+                />,
+                <option
+                  key={`${set.id}-name`}
+                  label={set.set_number}
+                  value={set.name}
+                />,
+              ])}
+            </datalist>
           </div>
+          <SelectField
+            containerClassName="sm:w-44"
+            label="Provider"
+            onChange={(event) => setProvider(event.target.value)}
+            value={provider}
+          >
+            <option value="bricklink">BrickLink</option>
+          </SelectField>
           <button className="primary-button self-end" type="submit">
             Search
           </button>
         </form>
-        <div className="mt-4">
-          <FormAlert>{message}</FormAlert>
-        </div>
       </Card>
+
+      <div className="mt-5 space-y-5">
+        {validationMessage ? (
+          <ErrorState
+            message={validationMessage}
+            title="Invalid search input"
+          />
+        ) : null}
+        {searchQuery.isLoading ? (
+          <LoadingState title="Searching set catalog..." />
+        ) : null}
+        {searchQuery.error ? (
+          searchQuery.error.toLowerCase().includes("not found") ? (
+            <EmptyState
+              message="Try a different set number, partial number, or known set name."
+              title="No matching sets"
+            />
+          ) : (
+            <ErrorState
+              message={searchQuery.error}
+              onRetry={() => void searchQuery.refetch()}
+              title="Provider lookup unavailable"
+            />
+          )
+        ) : null}
+        {searchQuery.data?.results.length === 0 ? (
+          <EmptyState title="No matching sets" />
+        ) : null}
+        {searchQuery.data?.results.map((set) => (
+          <SetCatalogCard
+            key={set.id}
+            onViewDetail={(setNumber) =>
+              navigate(`/sets/${encodeURIComponent(setNumber)}`)
+            }
+            set={set}
+          />
+        ))}
+      </div>
     </section>
   );
 }

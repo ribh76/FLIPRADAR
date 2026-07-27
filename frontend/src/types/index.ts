@@ -112,6 +112,36 @@ export type SetDetail = {
   } | null;
 };
 
+export type LegoSet = {
+  id: string;
+  set_number: string;
+  name: string;
+  theme: string | null;
+  subtheme: string | null;
+  release_year: number | null;
+  retirement_year: number | null;
+  piece_count: number | null;
+  minifig_count: number | null;
+  msrp: string | number | null;
+  original_currency: string | null;
+  region: string | null;
+  image_urls: string[] | null;
+  source_name: string | null;
+  source_url: string | null;
+  data_quality_flag: boolean;
+  completeness_flag: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CatalogSearchResponse = {
+  query: string;
+  provider: string | null;
+  source: "local" | "provider";
+  exact_match: boolean;
+  results: LegoSet[];
+};
+
 export type CurrentUser = {
   id: string;
   username: string;

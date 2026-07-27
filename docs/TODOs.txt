@@ -317,13 +317,15 @@ Prompt 2: (5.6 luna medium) (Done)
 
 PHASE 16: SET-NUMBER LOOKUP
 Classification: MUST SHIP
-
-1. Create a set-search endpoint for full and partial set numbers.
+1-6 complete, 
+1. Create a set-search endpoint for full and partial set numbers. 
 2. Search the local catalog first.
 3. Retrieve missing set data from the selected provider.
 4. Normalize external set data.
 5. Cache retrieved records.
 6. Return useful not-found and incomplete-data responses.
+
+
 7. Create the set-search frontend page.
 8. Add autocomplete for known set numbers and names.
 9. Create the set-detail page.

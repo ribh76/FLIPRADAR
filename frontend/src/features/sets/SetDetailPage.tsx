@@ -10,7 +10,33 @@ import {
   MetricCard,
   TextField,
 } from "../../components/ui";
+import type { LegoSet, SetDetail } from "../../types";
 import { currency, numberValue } from "../../utils/format";
+import { SetCatalogCard } from "./SetCatalogCard";
+
+function catalogFallback(detail: SetDetail): LegoSet {
+  return {
+    id: detail.set_number,
+    set_number: detail.set_number,
+    name: detail.name,
+    theme: detail.theme,
+    subtheme: detail.subtheme,
+    release_year: detail.release_year,
+    retirement_year: detail.retirement_year,
+    piece_count: detail.piece_count,
+    minifig_count: detail.minifig_count,
+    msrp: null,
+    original_currency: null,
+    region: null,
+    image_urls: null,
+    source_name: null,
+    source_url: null,
+    data_quality_flag: false,
+    completeness_flag: false,
+    created_at: "",
+    updated_at: detail.latest_snapshot?.snapshot_at ?? "",
+  };
+}
 
 export function SetDetailPage() {
   const { setNumber } = useParams();
@@ -27,6 +53,15 @@ export function SetDetailPage() {
       enabled: Boolean(setNumber),
     },
   );
+  const loadCatalog = useCallback(
+    () => apiClient.sets.search(setNumber ?? ""),
+    [setNumber],
+  );
+  const catalogQuery = useServerQuery(
+    ["set-catalog-detail", setNumber ?? ""],
+    loadCatalog,
+    { enabled: Boolean(setNumber) },
+  );
   const detail = detailQuery.data;
   const hasMarketData = detail?.valuation_status === "available";
 
@@ -38,7 +73,7 @@ export function SetDetailPage() {
     event.preventDefault();
     const nextSetNumber = searchValue.trim();
     if (nextSetNumber) {
-      navigate(`/sets/${encodeURIComponent(nextSetNumber)}`);
+      navigate(`/sets?query=${encodeURIComponent(nextSetNumber)}`);
     }
   }
 
@@ -78,40 +113,26 @@ export function SetDetailPage() {
         </div>
       ) : null}
 
+      {catalogQuery.error && detail ? (
+        <div className="mb-5">
+          <ErrorState
+            message={catalogQuery.error}
+            onRetry={() => void catalogQuery.refetch()}
+            title="Catalog metadata unavailable"
+          />
+        </div>
+      ) : null}
+
       {detail ? (
         <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
-          <section className="page-card">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <p className="metric-label">Set metadata</p>
-                <h2 className="mt-2 text-3xl font-bold text-[var(--color-text)]">
-                  {detail.name}
-                </h2>
-                <p className="mt-1 text-sm font-semibold text-[var(--color-text-muted)]">
-                  {detail.set_number}
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <MetricCard label="Theme" value={detail.theme ?? "--"} />
-              <MetricCard label="Subtheme" value={detail.subtheme ?? "--"} />
-              <MetricCard
-                label="Release Year"
-                value={detail.release_year?.toString() ?? "--"}
-              />
-              <MetricCard
-                label="Retirement Year"
-                value={detail.retirement_year?.toString() ?? "--"}
-              />
-              <MetricCard
-                label="Pieces"
-                value={numberValue(detail.piece_count)}
-              />
-              <MetricCard
-                label="Minifigs"
-                value={numberValue(detail.minifig_count)}
-              />
-            </div>
+          <section>
+            <SetCatalogCard
+              set={
+                catalogQuery.data?.results.find(
+                  (set) => set.set_number === detail.set_number,
+                ) ?? catalogFallback(detail)
+              }
+            />
           </section>
 
           <aside className="page-card">
