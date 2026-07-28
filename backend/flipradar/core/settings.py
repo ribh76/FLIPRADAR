@@ -231,6 +231,16 @@ class Settings(BaseSettings):
         default=10, ge=1, alias="BRICKLINK_API_TIMEOUT_SECONDS"
     )
 
+    pricing_currency: str = Field(
+        default="USD", min_length=3, max_length=3, alias="PRICING_CURRENCY"
+    )
+    pricing_freshness_hours: int = Field(
+        default=24, ge=1, alias="PRICING_FRESHNESS_HOURS"
+    )
+    pricing_retention_days: int = Field(
+        default=180, ge=1, alias="PRICING_RETENTION_DAYS"
+    )
+
     llm_enabled: bool = Field(default=False, alias="LLM_ENABLED")
     llm_provider: str = Field(default="openai", alias="LLM_PROVIDER")
     llm_api_key: str | None = Field(default=None, alias="LLM_API_KEY")

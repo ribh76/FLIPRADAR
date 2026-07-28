@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas.validation import MarketplaceName, normalize_set_number
+from flipradar.core.settings import get_settings
 from flipradar.database import repositories
 from flipradar.database.session import SessionLocal
 from flipradar.domain.models import (
@@ -56,6 +57,44 @@ async def update_marketplace_data(
             return snapshot
 
     return await _update_marketplace_data(db, normalized_set_number)
+
+
+async def refresh_marketplace_data(
+    set_number: str, *, force: bool = False, db: AsyncSession | None = None
+) -> PriceSnapshot | None:
+    """Refresh only stale data, making repeated refresh invocations idempotent."""
+    normalized_set_number = normalize_set_number(set_number)
+    if db is None:
+        async with SessionLocal() as session:
+            try:
+                snapshot = await _refresh_marketplace_data(
+                    session, normalized_set_number, force=force
+                )
+                await session.commit()
+                return snapshot
+            except Exception:
+                await session.rollback()
+                raise
+    return await _refresh_marketplace_data(db, normalized_set_number, force=force)
+
+
+async def _refresh_marketplace_data(
+    db: AsyncSession, set_number: str, *, force: bool
+) -> PriceSnapshot | None:
+    freshness_hours = get_settings().pricing_freshness_hours
+    latest_retrieval = await repositories.latest_price_snapshot_retrieval_time(
+        db, set_number
+    )
+    if not force and latest_retrieval is not None:
+        cutoff = datetime.now(UTC) - timedelta(hours=freshness_hours)
+        if latest_retrieval >= cutoff:
+            logger.info(
+                "marketplace refresh skipped fresh_snapshot set_number=%s retrieval_time=%s",
+                set_number,
+                latest_retrieval,
+            )
+            return None
+    return await _update_marketplace_data(db, set_number)
 
 
 async def _update_marketplace_data(db: AsyncSession, set_number: str) -> PriceSnapshot:
@@ -261,7 +300,8 @@ async def _save_snapshots_by_marketplace(
     for marketplace_name in sorted(listings_by_marketplace):
         marketplace = await _get_or_create_marketplace(db, marketplace_name)
         snapshot_data = snapshot_builder.build(
-            listings_by_marketplace[marketplace_name]
+            listings_by_marketplace[marketplace_name],
+            target_currency=get_settings().pricing_currency,
         )
         snapshot_rows.extend(
             {

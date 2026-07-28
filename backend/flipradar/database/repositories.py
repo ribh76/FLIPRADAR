@@ -753,6 +753,26 @@ async def bulk_create_price_snapshots(
     return snapshots
 
 
+async def latest_price_snapshot_retrieval_time(
+    db: AsyncSession, set_number: str
+) -> datetime | None:
+    normalized_set_number = normalize_set_number(set_number)
+    result = await db.execute(
+        select(func.max(PriceSnapshot.retrieval_time))
+        .join(LegoSet)
+        .where(LegoSet.set_number == normalized_set_number)
+    )
+    return result.scalar_one()
+
+
+async def delete_price_snapshots_before(db: AsyncSession, cutoff: datetime) -> int:
+    result = await db.execute(
+        delete(PriceSnapshot).where(PriceSnapshot.retrieval_time < cutoff)
+    )
+    await db.flush()
+    return cast(CursorResult, result).rowcount or 0
+
+
 async def list_price_snapshots_for_set(
     db: AsyncSession,
     set_number: str,
