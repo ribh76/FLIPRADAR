@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import CursorResult
@@ -665,7 +665,13 @@ async def bulk_create_marketplace_listings(
     if not listings_data:
         return []
     if skip_duplicates:
-        external_ids = [item["external_listing_id"] for item in listings_data]
+        unique_listings = []
+        external_ids = set()
+        for item in listings_data:
+            external_listing_id = item["external_listing_id"]
+            if external_listing_id not in external_ids:
+                external_ids.add(external_listing_id)
+                unique_listings.append(item)
         result = await db.execute(
             select(MarketplaceListing.external_listing_id).where(
                 MarketplaceListing.marketplace_id == marketplace_id,
@@ -675,7 +681,7 @@ async def bulk_create_marketplace_listings(
         existing_ids = set(result.scalars())
         listings_data = [
             item
-            for item in listings_data
+            for item in unique_listings
             if item["external_listing_id"] not in existing_ids
         ]
     listings = [
@@ -692,6 +698,25 @@ async def bulk_create_marketplace_listings(
     except IntegrityError as exc:
         raise DuplicateRecordError("Marketplace listing already exists") from exc
     return listings
+
+
+async def mark_stale_marketplace_listings(
+    db: AsyncSession,
+    *,
+    lego_set_id: UUID,
+    stale_before: datetime,
+) -> int:
+    """Mark active listings unseen before the cutoff as removed."""
+    await db.execute(
+        update(MarketplaceListing)
+        .where(
+            MarketplaceListing.lego_set_id == lego_set_id,
+            MarketplaceListing.listing_status == "active",
+            MarketplaceListing.last_seen_at < stale_before,
+        )
+        .values(listing_status="removed", updated_at=func.now())
+    )
+    return 0 
 
 
 # Price repository

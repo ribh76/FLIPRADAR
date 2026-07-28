@@ -1,5 +1,7 @@
+import asyncio
 import logging
 from collections import defaultdict
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,12 +14,25 @@ from flipradar.domain.models import (
     MarketplaceListing,
     PriceSnapshot,
 )
-from flipradar.integrations import bricklink_mock_client as bricklink_client
-from flipradar.integrations import ebay_mock_client as ebay_client
+from flipradar.integrations.bricklink_mock_client import adapter as bricklink_adapter
+from flipradar.integrations.ebay_mock_client import adapter as ebay_adapter
+from flipradar.integrations.marketplace_adapter import MarketplaceAdapter
 from flipradar.services import listing_normalizer, snapshot_builder
-from flipradar.services.errors import ServiceConflictError
+from flipradar.services.errors import (
+    ServiceConflictError,
+    ServiceProviderError,
+    ServiceProviderTimeoutError,
+)
 
 logger = logging.getLogger(__name__)
+
+MARKETPLACE_ADAPTERS: tuple[MarketplaceAdapter, ...] = (
+    ebay_adapter,
+    bricklink_adapter,
+)
+PROVIDER_MAX_ATTEMPTS = 3
+PROVIDER_TIMEOUT_SECONDS = 10
+STALE_LISTING_DAYS = 90
 
 
 async def update_marketplace_data(
@@ -45,12 +60,8 @@ async def _update_marketplace_data(db: AsyncSession, set_number: str) -> PriceSn
         raise LookupError("LEGO set not found")
 
     raw_listings = []
-    raw_listings.extend(
-        _with_marketplace("ebay", ebay_client.fetch(lego_set.set_number))
-    )
-    raw_listings.extend(
-        _with_marketplace("bricklink", bricklink_client.fetch(lego_set.set_number))
-    )
+    for adapter in MARKETPLACE_ADAPTERS:
+        raw_listings.extend(await _fetch_adapter_listings(adapter, lego_set.set_number))
 
     normalized_listings = listing_normalizer.normalize(raw_listings)[:50]
     if len(normalized_listings) < 10:
@@ -65,13 +76,67 @@ async def _update_marketplace_data(db: AsyncSession, set_number: str) -> PriceSn
         snapshots = await _save_snapshots_by_marketplace(
             db, lego_set, normalized_listings
         )
+        stale_count = await _mark_stale_listings(db, lego_set)
+    if stale_count:
+        logger.info(
+            "stale marketplace listings marked removed set_number=%s count=%s",
+            lego_set.set_number,
+            stale_count,
+        )
     if not snapshots:
         raise LookupError("No valid marketplace listings found")
     return snapshots[0]
 
 
-def _with_marketplace(marketplace_name: str, listings: list[dict]) -> list[dict]:
-    return [{**listing, "marketplace": marketplace_name} for listing in listings]
+async def _fetch_adapter_listings(
+    adapter: MarketplaceAdapter,
+    set_number: str,
+    *,
+    max_attempts: int = PROVIDER_MAX_ATTEMPTS,
+    timeout_seconds: float = PROVIDER_TIMEOUT_SECONDS,
+) -> list[dict]:
+    """Fetch provider data with bounded retries and a per-attempt timeout."""
+    for attempt in range(1, max_attempts + 1):
+        try:
+            listings = await asyncio.wait_for(
+                asyncio.to_thread(adapter.fetch_listings, set_number),
+                timeout=timeout_seconds,
+            )
+            if not isinstance(listings, list):
+                raise TypeError("provider response must be a list")
+            return listings
+        except TimeoutError as exc:
+            if attempt == max_attempts:
+                raise ServiceProviderTimeoutError(
+                    f"{adapter.marketplace} timed out after {max_attempts} attempts"
+                ) from exc
+            logger.warning(
+                "marketplace provider timeout provider=%s attempt=%s/%s",
+                adapter.marketplace,
+                attempt,
+                max_attempts,
+            )
+        except Exception as exc:
+            if attempt == max_attempts:
+                raise ServiceProviderError(
+                    f"{adapter.marketplace} failed after {max_attempts} attempts"
+                ) from exc
+            logger.warning(
+                "marketplace provider failure provider=%s attempt=%s/%s error=%s",
+                adapter.marketplace,
+                attempt,
+                max_attempts,
+                type(exc).__name__,
+            )
+        await asyncio.sleep(0)
+    raise AssertionError("unreachable")
+
+
+async def _mark_stale_listings(db: AsyncSession, lego_set: LegoSet) -> int:
+    stale_before = datetime.now(UTC) - timedelta(days=STALE_LISTING_DAYS)
+    return await repositories.mark_stale_marketplace_listings(
+        db, lego_set_id=lego_set.id, stale_before=stale_before
+    )
 
 
 async def _get_lego_set(db: AsyncSession, set_number: str) -> LegoSet | None:

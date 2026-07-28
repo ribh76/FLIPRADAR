@@ -11,7 +11,7 @@ from sqlalchemy.pool import StaticPool
 
 import flipradar.domain.models  # noqa: F401
 from flipradar.api.schemas import LegoSetCreate
-from flipradar.database import Base
+from flipradar.database import Base, repositories
 from flipradar.database.repositories import (
     DuplicateRecordError,
     bulk_create_marketplace_listings,
@@ -157,6 +157,7 @@ async def test_insert_marketplace_listing(db_session: AsyncSession):
         lego_set_id=lego_set.id,
         marketplace_id=marketplace.id,
         external_listing_id=f"listing-{uuid4().hex}",
+        detected_set_number=lego_set.set_number,
         title=f"LEGO {lego_set.set_number} sealed complete set",
         url="https://www.ebay.com/itm/test-listing",
         price=Decimal("149.99"),
@@ -194,6 +195,7 @@ async def test_insert_marketplace_listing(db_session: AsyncSession):
         marketplace.name,
     )
     assert saved_listing.id is not None
+    assert saved_listing.detected_set_number == lego_set.set_number
     assert saved_listing.lego_set_id == lego_set.id
     assert saved_listing.marketplace_id == marketplace.id
     assert saved_listing.total_price == Decimal("162.49")
@@ -442,11 +444,12 @@ async def test_marketplace_service_updates_listings_and_snapshot(
     await db_session.flush()
 
     monkeypatch.setattr(
-        marketplace_service.ebay_client,
-        "fetch",
+        marketplace_service.ebay_adapter,
+        "fetch_listings",
         lambda set_number: [
             {
                 "id": f"ebay-{index}",
+                "marketplace": "ebay",
                 "price": 100 + index,
                 "shipping": 10,
                 "condition": "New",
@@ -459,11 +462,12 @@ async def test_marketplace_service_updates_listings_and_snapshot(
         ],
     )
     monkeypatch.setattr(
-        marketplace_service.bricklink_client,
-        "fetch",
+        marketplace_service.bricklink_adapter,
+        "fetch_listings",
         lambda set_number: [
             {
                 "listing_id": f"bricklink-{index}",
+                "marketplace": "bricklink",
                 "unit_price": 120 + index,
                 "shipping_price": 5,
                 "condition": "U",
@@ -528,7 +532,7 @@ async def test_bulk_listing_repository_skips_duplicates(db_session: AsyncSession
         db_session,
         lego_set_id=lego_set.id,
         marketplace_id=marketplace.id,
-        listings_data=[listing_data],
+        listings_data=[listing_data, dict(listing_data)],
     )
     skipped = await bulk_create_marketplace_listings(
         db_session,
@@ -539,6 +543,45 @@ async def test_bulk_listing_repository_skips_duplicates(db_session: AsyncSession
 
     assert len(created) == 1
     assert skipped == []
+
+
+@pytest.mark.asyncio
+async def test_stale_marketplace_listings_are_removed_after_ninety_days(
+    db_session: AsyncSession,
+):
+    lego_set = make_random_lego_set()
+    marketplace = make_marketplace()
+    db_session.add_all([lego_set, marketplace])
+    await db_session.flush()
+
+    listing = await create_listing(
+        db_session,
+        lego_set_id=lego_set.id,
+        marketplace_id=marketplace.id,
+        listing_data={
+            "external_listing_id": "stale-listing",
+            "title": "LEGO stale listing",
+            "url": "https://www.ebay.com/itm/stale-listing",
+            "price": Decimal("100.00"),
+            "shipping_price": Decimal("10.00"),
+            "total_price": Decimal("110.00"),
+            "currency": "USD",
+            "condition": "new",
+            "listing_status": "active",
+        },
+    )
+    listing.last_seen_at = datetime.now(UTC) - timedelta(days=91)
+    await db_session.flush()
+
+    stale_count = await repositories.mark_stale_marketplace_listings(
+        db_session,
+        lego_set_id=lego_set.id,
+        stale_before=datetime.now(UTC) - timedelta(days=90),
+    )
+    await db_session.refresh(listing)
+
+    assert stale_count == 1
+    assert listing.listing_status == "removed"
 
 
 @pytest.mark.asyncio

@@ -1,8 +1,20 @@
+import re
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
 RawListing = dict[str, Any]
 NormalizedListing = dict[str, Any]
+
+_CURRENCY_ALIASES = {
+    "$": "USD",
+    "US$": "USD",
+    "USD$": "USD",
+    "CA$": "CAD",
+    "C$": "CAD",
+    "£": "GBP",
+    "€": "EUR",
+}
+_FREE_SHIPPING_VALUES = {"free", "free shipping", "included", "included shipping"}
 
 
 def normalize(raw_listings: list[RawListing]) -> list[NormalizedListing]:
@@ -29,10 +41,10 @@ def _normalize_ebay_listing(raw_listing: RawListing) -> NormalizedListing | None
         external_listing_id=raw_listing.get("external_listing_id")
         or raw_listing.get("id")
         or raw_listing.get("item_id"),
-        price=raw_listing.get("price"),
-        shipping_price=raw_listing.get("shipping")
-        or raw_listing.get("shipping_price")
-        or 0,
+        price=_first_present(raw_listing.get("price"), raw_listing.get("unit_price")),
+        shipping_price=_first_present(
+            raw_listing.get("shipping"), raw_listing.get("shipping_price"), 0
+        ),
         condition=raw_listing.get("condition"),
         title=raw_listing.get("title"),
         listing_url=raw_listing.get("listing_url") or raw_listing.get("url"),
@@ -48,10 +60,10 @@ def _normalize_bricklink_listing(raw_listing: RawListing) -> NormalizedListing |
         external_listing_id=raw_listing.get("external_listing_id")
         or raw_listing.get("listing_id")
         or raw_listing.get("id"),
-        price=raw_listing.get("price") or raw_listing.get("unit_price"),
-        shipping_price=raw_listing.get("shipping_price")
-        or raw_listing.get("shipping")
-        or 0,
+        price=_first_present(raw_listing.get("price"), raw_listing.get("unit_price")),
+        shipping_price=_first_present(
+            raw_listing.get("shipping_price"), raw_listing.get("shipping"), 0
+        ),
         condition=raw_listing.get("condition"),
         title=raw_listing.get("title") or raw_listing.get("item_name"),
         listing_url=raw_listing.get("listing_url") or raw_listing.get("url"),
@@ -76,7 +88,7 @@ def _build_listing(
 ) -> NormalizedListing | None:
     normalized_marketplace = _clean_text(marketplace)
     normalized_price = _to_money(price)
-    normalized_shipping = _to_money(shipping_price)
+    normalized_shipping = _to_shipping_money(shipping_price)
     normalized_title = _clean_display_text(title)
     normalized_url = _clean_display_text(listing_url)
 
@@ -110,25 +122,55 @@ def _to_money(value: Any) -> Decimal | None:
     if value is None or value == "":
         return None
     try:
-        return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        cleaned_value = re.sub(r"[^0-9.+-]", "", str(value).replace(",", ""))
+        money = Decimal(cleaned_value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     except InvalidOperation, ValueError:
         return None
+    return money if money >= 0 else None
+
+
+def _to_shipping_money(value: Any) -> Decimal | None:
+    if _clean_text(value) in _FREE_SHIPPING_VALUES:
+        return Decimal("0.00")
+    return _to_money(value)
 
 
 def _normalize_condition(value: Any) -> str:
     condition = _clean_text(value)
-    if condition in {"new", "n", "sealed", "new sealed"}:
+    if condition in {
+        "new",
+        "n",
+        "sealed",
+        "new sealed",
+        "brand new",
+        "new other",
+        "new in box",
+        "nisb",
+    }:
         return "new"
-    if condition in {"used", "u", "pre-owned", "preowned", "open box"}:
+    if condition in {
+        "used",
+        "u",
+        "pre-owned",
+        "preowned",
+        "open box",
+        "complete",
+    }:
         return "used"
     return "unknown"
 
 
 def _normalize_currency(value: Any) -> str:
-    currency = _clean_display_text(value)
+    currency = _clean_display_text(value).upper().replace(" ", "")
     if not currency:
         return "USD"
-    return currency.upper()[:3]
+    if currency in _CURRENCY_ALIASES:
+        return _CURRENCY_ALIASES[currency]
+    return currency if re.fullmatch(r"[A-Z]{3}", currency) else "USD"
+
+
+def _first_present(*values: Any) -> Any:
+    return next((value for value in values if value is not None and value != ""), None)
 
 
 def _clean_text(value: Any) -> str:

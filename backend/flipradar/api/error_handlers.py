@@ -31,7 +31,9 @@ def _error_code(status_code: int, fallback: str = "request_error") -> str:
         status.HTTP_422_UNPROCESSABLE_CONTENT: "validation_error",
         status.HTTP_429_TOO_MANY_REQUESTS: "rate_limit_exceeded",
         status.HTTP_500_INTERNAL_SERVER_ERROR: "internal_error",
+        status.HTTP_502_BAD_GATEWAY: "provider_error",
         status.HTTP_503_SERVICE_UNAVAILABLE: "service_unavailable",
+        status.HTTP_504_GATEWAY_TIMEOUT: "provider_timeout",
     }
     return names.get(status_code, fallback)
 

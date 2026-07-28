@@ -337,10 +337,11 @@ Classification: MUST SHIP
 tests made and ran, full pass. 
 14. Add backend and frontend tests.
 
+--
 PHASE 17: MARKETPLACE NORMALIZATION
 Classification: MUST SHIP
 
-1. Finalize one normalized marketplace listing schema.
+1. Finalize one normalized marketplace listing schema. 
 2. Include marketplace, external ID, URL, title, price, shipping, currency, condition, and seller details.
 3. Include detected set number and match confidence.
 4. Include completeness flags.

@@ -4,6 +4,7 @@ from random import randint
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from flipradar.api.schemas.validation import normalize_set_number
+from flipradar.integrations.marketplace_adapter import MarketplaceAdapter
 
 
 class MockBricklinkSetNotFoundError(LookupError):
@@ -109,29 +110,40 @@ def fetch_set_price_snapshot(set_number: str) -> dict:
     }
 
 
+class BricklinkMarketplaceAdapter(MarketplaceAdapter):
+    marketplace = "bricklink"
+
+    def fetch_listings(self, set_number: str) -> list[dict]:
+        """Return fake BrickLink listings until the real API integration is configured."""
+        normalized_set_number = normalize_set_number(set_number)
+        listing_count = randint(5, 25)
+        listings = []
+        conditions = ["N", "U"]
+
+        for index in range(listing_count):
+            price = randint(30, 325)
+            shipping_price = randint(0, 24)
+            condition = conditions[randint(0, len(conditions) - 1)]
+            listing_id = f"bricklink-{normalized_set_number}-{uuid4().hex[:12]}"
+            listings.append(
+                {
+                    "listing_id": listing_id,
+                    "unit_price": price,
+                    "shipping_price": shipping_price,
+                    "condition": condition,
+                    "item_name": f"LEGO {normalized_set_number} BrickLink lot {index + 1}",
+                    "url": f"https://www.bricklink.com/v2/catalog/catalogitem.page?S={normalized_set_number}#T=S&O={listing_id}",
+                    "seller_name": f"bricklink-store-{randint(100, 999)}",
+                    "currency_code": "USD",
+                }
+            )
+
+        return self._tag_marketplace(listings)
+
+
+adapter = BricklinkMarketplaceAdapter()
+
+
 def fetch(set_number: str) -> list[dict]:
-    """Return fake BrickLink listings until the real API integration is available."""
-    normalized_set_number = normalize_set_number(set_number)
-    listing_count = randint(5, 25)
-    listings = []
-    conditions = ["N", "U"]
-
-    for index in range(listing_count):
-        price = randint(30, 325)
-        shipping_price = randint(0, 24)
-        condition = conditions[randint(0, len(conditions) - 1)]
-        listing_id = f"bricklink-{normalized_set_number}-{uuid4().hex[:12]}"
-        listings.append(
-            {
-                "listing_id": listing_id,
-                "unit_price": price,
-                "shipping_price": shipping_price,
-                "condition": condition,
-                "item_name": f"LEGO {normalized_set_number} BrickLink lot {index + 1}",
-                "url": f"https://www.bricklink.com/v2/catalog/catalogitem.page?S={normalized_set_number}#T=S&O={listing_id}",
-                "seller_name": f"bricklink-store-{randint(100, 999)}",
-                "currency_code": "USD",
-            }
-        )
-
-    return listings
+    """Compatibility wrapper for legacy callers of the mock integration."""
+    return adapter.fetch_listings(set_number)

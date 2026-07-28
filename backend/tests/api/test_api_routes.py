@@ -19,7 +19,12 @@ from flipradar.domain.engines import price_estimator
 from flipradar.domain.models import User
 from flipradar.integrations import bricklink_mock_client
 from flipradar.main import create_app
-from flipradar.services import auth_service, recommendation_service
+from flipradar.services import (
+    auth_service,
+    marketplace_service,
+    recommendation_service,
+)
+from flipradar.services.errors import ServiceProviderError, ServiceProviderTimeoutError
 
 logger = logging.getLogger(__name__)
 VALID_PASSWORD = "Str0ng!Pass"
@@ -310,6 +315,42 @@ def test_list_sets_endpoint_supports_pagination_filtering_and_ordering(
         "has_more": False,
     }
     assert body["data"][0]["set_number"] == "100002"
+
+
+def test_marketplace_update_returns_provider_error_response(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    lego_set = create_lego_set(client)
+
+    async def raise_provider_error(*args, **kwargs):
+        del args, kwargs
+        raise ServiceProviderError("eBay failed after retries")
+
+    monkeypatch.setattr(
+        marketplace_service, "_fetch_adapter_listings", raise_provider_error
+    )
+    response = client.post(f"/marketplace/update/{lego_set['set_number']}")
+
+    assert response.status_code == 502
+    assert response.json()["error"]["code"] == "provider_error"
+
+
+def test_marketplace_update_returns_provider_timeout_response(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    lego_set = create_lego_set(client)
+
+    async def raise_provider_timeout(*args, **kwargs):
+        del args, kwargs
+        raise ServiceProviderTimeoutError("BrickLink timed out after retries")
+
+    monkeypatch.setattr(
+        marketplace_service, "_fetch_adapter_listings", raise_provider_timeout
+    )
+    response = client.post(f"/marketplace/update/{lego_set['set_number']}")
+
+    assert response.status_code == 504
+    assert response.json()["error"]["code"] == "provider_timeout"
 
 
 def test_set_search_supports_partial_local_lookup_and_provider_hydration(

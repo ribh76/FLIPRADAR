@@ -47,6 +47,10 @@ class MarketplaceListing(Base):
             "match_confidence IS NULL OR match_confidence BETWEEN 0 AND 100",
             name="match_confidence_valid",
         ),
+        CheckConstraint(
+            "detected_set_number IS NULL OR detected_set_number = upper(trim(detected_set_number))",
+            name="detected_set_number_canonical",
+        ),
         UniqueConstraint(
             "marketplace_id",
             "external_listing_id",
@@ -80,6 +84,7 @@ class MarketplaceListing(Base):
         nullable=False,
     )
     external_listing_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    detected_set_number: Mapped[str | None] = mapped_column(String(32))
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     url: Mapped[str] = mapped_column(String(1000), nullable=False)
     price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
