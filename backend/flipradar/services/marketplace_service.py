@@ -216,6 +216,8 @@ async def _save_listings(
                 "total_price": listing_data["price"] + listing_data["shipping_price"],
                 "currency": listing_data["currency"],
                 "condition": listing_data["condition"],
+                "is_complete": listing_data["is_complete"],
+                "is_sealed": listing_data["is_sealed"],
                 "listing_status": "active",
                 "seller_name": listing_data["seller"],
                 "match_confidence": listing_data["match_confidence"],
@@ -261,12 +263,13 @@ async def _save_snapshots_by_marketplace(
         snapshot_data = snapshot_builder.build(
             listings_by_marketplace[marketplace_name]
         )
-        snapshot_rows.append(
+        snapshot_rows.extend(
             {
                 "lego_set_id": lego_set.id,
                 "marketplace_id": marketplace.id,
-                **snapshot_data,
+                **metric_snapshot,
             }
+            for metric_snapshot in snapshot_data
         )
     snapshots.extend(await repositories.bulk_create_price_snapshots(db, snapshot_rows))
     return snapshots

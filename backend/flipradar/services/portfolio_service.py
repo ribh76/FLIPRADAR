@@ -210,7 +210,9 @@ async def _current_unit_value(
         ]
     if not snapshots:
         return None, "missing_market_data"
-    estimate = price_estimator.estimate_fair_value(snapshots)
+    estimate = price_estimator.estimate_fair_value(
+        snapshots, condition=snapshot_condition
+    )
     fair_value = estimate["fair_value"]
     if fair_value <= 0:
         return None, "missing_market_data"
@@ -240,7 +242,9 @@ async def _current_unit_value_map(
         if not snapshots:
             values[(set_number, condition)] = (None, "missing_market_data")
             continue
-        estimate = price_estimator.estimate_fair_value(snapshots)
+        estimate = price_estimator.estimate_fair_value(
+            snapshots, condition=snapshot_condition
+        )
         fair_value = estimate["fair_value"]
         if fair_value <= 0:
             values[(set_number, condition)] = (None, "missing_market_data")
@@ -253,5 +257,5 @@ def _snapshot_condition(condition: str) -> str | None:
     if condition in {"new", "sealed"}:
         return "new"
     if condition == "used":
-        return "used"
+        return "used_complete"
     return None

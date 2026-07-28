@@ -8,7 +8,6 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
-    Integer,
     Numeric,
     String,
     UniqueConstraint,
@@ -19,83 +18,46 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from flipradar.database.base import Base
 from flipradar.database.types import JsonDocument
-from flipradar.domain.models.enums import SnapshotCondition, sql_values
+from flipradar.domain.models.enums import PriceMetricType, SnapshotCondition, sql_values
 
 
 class PriceSnapshot(Base):
     __tablename__ = "price_snapshots"
     __table_args__ = (
-        CheckConstraint(
-            "low_price IS NULL OR low_price >= 0", name="low_price_non_negative"
-        ),
-        CheckConstraint(
-            "median_price IS NULL OR median_price >= 0",
-            name="median_price_non_negative",
-        ),
-        CheckConstraint(
-            "average_price IS NULL OR average_price >= 0",
-            name="average_price_non_negative",
-        ),
-        CheckConstraint(
-            "high_price IS NULL OR high_price >= 0", name="high_price_non_negative"
-        ),
-        CheckConstraint(
-            "fair_market_value IS NULL OR fair_market_value >= 0",
-            name="fair_market_value_non_negative",
-        ),
-        CheckConstraint("listing_count >= 0", name="listing_count_non_negative"),
-        CheckConstraint(
-            "low_price IS NULL OR high_price IS NULL OR low_price <= high_price",
-            name="price_range_ordered",
-        ),
-        CheckConstraint(
-            "low_price IS NULL OR median_price IS NULL OR low_price <= median_price",
-            name="median_price_above_low",
-        ),
-        CheckConstraint(
-            "high_price IS NULL OR median_price IS NULL OR median_price <= high_price",
-            name="median_price_below_high",
-        ),
-        CheckConstraint(
-            "low_price IS NULL OR average_price IS NULL OR low_price <= average_price",
-            name="average_price_above_low",
-        ),
-        CheckConstraint(
-            "high_price IS NULL OR average_price IS NULL OR average_price <= high_price",
-            name="average_price_below_high",
-        ),
-        CheckConstraint(
-            "low_price IS NULL OR fair_market_value IS NULL OR low_price <= fair_market_value",
-            name="fair_market_value_above_low",
-        ),
-        CheckConstraint(
-            "high_price IS NULL OR fair_market_value IS NULL OR fair_market_value <= high_price",
-            name="fair_market_value_below_high",
-        ),
+        CheckConstraint("value >= 0", name="value_non_negative"),
+        CheckConstraint("sample_size >= 0", name="sample_size_non_negative"),
         CheckConstraint("currency = upper(currency)", name="currency_uppercase"),
         CheckConstraint(
             f"condition IN ({sql_values(SnapshotCondition)})",
             name="condition_allowed",
         ),
+        CheckConstraint(
+            f"metric_type IN ({sql_values(PriceMetricType)})",
+            name="metric_type_allowed",
+        ),
         UniqueConstraint(
             "lego_set_id",
             "marketplace_id",
             "condition",
-            "snapshot_at",
-            name="uq_price_snapshot_market_condition_time",
+            "currency",
+            "metric_type",
+            "retrieval_time",
+            name="uq_price_snapshot_metric_retrieval",
         ),
-        Index("ix_price_snapshots_set_snapshot_at", "lego_set_id", "snapshot_at"),
+        Index("ix_price_snapshots_set_retrieval_time", "lego_set_id", "retrieval_time"),
         Index(
-            "ix_price_snapshots_set_condition_snapshot_at",
+            "ix_price_snapshots_set_condition_metric_retrieval",
             "lego_set_id",
             "condition",
-            "snapshot_at",
+            "metric_type",
+            "retrieval_time",
         ),
         Index(
-            "ix_price_snapshots_marketplace_condition_snapshot_at",
+            "ix_price_snapshots_marketplace_condition_metric_retrieval",
             "marketplace_id",
             "condition",
-            "snapshot_at",
+            "metric_type",
+            "retrieval_time",
         ),
     )
 
@@ -112,18 +74,13 @@ class PriceSnapshot(Base):
         ForeignKey("marketplaces.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    condition: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="unknown"
-    )
+    condition: Mapped[str] = mapped_column(String(20), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
-    low_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
-    median_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
-    average_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
-    high_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
-    fair_market_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
-    listing_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    metric_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    sample_size: Mapped[int] = mapped_column(nullable=False, default=0)
     source_payload: Mapped[dict | None] = mapped_column(JsonDocument)
-    snapshot_at: Mapped[datetime] = mapped_column(
+    retrieval_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(

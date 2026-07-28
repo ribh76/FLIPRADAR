@@ -357,7 +357,7 @@ Classification: MUST SHIP - complete
 14. Document provider limitations.
 
 PHASE 18: PRODUCT MATCHING ENGINE
-Classification: MUST SHIP
+Classification: MUST SHIP Complete 
 
 1. Normalize listing titles.
 2. Extract candidate LEGO set numbers.

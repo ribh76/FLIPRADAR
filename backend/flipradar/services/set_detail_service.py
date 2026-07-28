@@ -1,4 +1,5 @@
 from decimal import ROUND_HALF_UP, Decimal
+from uuid import NAMESPACE_URL, uuid5
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,7 +55,16 @@ def _mock_bricklink_detail(
 
     return _detail_response(
         metadata,
-        latest_snapshot=latest_snapshot,
+        latest_snapshot={
+            "id": uuid5(NAMESPACE_URL, f"flipradar:mock-price:{set_number}"),
+            "condition": "new",
+            "currency": latest_snapshot["currency"],
+            "metric_type": "fair_market_value",
+            "value": _money(latest_snapshot["fair_market_value"]),
+            "sample_size": latest_snapshot["listing_count"],
+            "retrieval_time": latest_snapshot["snapshot_at"],
+            "created_at": latest_snapshot["created_at"],
+        },
         fair_value=_money(latest_snapshot["fair_market_value"]),
         market_low=_money(latest_snapshot["low_price"]),
         market_high=_money(latest_snapshot["high_price"]),

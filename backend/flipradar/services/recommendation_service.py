@@ -221,8 +221,20 @@ def _hold_sell_response_details(hold_sell_result: dict) -> dict:
     }
 
 
+def _pricing_condition(condition: str) -> str | None:
+    if condition in {"new", "sealed"}:
+        return "new"
+    if condition == "used":
+        return "used_complete"
+    return None
+
+
 def _snapshot_price(snapshot) -> Decimal | None:
-    return snapshot.median_price or snapshot.average_price or snapshot.fair_market_value
+    return (
+        snapshot.value
+        if snapshot.metric_type in {"fair_market_value", "median"}
+        else None
+    )
 
 
 async def _recent_fair_values(db: AsyncSession, set_number: str) -> list[float]:
@@ -289,7 +301,10 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
         snapshots = await get_latest_snapshots_by_set_number(db, set_number)
         if not snapshots:
             logger.info("missing snapshots set_number=%s snapshot_count=0", set_number)
-        estimate = price_estimator.estimate_fair_value(snapshots)
+        pricing_condition = _pricing_condition(payload.condition)
+        estimate = price_estimator.estimate_fair_value(
+            snapshots, condition=pricing_condition
+        )
         fair_value = estimate["fair_value"]
         analysis_details = {}
         if _is_buy_goal(payload.user_goal):

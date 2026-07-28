@@ -66,6 +66,7 @@ async def list_price_snapshots(
     offset: int = Query(default=0, ge=0),
     condition: str | None = Query(default=None),
     marketplace_name: str | None = Query(default=None),
+    metric_type: str | None = Query(default=None),
     order: str = Query(default="snapshot_desc"),
 ) -> dict:
     """List all price snapshots for one LEGO set number."""
@@ -77,6 +78,7 @@ async def list_price_snapshots(
         offset=offset,
         condition=condition,
         marketplace_name=marketplace_name,
+        metric_type=metric_type,
         order=order,
     )
     logger.info(

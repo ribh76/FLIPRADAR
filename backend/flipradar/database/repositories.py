@@ -716,7 +716,7 @@ async def mark_stale_marketplace_listings(
         )
         .values(listing_status="removed", updated_at=func.now())
     )
-    return 0 
+    return 0
 
 
 # Price repository
@@ -760,6 +760,7 @@ async def list_price_snapshots_for_set(
     pagination: Pagination | None = None,
     condition: str | None = None,
     marketplace_name: str | None = None,
+    metric_type: str | None = None,
     order: str = "snapshot_desc",
 ) -> list[PriceSnapshot]:
     pagination = pagination or page()
@@ -777,11 +778,13 @@ async def list_price_snapshots_for_set(
         statement = statement.where(
             Marketplace.name == _normalize_marketplace(marketplace_name)
         )
+    if metric_type:
+        statement = statement.where(PriceSnapshot.metric_type == metric_type)
     if order == "created_at_desc":
         statement = statement.order_by(PriceSnapshot.created_at.desc())
     else:
         statement = statement.order_by(
-            PriceSnapshot.snapshot_at.desc(), PriceSnapshot.created_at.desc()
+            PriceSnapshot.retrieval_time.desc(), PriceSnapshot.created_at.desc()
         )
     result = await db.execute(_apply_pagination(statement, pagination))
     return list(result.scalars())
@@ -813,10 +816,13 @@ async def get_latest_snapshots_by_set_number(
     recent_snapshots = await get_recent_snapshots_by_set_number(
         db, set_number, limit=50
     )
-    latest_by_marketplace = {}
+    latest_by_marketplace_condition_metric = {}
     for snapshot in recent_snapshots:
-        latest_by_marketplace.setdefault(snapshot.marketplace_id, snapshot)
-    snapshots = list(latest_by_marketplace.values())
+        latest_by_marketplace_condition_metric.setdefault(
+            (snapshot.marketplace_id, snapshot.condition, snapshot.metric_type),
+            snapshot,
+        )
+    snapshots = list(latest_by_marketplace_condition_metric.values())
     if not snapshots:
         logger.info(
             "important missing data no snapshots set_number=%s snapshot_count=0",
@@ -843,17 +849,18 @@ async def get_latest_snapshots_for_set_numbers(
         .where(LegoSet.set_number.in_(normalized_set_numbers))
         .order_by(
             LegoSet.set_number.asc(),
-            PriceSnapshot.snapshot_at.desc(),
+            PriceSnapshot.retrieval_time.desc(),
             PriceSnapshot.created_at.desc(),
         )
     )
-    latest_by_set_and_marketplace: dict[str, dict[UUID, PriceSnapshot]] = defaultdict(
-        dict
-    )
+    latest_by_set_and_marketplace: dict[
+        str, dict[tuple[UUID, str, str], PriceSnapshot]
+    ] = defaultdict(dict)
     for snapshot in result.scalars():
         set_number = snapshot.lego_set.set_number
         latest_by_set_and_marketplace[set_number].setdefault(
-            snapshot.marketplace_id, snapshot
+            (snapshot.marketplace_id, snapshot.condition, snapshot.metric_type),
+            snapshot,
         )
     return {
         set_number: list(by_marketplace.values())

@@ -110,6 +110,8 @@ def _build_listing(
         "price": normalized_price,
         "shipping_price": normalized_shipping,
         "condition": _normalize_condition(condition),
+        "is_complete": _is_complete(condition, title),
+        "is_sealed": _is_sealed(condition, title),
         "title": normalized_title,
         "listing_url": normalized_url,
         "seller": _clean_display_text(seller),
@@ -158,6 +160,23 @@ def _normalize_condition(value: Any) -> str:
     }:
         return "used"
     return "unknown"
+
+
+def _is_complete(condition: Any, title: Any) -> bool | None:
+    text = f"{_clean_text(condition)} {_clean_text(title)}"
+    if any(
+        token in text
+        for token in ("incomplete", "missing", "no minifig", "without minifig")
+    ):
+        return False
+    if "complete" in text:
+        return True
+    return None
+
+
+def _is_sealed(condition: Any, title: Any) -> bool:
+    text = f"{_clean_text(condition)} {_clean_text(title)}"
+    return any(token in text for token in ("sealed", "nisb", "new in box"))
 
 
 def _normalize_currency(value: Any) -> str:

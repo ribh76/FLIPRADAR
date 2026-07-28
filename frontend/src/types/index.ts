@@ -102,13 +102,10 @@ export type SetDetail = {
   latest_snapshot: {
     condition: string;
     currency: string;
-    low_price: string | number | null;
-    median_price: string | number | null;
-    average_price: string | number | null;
-    high_price: string | number | null;
-    fair_market_value: string | number | null;
-    listing_count: number;
-    snapshot_at: string;
+    metric_type: string;
+    value: string | number;
+    sample_size: number;
+    retrieval_time: string;
   } | null;
 };
 

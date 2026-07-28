@@ -58,6 +58,7 @@ async def list_price_snapshots_for_set(
     offset: int = 0,
     condition: str | None = None,
     marketplace_name: str | None = None,
+    metric_type: str | None = None,
     order: str = "snapshot_desc",
 ) -> list[PriceSnapshot]:
     return await repositories.list_price_snapshots_for_set(
@@ -66,6 +67,7 @@ async def list_price_snapshots_for_set(
         pagination=Pagination(limit=limit, offset=offset),
         condition=condition,
         marketplace_name=marketplace_name,
+        metric_type=metric_type,
         order=order,
     )
 

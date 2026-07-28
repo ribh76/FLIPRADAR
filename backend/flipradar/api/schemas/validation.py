@@ -7,6 +7,7 @@ from flipradar.domain.models.enums import (
     ListingCondition,
     MarketplaceName,
     PortfolioCondition,
+    PriceMetricType,
     SnapshotCondition,
 )
 
@@ -39,5 +40,6 @@ PortfolioConditionValue = Annotated[
 SnapshotConditionValue = Annotated[
     SnapshotCondition, BeforeValidator(normalize_lower_text)
 ]
+PriceMetricTypeValue = Annotated[PriceMetricType, BeforeValidator(normalize_lower_text)]
 Money = Annotated[Decimal, AfterValidator(quantize_money)]
 OptionalMoney = Annotated[Decimal | None, AfterValidator(quantize_money)]

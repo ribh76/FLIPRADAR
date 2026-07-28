@@ -9,13 +9,10 @@ class LatestSnapshotSummary(BaseModel):
     id: UUID
     condition: str
     currency: str
-    low_price: Decimal | None
-    median_price: Decimal | None
-    average_price: Decimal | None
-    high_price: Decimal | None
-    fair_market_value: Decimal | None
-    listing_count: int
-    snapshot_at: datetime
+    metric_type: str
+    value: Decimal
+    sample_size: int
+    retrieval_time: datetime
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -21,9 +21,16 @@ class PortfolioCondition(StrEnum):
 
 class SnapshotCondition(StrEnum):
     NEW = "new"
-    USED = "used"
-    MIXED = "mixed"
-    UNKNOWN = "unknown"
+    USED_COMPLETE = "used_complete"
+    INCOMPLETE = "incomplete"
+
+
+class PriceMetricType(StrEnum):
+    LOW = "low"
+    MEDIAN = "median"
+    AVERAGE = "average"
+    HIGH = "high"
+    FAIR_MARKET_VALUE = "fair_market_value"
 
 
 class ListingStatus(StrEnum):

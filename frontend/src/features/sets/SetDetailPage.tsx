@@ -34,7 +34,7 @@ function catalogFallback(detail: SetDetail): LegoSet {
     data_quality_flag: false,
     completeness_flag: false,
     created_at: "",
-    updated_at: detail.latest_snapshot?.snapshot_at ?? "",
+    updated_at: detail.latest_snapshot?.retrieval_time ?? "",
   };
 }
 
