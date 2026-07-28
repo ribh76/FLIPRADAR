@@ -1,0 +1,32 @@
+# Pricing validation methodology
+
+FlipRadar stores one price-snapshot row per set, marketplace, condition, currency, metric, and retrieval time. The supported metrics are `low`, `median`, `average`, `high`, and `fair_market_value`.
+
+## Source and evidence
+
+Every snapshot exposes `source_payload`. It records the contributing marketplace listings, converted amounts, original amounts and currencies, and any listings excluded as outliers. `sample_size` is the number of comparable listings that remained after validation.
+
+The set-detail and snapshot APIs expose this source payload, sample size, and `retrieval_time`. Retrieval time is the freshness timestamp: consumers should compare it with the configured pricing freshness threshold (`PRICING_FRESHNESS_HOURS`, 24 hours by default).
+
+## Eligibility
+
+Only listings that match the requested set with confidence at or above the automated-pricing threshold are eligible for valuation. Listings with unknown condition are not placed into a condition bucket. Pricing is kept separate for `new`, `used_complete`, and `incomplete` items.
+
+## Outlier validation
+
+For each condition, comparable currency group, and refresh, the pipeline applies Tukey’s IQR rule when at least four prices are available:
+
+1. Calculate the first and third quartiles using the inclusive quartile method.
+2. Calculate `IQR = Q3 - Q1`.
+3. Keep prices within `[Q1 - 1.5 × IQR, Q3 + 1.5 × IQR]`.
+4. Exclude prices outside the fences from all metrics.
+
+When fewer than four comparable prices are available, IQR filtering is not applied; the snapshot retains the low-volume sample and its smaller `sample_size`. The applied method, fences, and excluded count are recorded in `source_payload.outlier_handling`.
+
+## Metrics and estimation
+
+`low`, `high`, `median`, and `average` summarize the validated sample. `fair_market_value` currently uses the validated median, which is less sensitive to skew than the average. The estimation engine uses fair-market value, then median, then average as fallbacks, while using low and high for the market range.
+
+## Currency
+
+Values are converted to the configured pricing currency using Frankfurter’s daily exchange rate. Original listing amounts and currencies remain in the source payload and marketplace-listing records so the valuation is auditable.

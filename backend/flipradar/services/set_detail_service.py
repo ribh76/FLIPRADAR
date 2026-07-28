@@ -62,6 +62,7 @@ def _mock_bricklink_detail(
             "metric_type": "fair_market_value",
             "value": _money(latest_snapshot["fair_market_value"]),
             "sample_size": latest_snapshot["listing_count"],
+            "source_payload": {"source": "bricklink_mock"},
             "retrieval_time": latest_snapshot["snapshot_at"],
             "created_at": latest_snapshot["created_at"],
         },

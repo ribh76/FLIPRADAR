@@ -105,6 +105,7 @@ export type SetDetail = {
     metric_type: string;
     value: string | number;
     sample_size: number;
+    source_payload: Record<string, unknown> | null;
     retrieval_time: string;
   } | null;
 };

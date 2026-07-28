@@ -12,6 +12,7 @@ class LatestSnapshotSummary(BaseModel):
     metric_type: str
     value: Decimal
     sample_size: int
+    source_payload: dict | None
     retrieval_time: datetime
     created_at: datetime
 
