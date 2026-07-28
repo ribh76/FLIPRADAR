@@ -104,6 +104,8 @@ class MarketplaceListing(Base):
     is_complete: Mapped[bool | None] = mapped_column()
     is_sealed: Mapped[bool | None] = mapped_column()
     match_confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    match_reasons: Mapped[list[str] | None] = mapped_column(JsonDocument)
+    exclusion_flags: Mapped[list[str] | None] = mapped_column(JsonDocument)
     raw_payload: Mapped[dict | None] = mapped_column(JsonDocument)
     first_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

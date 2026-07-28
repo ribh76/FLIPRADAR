@@ -125,6 +125,8 @@ def create_listing_payload(set_number: str) -> dict:
         "is_complete": True,
         "is_sealed": True,
         "match_confidence": "98.25",
+        "match_reasons": ["exact_set_number"],
+        "exclusion_flags": [],
         "raw_payload": {"source": "pytest-api"},
     }
 
@@ -427,7 +429,11 @@ def test_listings_by_set_endpoint(client: TestClient):
 
     logger.info(f"API TEST: GET /listings/{{set_number}} status={response.status_code}")
     assert response.status_code == 200
-    assert any(item["id"] == listing["id"] for item in collection_data(response))
+    saved_listing = next(
+        item for item in collection_data(response) if item["id"] == listing["id"]
+    )
+    assert saved_listing["match_reasons"] == ["exact_set_number"]
+    assert saved_listing["exclusion_flags"] == []
 
 
 def test_listings_by_set_endpoint_supports_pagination_and_filters(

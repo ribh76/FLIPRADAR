@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
+from flipradar.services.marketplace_service import _listings_for_automated_pricing
 from flipradar.services.product_matching_engine import (
+    AUTOMATED_PRICING_MIN_CONFIDENCE,
     detect_listing_exclusions,
     extract_candidate_set_numbers,
     find_catalog_match,
@@ -37,6 +39,8 @@ def test_exact_set_number_match_is_authoritative_even_when_name_tokens_differ():
     assert result.is_match is True
     assert result.detected_set_number == "75192"
     assert result.confidence == 100
+    assert result.match_reasons == ("exact_set_number",)
+    assert result.is_eligible_for_automated_pricing is True
 
 
 def test_different_detected_set_number_rejects_similar_set_name():
@@ -71,6 +75,12 @@ def test_name_tokens_are_a_conservative_fallback_when_no_number_is_present():
     assert result.is_match is True
     assert result.detected_set_number is None
     assert result.confidence == 80
+    assert result.match_reasons == (
+        "set_name_token_match",
+        "set_name_token_coverage:3/3",
+    )
+    assert result.is_eligible_for_automated_pricing is False
+    assert AUTOMATED_PRICING_MIN_CONFIDENCE == 90
 
 
 def test_excluded_listing_types_are_rejected_even_with_an_exact_set_number():
@@ -120,3 +130,13 @@ def test_catalog_matching_does_not_choose_an_ambiguous_name_match():
     match = find_catalog_match("LEGO 75257 sealed", catalog)
     assert match is not None
     assert match[0].set_number == "75257"
+
+
+def test_automated_pricing_uses_only_listings_at_or_above_match_threshold():
+    listings = [
+        {"external_listing_id": "exact", "match_confidence": 100},
+        {"external_listing_id": "title-only", "match_confidence": 80},
+        {"external_listing_id": "unmatched", "match_confidence": 0},
+    ]
+
+    assert _listings_for_automated_pricing(listings) == [listings[0]]

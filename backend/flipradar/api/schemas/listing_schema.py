@@ -53,6 +53,8 @@ class ListingCreate(BaseModel):
     match_confidence: OptionalMoney = Field(
         default=None, ge=0, le=100, decimal_places=2
     )
+    match_reasons: list[str] | None = Field(default=None, max_length=32)
+    exclusion_flags: list[str] | None = Field(default=None, max_length=32)
     raw_payload: dict | None = None
 
     @model_validator(mode="after")
@@ -81,6 +83,8 @@ class ListingResponse(BaseModel):
     is_complete: bool | None
     is_sealed: bool | None
     match_confidence: Decimal | None
+    match_reasons: list[str] | None
+    exclusion_flags: list[str] | None
     raw_payload: dict | None
     first_seen_at: datetime
     last_seen_at: datetime

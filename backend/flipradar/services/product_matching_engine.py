@@ -49,6 +49,9 @@ _NON_PRODUCT_KEYWORDS = frozenset(
 )
 _MIN_NAME_TOKEN_OVERLAP = 2
 _MIN_NAME_TOKEN_COVERAGE = 0.75
+# Pricing must not be driven by a title-only match. Exact set-number matches are
+# currently scored at 100, while the best title-only match is 80.
+AUTOMATED_PRICING_MIN_CONFIDENCE = 90
 _EXCLUSION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "instructions_only",
@@ -97,7 +100,17 @@ class ProductMatch:
     title_keywords: tuple[str, ...]
     set_name_keywords: tuple[str, ...]
     matching_keywords: tuple[str, ...]
+    match_reasons: tuple[str, ...] = ()
     exclusion_reasons: tuple[str, ...] = ()
+
+    @property
+    def is_eligible_for_automated_pricing(self) -> bool:
+        """Whether this match is sufficiently reliable to affect a valuation."""
+        return (
+            self.is_match
+            and not self.exclusion_reasons
+            and self.confidence >= AUTOMATED_PRICING_MIN_CONFIDENCE
+        )
 
 
 def normalize_title(title: object) -> str:
@@ -212,6 +225,7 @@ def match_listing_to_set(
             title_keywords=listing_keywords,
             set_name_keywords=name_keywords,
             matching_keywords=matching_keywords,
+            match_reasons=("listing_excluded",),
             exclusion_reasons=exclusion_reasons,
         )
 
@@ -224,6 +238,7 @@ def match_listing_to_set(
             title_keywords=listing_keywords,
             set_name_keywords=name_keywords,
             matching_keywords=matching_keywords,
+            match_reasons=("exact_set_number",),
         )
 
     if candidates:
@@ -235,6 +250,7 @@ def match_listing_to_set(
             title_keywords=listing_keywords,
             set_name_keywords=name_keywords,
             matching_keywords=matching_keywords,
+            match_reasons=("conflicting_set_number",),
         )
 
     name_keyword_set = set(name_keywords)
@@ -245,6 +261,14 @@ def match_listing_to_set(
         and coverage >= _MIN_NAME_TOKEN_COVERAGE
     )
     confidence = round(80 * coverage) if is_match else 0
+    match_reasons = (
+        (
+            "set_name_token_match",
+            f"set_name_token_coverage:{len(matching_keyword_set)}/{len(name_keyword_set)}",
+        )
+        if is_match
+        else ("insufficient_set_name_token_overlap",)
+    )
     return ProductMatch(
         is_match=is_match,
         confidence=confidence,
@@ -253,6 +277,7 @@ def match_listing_to_set(
         title_keywords=listing_keywords,
         set_name_keywords=name_keywords,
         matching_keywords=matching_keywords,
+        match_reasons=match_reasons,
     )
 
 

@@ -115,6 +115,8 @@ def _match_listings_to_set(listings: list[dict], lego_set: LegoSet) -> list[dict
                 **listing,
                 "detected_set_number": match.detected_set_number,
                 "match_confidence": match.confidence,
+                "match_reasons": list(match.match_reasons),
+                "exclusion_flags": list(match.exclusion_reasons),
             }
         )
     return matched_listings
@@ -217,6 +219,8 @@ async def _save_listings(
                 "listing_status": "active",
                 "seller_name": listing_data["seller"],
                 "match_confidence": listing_data["match_confidence"],
+                "match_reasons": listing_data["match_reasons"],
+                "exclusion_flags": listing_data["exclusion_flags"],
                 "raw_payload": listing_data["raw_payload"],
             }
         )
@@ -245,8 +249,9 @@ async def _save_listings(
 async def _save_snapshots_by_marketplace(
     db: AsyncSession, lego_set: LegoSet, listings: list[dict]
 ) -> list[PriceSnapshot]:
+    pricing_listings = _listings_for_automated_pricing(listings)
     listings_by_marketplace = defaultdict(list)
-    for listing in listings:
+    for listing in pricing_listings:
         listings_by_marketplace[listing["marketplace"]].append(listing)
 
     snapshots = []
@@ -265,6 +270,16 @@ async def _save_snapshots_by_marketplace(
         )
     snapshots.extend(await repositories.bulk_create_price_snapshots(db, snapshot_rows))
     return snapshots
+
+
+def _listings_for_automated_pricing(listings: list[dict]) -> list[dict]:
+    """Exclude uncertain title-only matches from automated market valuations."""
+    return [
+        listing
+        for listing in listings
+        if listing.get("match_confidence", 0)
+        >= product_matching_engine.AUTOMATED_PRICING_MIN_CONFIDENCE
+    ]
 
 
 async def _save_snapshot(
