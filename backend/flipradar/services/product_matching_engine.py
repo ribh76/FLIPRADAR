@@ -55,9 +55,7 @@ AUTOMATED_PRICING_MIN_CONFIDENCE = 90
 _EXCLUSION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "instructions_only",
-        re.compile(
-            r"\b(?:instructions?|manual|building guide)\b.*\b(?:only|just)\b"
-        ),
+        re.compile(r"\b(?:instructions?|manual|building guide)\b.*\b(?:only|just)\b"),
     ),
     (
         "box_only",
@@ -86,7 +84,9 @@ _EXCLUSION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 _MULTI_SET_TERMS_PATTERN = re.compile(
     r"\b(?:lot|bundle|collection|multiple|multi set|sets)\b"
 )
-_MULTI_SET_CONNECTOR_PATTERN = re.compile(r"\d{4,8}(?:-\d{1,3})?\s*(?:and|&|\+|/)\s*\d{4,8}")
+_MULTI_SET_CONNECTOR_PATTERN = re.compile(
+    r"\d{4,8}(?:-\d{1,3})?\s*(?:and|&|\+|/)\s*\d{4,8}"
+)
 
 
 @dataclass(frozen=True)
@@ -169,7 +169,10 @@ def _is_measurement_number(text: str, start: int, end: int) -> bool:
         or re.match(r"\s*(?:pieces?|pcs?|parts?|minifigs?|minifigures?)\b", suffix)
         or re.match(r"\s*(?:release|released|edition)\b", suffix)
         or re.search(r"(?:release|released|edition)\s*$", prefix)
-        or (1900 <= int(text[start:end].split("-")[0]) <= 2100 and context.search(prefix + suffix))
+        or (
+            1900 <= int(text[start:end].split("-")[0]) <= 2100
+            and context.search(prefix + suffix)
+        )
     )
 
 
@@ -289,7 +292,9 @@ def match_listing_to_set(
 
     name_keyword_set = set(name_keywords)
     matching_keyword_set = set(matching_keywords)
-    coverage = len(matching_keyword_set) / len(name_keyword_set) if name_keyword_set else 0
+    coverage = (
+        len(matching_keyword_set) / len(name_keyword_set) if name_keyword_set else 0
+    )
     is_match = (
         len(matching_keyword_set) >= _MIN_NAME_TOKEN_OVERLAP
         and coverage >= _MIN_NAME_TOKEN_COVERAGE
@@ -321,10 +326,14 @@ def find_catalog_match(
     """Find one unambiguous catalog match from objects with number and name fields."""
     matches: list[tuple[object, ProductMatch]] = []
     for lego_set in catalog_sets:
+        set_number = getattr(lego_set, "set_number", None)
+        set_name = getattr(lego_set, "name", None)
+        if not isinstance(set_number, str) or not isinstance(set_name, str):
+            continue
         result = match_listing_to_set(
             listing_title,
-            set_number=lego_set.set_number,
-            set_name=lego_set.name,
+            set_number=set_number,
+            set_name=set_name,
         )
         if result.is_match:
             matches.append((lego_set, result))

@@ -44,6 +44,18 @@ listings receive a 1.5x weight relative to active listings. The result exposes
 `low_value`, `expected_value`, `high_value`, a 0–100 `confidence_score`, a
 confidence band, methodology version, and every included or excluded input.
 
+## Valuation guardrails and overrides
+
+When no eligible snapshot remains after condition, freshness, confidence, or
+outlier checks, the estimator returns `valuation_status: insufficient_data` and
+an `insufficient_data` error rather than inventing a price. Analysis requests
+return HTTP 422 with this message until usable evidence is refreshed.
+
+A user may supply a documented manual override with an expected value, optional
+low/high range, and a reason. The range must satisfy `low ≤ expected ≤ high`.
+Manual overrides are marked as `manual_override` in the estimate and saved
+analysis summary, so they are never presented as marketplace-derived prices.
+
 ## Currency
 
 Values are converted to the configured pricing currency using Frankfurter’s daily exchange rate. Original listing amounts and currencies remain in the source payload and marketplace-listing records so the valuation is auditable.

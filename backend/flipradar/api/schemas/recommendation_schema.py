@@ -3,7 +3,7 @@ from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from flipradar.api.schemas.validation import (
     Money,
@@ -31,6 +31,25 @@ class ConfidenceBand(StrEnum):
     HIGH = "high"
 
 
+class ManualValuationOverride(BaseModel):
+    """A user-validated valuation used when market evidence is unavailable."""
+
+    expected_value: Money = Field(..., gt=0, decimal_places=2)
+    low_value: OptionalMoney = Field(default=None, gt=0, decimal_places=2)
+    high_value: OptionalMoney = Field(default=None, gt=0, decimal_places=2)
+    reason: str = Field(..., min_length=3, max_length=500)
+
+    @model_validator(mode="after")
+    def validate_range(self) -> ManualValuationOverride:
+        low = self.low_value if self.low_value is not None else self.expected_value
+        high = self.high_value if self.high_value is not None else self.expected_value
+        if low > self.expected_value or self.expected_value > high:
+            raise ValueError(
+                "manual valuation must satisfy low_value <= expected_value <= high_value"
+            )
+        return self
+
+
 class AnalyzeRequest(BaseModel):
     set_number: SetNumber = Field(..., min_length=1, max_length=32)
     user_goal: UserGoal
@@ -42,6 +61,7 @@ class AnalyzeRequest(BaseModel):
     purchase_price: OptionalMoney = Field(default=None, ge=0, decimal_places=2)
     quantity: int = Field(default=1, gt=0)
     target_profit_pct: Decimal = Field(default=Decimal("0.25"), ge=0, le=10)
+    manual_valuation_override: ManualValuationOverride | None = None
 
 
 class AnalyzeResponse(BaseModel):
@@ -70,6 +90,7 @@ class AnalyzeResponse(BaseModel):
     trend_pct: float | None = None
     trend_label: str | None = None
     target_sell_price: float | None = None
+    valuation_source: str = "market"
 
 
 class RecommendationResponse(BaseModel):

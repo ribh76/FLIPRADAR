@@ -28,6 +28,7 @@ class EmailService(Protocol):
         self, *, to_address: str, subject: str, text_body: str, html_body: str
     ) -> EmailSendResult:
         """Send one email message."""
+        raise NotImplementedError
 
 
 class SmtpEmailService:

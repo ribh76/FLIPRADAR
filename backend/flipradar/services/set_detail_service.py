@@ -102,6 +102,18 @@ async def get_set_detail(db: AsyncSession, set_number: str) -> dict:
             )
 
     estimate = price_estimator.estimate_fair_value(snapshots)
+    if estimate["error"] is not None:
+        return _detail_response(
+            metadata,
+            latest_snapshot=latest_snapshot,
+            fair_value=None,
+            market_low=None,
+            market_high=None,
+            listing_count=estimate["listing_count"],
+            confidence=None,
+            valuation_status="insufficient_data",
+            valuation_error=estimate["error"]["message"],
+        )
     return _detail_response(
         metadata,
         latest_snapshot=latest_snapshot,
@@ -111,4 +123,5 @@ async def get_set_detail(db: AsyncSession, set_number: str) -> dict:
         listing_count=estimate["listing_count"],
         confidence=estimate["confidence"],
         valuation_status="valued",
+        valuation_error=None,
     )

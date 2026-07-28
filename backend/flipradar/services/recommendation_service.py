@@ -52,6 +52,12 @@ class RecommendationValidationError(RecommendationServiceError):
     status_code = 422
 
 
+class InsufficientValuationDataError(RecommendationServiceError):
+    """Raised when automated pricing cannot safely support a decision."""
+
+    status_code = 422
+
+
 def _stored_goal(user_goal: UserGoal) -> UserGoal:
     if user_goal == UserGoal.BUY:
         return UserGoal.BUY_SET
@@ -302,9 +308,17 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
         if not snapshots:
             logger.info("missing snapshots set_number=%s snapshot_count=0", set_number)
         pricing_condition = _pricing_condition(payload.condition)
+        override = payload.manual_valuation_override
         estimate = price_estimator.estimate_fair_value(
-            snapshots, condition=pricing_condition
+            snapshots,
+            condition=pricing_condition,
+            manual_value=override.expected_value if override else None,
+            manual_low=override.low_value if override else None,
+            manual_high=override.high_value if override else None,
+            manual_reason=override.reason if override else None,
         )
+        if estimate["error"] is not None:
+            raise InsufficientValuationDataError(estimate["error"]["message"])
         fair_value = estimate["fair_value"]
         analysis_details = {}
         if _is_buy_goal(payload.user_goal):
@@ -402,6 +416,11 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
                 "target_profit_pct": _money(payload.target_profit_pct),
                 "purchase_price": _money(payload.purchase_price),
                 "quantity": payload.quantity,
+                "manual_valuation_override": (
+                    payload.manual_valuation_override.model_dump(mode="json")
+                    if payload.manual_valuation_override
+                    else None
+                ),
                 **_json_safe_estimate(estimate),
                 **_json_safe_estimate(score_result),
                 **analysis_details,
@@ -420,6 +439,7 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
             "market_low": _money(estimate["market_low"]),
             "market_high": _money(estimate["market_high"]),
             "listing_count": estimate["listing_count"],
+            "valuation_source": estimate["valuation_source"],
             **analysis_details,
         }
     except RecommendationServiceError:

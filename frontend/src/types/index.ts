@@ -30,6 +30,14 @@ export type AnalyzeRequest = {
   user_goal: UserGoal;
   condition: Condition;
   asking_price: number | null;
+  manual_valuation_override?: ManualValuationOverride | null;
+};
+
+export type ManualValuationOverride = {
+  expected_value: number;
+  low_value?: number | null;
+  high_value?: number | null;
+  reason: string;
 };
 
 export type AnalyzeResponse = {
@@ -44,6 +52,7 @@ export type AnalyzeResponse = {
   market_low: number | null;
   market_high: number | null;
   listing_count: number | null;
+  valuation_source: "market" | "manual_override" | string;
 };
 
 export type PortfolioItem = {
@@ -99,6 +108,7 @@ export type SetDetail = {
   listing_count: number;
   confidence: string | null;
   valuation_status: "available" | "missing_market_data" | string;
+  valuation_error?: string | null;
   latest_snapshot: {
     condition: string;
     currency: string;

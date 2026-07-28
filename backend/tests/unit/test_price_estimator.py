@@ -2,6 +2,8 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
+import pytest
+
 from flipradar.domain.engines.price_estimator import estimate_fair_value
 
 
@@ -185,8 +187,9 @@ def test_price_estimator_handles_snapshots_without_usable_prices():
 
 
 def test_price_estimator_handles_no_snapshots():
+    result = estimate_fair_value([])
     assert_legacy_summary(
-        estimate_fair_value([]),
+        result,
         {
             "fair_value": Decimal("0.00"),
             "market_low": Decimal("0.00"),
@@ -196,6 +199,43 @@ def test_price_estimator_handles_no_snapshots():
             "confidence": "low",
         },
     )
+    assert result["valuation_status"] == "insufficient_data"
+    assert result["error"] == {
+        "code": "insufficient_data",
+        "message": "Insufficient data to produce a reliable market valuation.",
+    }
+
+
+def test_price_estimator_manual_override_is_auditable_and_precedes_market_data():
+    result = estimate_fair_value(
+        [metric_snapshot("ebay", "100")],
+        condition="new",
+        manual_value=Decimal("240.00"),
+        manual_low=Decimal("220.00"),
+        manual_high=Decimal("260.00"),
+        manual_reason="Verified local sale and collector appraisal.",
+    )
+
+    assert result["fair_value"] == Decimal("240.00")
+    assert result["market_low"] == Decimal("220.00")
+    assert result["market_high"] == Decimal("260.00")
+    assert result["valuation_source"] == "manual_override"
+    assert result["inputs_used"] == [
+        {
+            "source": "manual_override",
+            "expected_value": "240.00",
+            "low_value": "220.00",
+            "high_value": "260.00",
+            "reason": "Verified local sale and collector appraisal.",
+        }
+    ]
+
+
+def test_price_estimator_rejects_manual_override_without_reason_or_valid_range():
+    with pytest.raises(ValueError, match="reason is required"):
+        estimate_fair_value([], manual_value=100)
+    with pytest.raises(ValueError, match="low <= expected <= high"):
+        estimate_fair_value([], manual_value=100, manual_low=110, manual_reason="test")
 
 
 def test_price_estimator_filters_stale_wrong_condition_and_low_confidence_inputs():

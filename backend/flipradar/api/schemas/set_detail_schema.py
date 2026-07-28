@@ -49,3 +49,4 @@ class SetDetailResponse(BaseModel):
     listing_count: int
     confidence: str | None
     valuation_status: str
+    valuation_error: str | None = None

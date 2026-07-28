@@ -148,7 +148,8 @@ export function SetDetailPage() {
             </div>
             {!hasMarketData ? (
               <div className="mt-5 rounded-[var(--radius-card)] border border-[var(--color-accent-warm)] bg-[rgba(235,136,30,0.14)] p-4 text-sm font-semibold leading-6 text-[var(--color-accent-warm)]">
-                Set found, but no market valuation is available yet.
+                {detail.valuation_error ??
+                  "Set found, but no market valuation is available yet."}
               </div>
             ) : null}
             {import.meta.env.DEV ? (

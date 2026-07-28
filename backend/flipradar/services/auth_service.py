@@ -478,6 +478,8 @@ async def confirm_email_change(
         now=now,
         invalid_error=_invalid_email_change_token(),
     )
+    if token_record is None:
+        raise _invalid_email_change_token()
 
     user = token_record.user
     if user is None:
@@ -572,6 +574,8 @@ async def confirm_password_reset(
         now=now,
         invalid_error=_invalid_password_reset_token(),
     )
+    if token_record is None:
+        raise _invalid_password_reset_token()
 
     user = token_record.user
     if user is None:

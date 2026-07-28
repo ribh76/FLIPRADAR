@@ -34,7 +34,7 @@ async def list_portfolio(
     offset: int = Query(default=0, ge=0),
     condition: str | None = Query(default=None),
     order: str = Query(default="created_at_desc"),
-) -> list[dict]:
+) -> dict:
     logger.info("request started route=list_portfolio user_id=%s", current_user.id)
     items = await portfolio_service.list_user_portfolio_page(
         db,

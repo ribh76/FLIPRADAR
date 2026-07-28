@@ -28,7 +28,7 @@ def build(
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for listing in listings:
         condition = _pricing_condition(listing)
-        if condition is None:
+        if condition is None or listing.get("price") is None:
             continue
         try:
             groups[condition].append(_convert_listing(listing, target_currency))
@@ -40,9 +40,11 @@ def build(
     snapshots = []
     for condition, group in groups.items():
         included, excluded, fences = _exclude_iqr_outliers(group)
-        prices = sorted(_listing_total_price(listing) for listing in included)
-        # TODO: Fix the bug on line 43
-        numeric_prices = [price for price in prices if price is not None]
+        numeric_prices = sorted(
+            price
+            for listing in included
+            if (price := _listing_total_price(listing)) is not None
+        )
         if not numeric_prices:
             continue
         values = {

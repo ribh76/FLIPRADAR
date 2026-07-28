@@ -707,7 +707,7 @@ async def mark_stale_marketplace_listings(
     stale_before: datetime,
 ) -> int:
     """Mark active listings unseen before the cutoff as removed."""
-    await db.execute(
+    result = await db.execute(
         update(MarketplaceListing)
         .where(
             MarketplaceListing.lego_set_id == lego_set_id,
@@ -716,7 +716,7 @@ async def mark_stale_marketplace_listings(
         )
         .values(listing_status="removed", updated_at=func.now())
     )
-    return 0
+    return cast(CursorResult, result).rowcount or 0
 
 
 # Price repository

@@ -26,6 +26,8 @@ export function AnalyzePage() {
   const [userGoal, setUserGoal] = useState<UserGoal>("buy_vs_pass");
   const [askingPrice, setAskingPrice] = useState("");
   const [condition, setCondition] = useState<Condition>("new");
+  const [manualValue, setManualValue] = useState("");
+  const [manualReason, setManualReason] = useState("");
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
   const analyzeMutation = useServerMutation(apiClient.analyze, {
     onSuccess: (response) => setResult(response),
@@ -39,6 +41,12 @@ export function AnalyzePage() {
       user_goal: userGoal,
       condition,
       asking_price: askingPrice ? Number(askingPrice) : null,
+      manual_valuation_override: manualValue
+        ? {
+            expected_value: Number(manualValue),
+            reason: manualReason,
+          }
+        : null,
     };
     void analyzeMutation.mutate(payload);
   }
@@ -67,6 +75,29 @@ export function AnalyzePage() {
               <option value="hold_vs_sell">Sell or Hold</option>
               <option value="hold">General Recommendation</option>
             </SelectField>
+            <div className="space-y-3 rounded-[var(--radius-card)] border border-[var(--color-border-soft)] p-3">
+              <p className="text-sm font-semibold text-[var(--color-text)]">
+                Manual valuation override
+              </p>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                Use a documented valuation when market data is insufficient.
+              </p>
+              <TextField
+                label="Expected value"
+                min="0.01"
+                onChange={(event) => setManualValue(event.target.value)}
+                placeholder="625.00"
+                step="0.01"
+                type="number"
+                value={manualValue}
+              />
+              <TextField
+                label="Reason"
+                onChange={(event) => setManualReason(event.target.value)}
+                placeholder="Recent verified private sale"
+                value={manualReason}
+              />
+            </div>
             <TextField
               label="Asking price"
               min="0"
@@ -151,6 +182,10 @@ export function AnalyzePage() {
               value={numberValue(result?.listing_count)}
             />
             <MetricCard label="Condition" value={condition.toUpperCase()} />
+            <MetricCard
+              label="Valuation source"
+              value={result?.valuation_source.replace("_", " ") ?? "--"}
+            />
           </div>
 
           <div className="page-card">

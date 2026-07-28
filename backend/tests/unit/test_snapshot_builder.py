@@ -71,3 +71,10 @@ def test_build_excludes_iqr_outliers_from_snapshot_metrics():
     assert fair_value["sample_size"] == 4
     assert fair_value["source_payload"]["outlier_handling"]["excluded_count"] == 1
     assert len(fair_value["source_payload"]["excluded_outliers"]) == 1
+
+
+def test_build_ignores_listings_without_a_usable_price():
+    listing = _listing(condition="new", complete=None, price="100.00")
+    listing["price"] = None
+
+    assert build([listing]) == []

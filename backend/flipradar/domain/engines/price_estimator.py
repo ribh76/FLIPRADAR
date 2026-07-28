@@ -72,6 +72,10 @@ def estimate_fair_value(
     now: datetime | None = None,
     freshness_hours: int | None = DEFAULT_FRESHNESS_HOURS,
     min_confidence: Decimal | float | int = AUTOMATED_PRICING_MIN_CONFIDENCE,
+    manual_value: Decimal | float | int | None = None,
+    manual_low: Decimal | float | int | None = None,
+    manual_high: Decimal | float | int | None = None,
+    manual_reason: str | None = None,
 ) -> dict[str, Any]:
     """Estimate a condition-specific market value from eligible metric rows.
 
@@ -80,6 +84,15 @@ def estimate_fair_value(
     sold-versus-active evidence mix. Tukey IQR filtering removes inconsistent
     marketplace observations before calculating the weighted expected value.
     """
+    if manual_value is not None:
+        return _manual_estimate(
+            manual_value,
+            low=manual_low,
+            high=manual_high,
+            reason=manual_reason,
+            condition=condition,
+        )
+
     eligible, exclusions = select_eligible_snapshots(
         snapshots,
         condition=condition,
@@ -144,6 +157,9 @@ def estimate_fair_value(
         "methodology_version": ESTIMATION_METHODOLOGY_VERSION,
         "inputs_used": [item["input"] for item in included],
         "excluded_inputs": exclusions,
+        "valuation_status": "valued",
+        "valuation_source": "market",
+        "error": None,
     }
 
 
@@ -329,10 +345,13 @@ def _exclude_iqr_outliers(
             )
     return included, excluded
 
-##TODO: Fix weighed average function type issue
+
 def _weighted_average(values: list[tuple[Decimal, Decimal]]) -> Decimal:
-    return sum(price * weight for price, weight in values) / sum(
-        weight for _, weight in values
+    total_weight = sum((weight for _, weight in values), Decimal("0"))
+    if total_weight == 0:
+        raise ValueError("At least one positive valuation weight is required.")
+    return (
+        sum((price * weight for price, weight in values), Decimal("0")) / total_weight
     )
 
 
@@ -465,6 +484,63 @@ def _empty_estimate(
         "methodology_version": ESTIMATION_METHODOLOGY_VERSION,
         "inputs_used": [],
         "excluded_inputs": exclusions,
+        "valuation_status": "insufficient_data",
+        "valuation_source": "market",
+        "error": {
+            "code": "insufficient_data",
+            "message": "Insufficient data to produce a reliable market valuation.",
+        },
+    }
+
+
+def _manual_estimate(
+    value: Decimal | float | int,
+    *,
+    low: Decimal | float | int | None,
+    high: Decimal | float | int | None,
+    reason: str | None,
+    condition: str | None,
+) -> dict[str, Any]:
+    expected = Decimal(str(value))
+    low_value = Decimal(str(low)) if low is not None else expected
+    high_value = Decimal(str(high)) if high is not None else expected
+    if expected <= 0:
+        raise ValueError("Manual valuation expected value must be greater than zero.")
+    if (
+        low_value <= 0
+        or high_value <= 0
+        or low_value > expected
+        or expected > high_value
+    ):
+        raise ValueError("Manual valuation must satisfy low <= expected <= high.")
+    if not reason or not reason.strip():
+        raise ValueError("Manual valuation reason is required.")
+    return {
+        "fair_value": _money(expected),
+        "market_low": _money(low_value),
+        "market_high": _money(high_value),
+        "median_price": _money(expected),
+        "listing_count": 0,
+        "confidence": "high",
+        "low_value": _money(low_value),
+        "expected_value": _money(expected),
+        "high_value": _money(high_value),
+        "confidence_score": 100,
+        "condition": condition,
+        "methodology_version": ESTIMATION_METHODOLOGY_VERSION,
+        "inputs_used": [
+            {
+                "source": "manual_override",
+                "expected_value": str(_money(expected)),
+                "low_value": str(_money(low_value)),
+                "high_value": str(_money(high_value)),
+                "reason": reason.strip(),
+            }
+        ],
+        "excluded_inputs": [],
+        "valuation_status": "valued",
+        "valuation_source": "manual_override",
+        "error": None,
     }
 
 
