@@ -1,7 +1,12 @@
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
 from flipradar.domain.engines.price_estimator import estimate_fair_value
+
+
+def assert_legacy_summary(result: dict, expected: dict) -> None:
+    assert {key: result[key] for key in expected} == expected
 
 
 def make_snapshot(
@@ -27,6 +32,32 @@ def make_snapshot(
     )
 
 
+def metric_snapshot(
+    marketplace_name: str,
+    value: str,
+    *,
+    condition: str = "new",
+    sample_size: int = 10,
+    retrieval_time: datetime | None = None,
+    listings: list[dict] | None = None,
+    set_number: str = "75192",
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        id=f"{marketplace_name}-{value}",
+        marketplace_id=marketplace_name,
+        marketplace=SimpleNamespace(
+            name=marketplace_name, display_name=marketplace_name
+        ),
+        set_number=set_number,
+        condition=condition,
+        metric_type="fair_market_value",
+        value=Decimal(value),
+        sample_size=sample_size,
+        retrieval_time=retrieval_time or datetime.now(UTC),
+        source_payload={"listings": listings or []},
+    )
+
+
 def test_price_estimator_returns_market_summary_dict():
     snapshots = [
         make_snapshot(
@@ -47,14 +78,21 @@ def test_price_estimator_returns_market_summary_dict():
         ),
     ]
 
-    assert estimate_fair_value(snapshots) == {
-        "fair_value": Decimal("625.00"),
-        "market_low": Decimal("590.00"),
-        "market_high": Decimal("700.00"),
-        "median_price": Decimal("625.00"),
-        "listing_count": 22,
-        "confidence": "high",
-    }
+    result = estimate_fair_value(snapshots)
+    assert_legacy_summary(
+        result,
+        {
+            "fair_value": Decimal("625.00"),
+            "market_low": Decimal("590.00"),
+            "market_high": Decimal("700.00"),
+            "median_price": Decimal("625.00"),
+            "listing_count": 22,
+            "confidence": "high",
+        },
+    )
+    assert result["expected_value"] == Decimal("625.00")
+    assert result["confidence_score"] == 84
+    assert len(result["inputs_used"]) == 2
 
 
 def test_price_estimator_prefers_median_over_average():
@@ -110,14 +148,17 @@ def test_price_estimator_handles_missing_marketplace_data():
         listing_count=3,
     )
 
-    assert estimate_fair_value([snapshot]) == {
-        "fair_value": Decimal("125.00"),
-        "market_low": Decimal("125.00"),
-        "market_high": Decimal("125.00"),
-        "median_price": Decimal("125.00"),
-        "listing_count": 3,
-        "confidence": "low",
-    }
+    assert_legacy_summary(
+        estimate_fair_value([snapshot]),
+        {
+            "fair_value": Decimal("125.00"),
+            "market_low": Decimal("125.00"),
+            "market_high": Decimal("125.00"),
+            "median_price": Decimal("125.00"),
+            "listing_count": 3,
+            "confidence": "low",
+        },
+    )
 
 
 def test_price_estimator_handles_snapshots_without_usable_prices():
@@ -130,22 +171,92 @@ def test_price_estimator_handles_snapshots_without_usable_prices():
         listing_count=6,
     )
 
-    assert estimate_fair_value([snapshot]) == {
-        "fair_value": Decimal("0.00"),
-        "market_low": Decimal("0.00"),
-        "market_high": Decimal("0.00"),
-        "median_price": Decimal("0.00"),
-        "listing_count": 0,
-        "confidence": "low",
-    }
+    assert_legacy_summary(
+        estimate_fair_value([snapshot]),
+        {
+            "fair_value": Decimal("0.00"),
+            "market_low": Decimal("0.00"),
+            "market_high": Decimal("0.00"),
+            "median_price": Decimal("0.00"),
+            "listing_count": 0,
+            "confidence": "low",
+        },
+    )
 
 
 def test_price_estimator_handles_no_snapshots():
-    assert estimate_fair_value([]) == {
-        "fair_value": Decimal("0.00"),
-        "market_low": Decimal("0.00"),
-        "market_high": Decimal("0.00"),
-        "median_price": Decimal("0.00"),
-        "listing_count": 0,
-        "confidence": "low",
-    }
+    assert_legacy_summary(
+        estimate_fair_value([]),
+        {
+            "fair_value": Decimal("0.00"),
+            "market_low": Decimal("0.00"),
+            "market_high": Decimal("0.00"),
+            "median_price": Decimal("0.00"),
+            "listing_count": 0,
+            "confidence": "low",
+        },
+    )
+
+
+def test_price_estimator_filters_stale_wrong_condition_and_low_confidence_inputs():
+    now = datetime(2026, 7, 28, tzinfo=UTC)
+    valid = metric_snapshot("ebay", "100", retrieval_time=now)
+    stale = metric_snapshot(
+        "bricklink", "500", retrieval_time=now - timedelta(hours=25)
+    )
+    used = metric_snapshot(
+        "bricklink", "600", condition="used_complete", retrieval_time=now
+    )
+    other_set = metric_snapshot(
+        "other-set", "650", set_number="10316", retrieval_time=now
+    )
+    low_confidence = metric_snapshot(
+        "other",
+        "700",
+        retrieval_time=now,
+        listings=[{"match_confidence": 79}],
+    )
+
+    result = estimate_fair_value(
+        [valid, stale, used, other_set, low_confidence],
+        condition="new",
+        set_number="75192",
+        now=now,
+    )
+
+    assert result["fair_value"] == Decimal("100.00")
+    assert [entry["reason"] for entry in result["excluded_inputs"]] == [
+        "stale",
+        "condition_mismatch",
+        "set_mismatch",
+        "below_confidence_threshold",
+    ]
+
+
+def test_price_estimator_weights_sold_evidence_above_active_listings():
+    active = metric_snapshot(
+        "ebay", "100", listings=[{"listing_status": "active"}] * 10
+    )
+    sold = metric_snapshot(
+        "bricklink", "200", listings=[{"listing_status": "sold"}] * 10
+    )
+
+    result = estimate_fair_value([active, sold])
+
+    assert result["fair_value"] > Decimal("155.00")
+    assert result["inputs_used"][1]["sold_count"] == 10
+
+
+def test_price_estimator_discards_iqr_outlier_marketplace_observation():
+    snapshots = [
+        metric_snapshot("market-a", "100"),
+        metric_snapshot("market-b", "102"),
+        metric_snapshot("market-c", "105"),
+        metric_snapshot("market-d", "110"),
+        metric_snapshot("market-e", "1000"),
+    ]
+
+    result = estimate_fair_value(snapshots)
+
+    assert result["fair_value"] < Decimal("110.00")
+    assert result["excluded_inputs"][-1]["reason"] == "iqr_outlier"

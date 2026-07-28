@@ -41,7 +41,7 @@ def build(
     for condition, group in groups.items():
         included, excluded, fences = _exclude_iqr_outliers(group)
         prices = sorted(_listing_total_price(listing) for listing in included)
-        #TODO: Fix the bug on line 43
+        # TODO: Fix the bug on line 43
         numeric_prices = [price for price in prices if price is not None]
         if not numeric_prices:
             continue
@@ -148,6 +148,14 @@ def _source_payload(
             "excluded_count": len(excluded),
             "fences": fences,
         },
+        "evidence_counts": {
+            "sold": sum(
+                listing.get("listing_status") == "sold" for listing in included
+            ),
+            "active": sum(
+                listing.get("listing_status") == "active" for listing in included
+            ),
+        },
         "listings": [_source_listing(listing) for listing in included],
         "excluded_outliers": [_source_listing(listing) for listing in excluded],
     }
@@ -165,6 +173,8 @@ def _source_listing(listing: dict[str, Any]) -> dict[str, Any]:
         "original_currency": listing.get("original_currency"),
         "condition": listing.get("condition"),
         "is_complete": listing.get("is_complete"),
+        "listing_status": listing.get("listing_status"),
+        "match_confidence": listing.get("match_confidence"),
         "listing_url": listing.get("listing_url"),
     }
 

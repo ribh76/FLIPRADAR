@@ -27,6 +27,23 @@ When fewer than four comparable prices are available, IQR filtering is not appli
 
 `low`, `high`, `median`, and `average` summarize the validated sample. `fair_market_value` currently uses the validated median, which is less sensitive to skew than the average. The estimation engine uses fair-market value, then median, then average as fallbacks, while using low and high for the market range.
 
+## Valuation engine
+
+Valuations are available only for the supported condition buckets: `new`,
+`used_complete`, and `incomplete`. The engine selects snapshots for the requested
+set and condition, rejects stale snapshots (24 hours by default), and rejects
+snapshot evidence below the automated-pricing confidence threshold. Imported
+legacy snapshots without freshness or listing-confidence metadata remain usable
+so historical valuations can still be viewed.
+
+The estimate treats each marketplace/retrieval as one observation. It uses
+Tukey's 1.5-IQR rule across marketplace observations when four or more are
+available, then calculates a weighted expected value. Weights combine marketplace
+reliability, a capped square-root sample-size factor, and listing evidence; sold
+listings receive a 1.5x weight relative to active listings. The result exposes
+`low_value`, `expected_value`, `high_value`, a 0–100 `confidence_score`, a
+confidence band, methodology version, and every included or excluded input.
+
 ## Currency
 
 Values are converted to the configured pricing currency using Frankfurter’s daily exchange rate. Original listing amounts and currencies remain in the source payload and marketplace-listing records so the valuation is auditable.
