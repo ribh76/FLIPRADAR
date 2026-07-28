@@ -112,6 +112,15 @@ class ProductMatch:
             and self.confidence >= AUTOMATED_PRICING_MIN_CONFIDENCE
         )
 
+    @property
+    def explanation(self) -> str:
+        """Stable developer-facing explanation suitable for logs and debugging."""
+        if self.exclusion_reasons:
+            return "rejected: " + ", ".join(self.exclusion_reasons)
+        if self.match_reasons:
+            return f"{'; '.join(self.match_reasons)} (confidence={self.confidence})"
+        return f"no reliable match (confidence={self.confidence})"
+
 
 def normalize_title(title: object) -> str:
     """Return a lowercase, punctuation- and accent-insensitive title string."""
@@ -138,10 +147,30 @@ def extract_candidate_set_numbers(title: object) -> tuple[str, ...]:
     candidates: list[str] = []
     for pattern in (_LABELLED_SET_NUMBER_PATTERN, _UNLABELLED_SET_NUMBER_PATTERN):
         for match in pattern.finditer(normalized):
+            if pattern is _UNLABELLED_SET_NUMBER_PATTERN and _is_measurement_number(
+                normalized, match.start(), match.end()
+            ):
+                continue
             candidate = normalize_set_number(match.group(1))
             if candidate not in candidates:
                 candidates.append(candidate)
     return tuple(candidates)
+
+
+def _is_measurement_number(text: str, start: int, end: int) -> bool:
+    """Ignore common piece/count/year numbers mistaken for product IDs."""
+    prefix = text[max(0, start - 16) : start]
+    suffix = text[end : end + 20]
+    context = re.compile(
+        r"(?:pieces?|pcs?|parts?|minifigs?|minifigures?|year|released?|release)"
+    )
+    return bool(
+        re.search(r"(?:pieces?|pcs?|parts?|minifigs?|minifigures?|year)\s*$", prefix)
+        or re.match(r"\s*(?:pieces?|pcs?|parts?|minifigs?|minifigures?)\b", suffix)
+        or re.match(r"\s*(?:release|released|edition)\b", suffix)
+        or re.search(r"(?:release|released|edition)\s*$", prefix)
+        or (1900 <= int(text[start:end].split("-")[0]) <= 2100 and context.search(prefix + suffix))
+    )
 
 
 def _ascii_lower(value: object) -> str:
@@ -191,6 +220,11 @@ def detect_listing_exclusions(
     )
     if is_multi_set_lot:
         reasons.append("multi_set_lot")
+    elif len(candidates) > 1:
+        # Two independent product identifiers without an explicit lot marker
+        # are still ambiguous. Conservative rejection avoids pricing one set
+        # from a bundle or a title containing a misleading second identifier.
+        reasons.append("ambiguous_set_numbers")
     return tuple(reasons)
 
 

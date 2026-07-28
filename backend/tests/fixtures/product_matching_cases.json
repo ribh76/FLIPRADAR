@@ -1,0 +1,14 @@
+[
+  {"id": "exact_number", "title": "LEGO 75192 sealed complete set", "set_number": "75192", "set_name": "Millennium Falcon", "expected_match": true, "expected_confidence": 100, "expected_reasons": ["exact_set_number"]},
+  {"id": "messy_exact_number", "title": "lego® 75192 - Millenium Falcon!!! NISB", "set_number": "75192", "set_name": "Millennium Falcon", "expected_match": true, "expected_confidence": 100, "expected_reasons": ["exact_set_number"]},
+  {"id": "name_fallback", "title": "LEGO Lion Knights Castle sealed", "set_number": "10305", "set_name": "Lion Knights' Castle", "expected_match": true, "expected_confidence": 80, "expected_reasons": ["set_name_token_match", "set_name_token_coverage:3/3"]},
+  {"id": "misleading_name_wrong_number", "title": "LEGO Millennium Falcon 75257 sealed", "set_number": "75192", "set_name": "Millennium Falcon", "expected_match": false, "expected_confidence": 0, "expected_reasons": ["conflicting_set_number"]},
+  {"id": "instructions_only", "title": "LEGO 75192 instructions only", "set_number": "75192", "set_name": "Millennium Falcon", "expected_match": false, "expected_confidence": 0, "expected_reasons": ["instructions_only"]},
+  {"id": "box_only", "title": "75192 empty box only", "set_number": "75192", "set_name": "Millennium Falcon", "expected_match": false, "expected_confidence": 0, "expected_reasons": ["box_only"]},
+  {"id": "minifigure_lot", "title": "75192 minifigures lot", "set_number": "75192", "set_name": "Millennium Falcon", "expected_match": false, "expected_confidence": 0, "expected_reasons": ["minifigures_only"]},
+  {"id": "parts_lot", "title": "LEGO 75192 parts lot", "set_number": "75192", "set_name": "Millennium Falcon", "expected_match": false, "expected_confidence": 0, "expected_reasons": ["parts_only"]},
+  {"id": "custom_build", "title": "MOC custom build inspired by 75192", "set_number": "75192", "set_name": "Millennium Falcon", "expected_match": false, "expected_confidence": 0, "expected_reasons": ["custom_build"]},
+  {"id": "counterfeit", "title": "Counterfeit LEGO 75192 clone", "set_number": "75192", "set_name": "Millennium Falcon", "expected_match": false, "expected_confidence": 0, "expected_reasons": ["counterfeit_or_non_lego"]},
+  {"id": "multi_set_lot", "title": "LEGO set lot 75192 and 75257 sealed", "set_number": "75192", "set_name": "Millennium Falcon", "expected_match": false, "expected_confidence": 0, "expected_reasons": ["multi_set_lot"]},
+  {"id": "ambiguous_identifiers", "title": "LEGO 75192 / 75257 collection", "set_number": "75192", "set_name": "Millennium Falcon", "expected_match": false, "expected_confidence": 0, "expected_reasons": ["multi_set_lot"]}
+]

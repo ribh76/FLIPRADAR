@@ -103,10 +103,10 @@ def _match_listings_to_set(listings: list[dict], lego_set: LegoSet) -> list[dict
         )
         if not match.is_match:
             logger.info(
-                "marketplace listing rejected set_number=%s candidates=%s reasons=%s title=%r",
+                "marketplace listing rejected set_number=%s candidates=%s explanation=%s title=%r",
                 lego_set.set_number,
                 match.candidate_set_numbers,
-                match.exclusion_reasons,
+                match.explanation,
                 listing["title"],
             )
             continue
