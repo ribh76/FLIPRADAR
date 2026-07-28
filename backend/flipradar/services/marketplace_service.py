@@ -17,7 +17,11 @@ from flipradar.domain.models import (
 from flipradar.integrations.bricklink_mock_client import adapter as bricklink_adapter
 from flipradar.integrations.ebay_mock_client import adapter as ebay_adapter
 from flipradar.integrations.marketplace_adapter import MarketplaceAdapter
-from flipradar.services import listing_normalizer, snapshot_builder
+from flipradar.services import (
+    listing_normalizer,
+    product_matching_engine,
+    snapshot_builder,
+)
 from flipradar.services.errors import (
     ServiceConflictError,
     ServiceProviderError,
@@ -63,7 +67,9 @@ async def _update_marketplace_data(db: AsyncSession, set_number: str) -> PriceSn
     for adapter in MARKETPLACE_ADAPTERS:
         raw_listings.extend(await _fetch_adapter_listings(adapter, lego_set.set_number))
 
-    normalized_listings = listing_normalizer.normalize(raw_listings)[:50]
+    normalized_listings = listing_normalizer.normalize(raw_listings)
+    matched_listings = _match_listings_to_set(normalized_listings, lego_set)
+    normalized_listings = matched_listings[:50]
     if len(normalized_listings) < 10:
         logger.warning(
             "major marketplace data shortage set_number=%s listing_count=%s",
@@ -86,6 +92,32 @@ async def _update_marketplace_data(db: AsyncSession, set_number: str) -> PriceSn
     if not snapshots:
         raise LookupError("No valid marketplace listings found")
     return snapshots[0]
+
+
+def _match_listings_to_set(listings: list[dict], lego_set: LegoSet) -> list[dict]:
+    """Keep only listings that match the requested catalog set."""
+    matched_listings = []
+    for listing in listings:
+        match = product_matching_engine.match_listing_to_set(
+            listing["title"], set_number=lego_set.set_number, set_name=lego_set.name
+        )
+        if not match.is_match:
+            logger.info(
+                "marketplace listing rejected set_number=%s candidates=%s reasons=%s title=%r",
+                lego_set.set_number,
+                match.candidate_set_numbers,
+                match.exclusion_reasons,
+                listing["title"],
+            )
+            continue
+        matched_listings.append(
+            {
+                **listing,
+                "detected_set_number": match.detected_set_number,
+                "match_confidence": match.confidence,
+            }
+        )
+    return matched_listings
 
 
 async def _fetch_adapter_listings(
@@ -174,6 +206,7 @@ async def _save_listings(
         listings_by_marketplace[listing_data["marketplace"]].append(
             {
                 "external_listing_id": listing_data["external_listing_id"],
+                "detected_set_number": listing_data["detected_set_number"],
                 "title": listing_data["title"],
                 "url": listing_data["listing_url"],
                 "price": listing_data["price"],
@@ -183,6 +216,7 @@ async def _save_listings(
                 "condition": listing_data["condition"],
                 "listing_status": "active",
                 "seller_name": listing_data["seller"],
+                "match_confidence": listing_data["match_confidence"],
                 "raw_payload": listing_data["raw_payload"],
             }
         )

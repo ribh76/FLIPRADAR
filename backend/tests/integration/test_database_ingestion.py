@@ -490,6 +490,8 @@ async def test_marketplace_service_updates_listings_and_snapshot(
     listings = list(saved_listings.scalars())
 
     assert len(listings) == 12
+    assert {listing.detected_set_number for listing in listings} == {lego_set.set_number}
+    assert {listing.match_confidence for listing in listings} == {Decimal("100.00")}
     assert snapshot.id is not None
     assert snapshot.listing_count == 6
     assert snapshot.condition == "used"

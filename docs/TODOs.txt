@@ -339,7 +339,7 @@ tests made and ran, full pass.
 
 --
 PHASE 17: MARKETPLACE NORMALIZATION
-Classification: MUST SHIP
+Classification: MUST SHIP - complete 
 
 1. Finalize one normalized marketplace listing schema. 
 2. Include marketplace, external ID, URL, title, price, shipping, currency, condition, and seller details.
@@ -366,6 +366,8 @@ Classification: MUST SHIP
 5. Detect instructions-only, box-only, minifigures-only, parts-only, and custom-build listings.
 6. Detect multi-set lots.
 7. Detect likely counterfeit or non-LEGO listings.
+
+--
 8. Assign a match-confidence score.
 9. Define a minimum score for automated pricing use.
 10. Store match reasons and exclusion flags.
