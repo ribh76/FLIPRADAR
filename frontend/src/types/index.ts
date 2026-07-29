@@ -72,6 +72,7 @@ export type PortfolioItem = {
   current_total_value: string | number | null;
   cost_basis: string | number;
   unrealized_gain_loss: string | number | null;
+  unrealized_gain_loss_percent: string | number | null;
   valuation_status: string;
 };
 

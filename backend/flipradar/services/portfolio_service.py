@@ -20,7 +20,7 @@ from flipradar.database.repositories import (
     get_set_by_number,
     update_portfolio_item,
 )
-from flipradar.domain.engines import price_estimator
+from flipradar.domain.engines import portfolio_valuation, price_estimator
 
 
 def _money(value: Decimal | int) -> Decimal:
@@ -158,10 +158,7 @@ async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
     value_map = await _current_unit_value_map(db, items)
     holdings = []
     total_quantity = 0
-    total_cost_basis = Decimal("0.00")
-    valued_cost_basis = Decimal("0.00")
-    estimated_current_value = Decimal("0.00")
-    unrealized_gain_loss = Decimal("0.00")
+    holding_valuations = []
 
     grouped = defaultdict(list)
     for item in items:
@@ -171,19 +168,45 @@ async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
         quantity = sum(item.quantity for item in grouped_items)
         cost_basis = sum(item.purchase_price * item.quantity for item in grouped_items)
         total_quantity += quantity
-        total_cost_basis += cost_basis
 
         unit_value, status = value_map[(set_number, condition)]
         set_name = getattr(grouped_items[0].lego_set, "name", None)
-        if unit_value is None:
-            current_value = None
-            gain_loss = None
-        else:
-            current_value = _money(unit_value * quantity)
-            gain_loss = _money(current_value - cost_basis)
-            estimated_current_value += current_value
-            valued_cost_basis += cost_basis
-            unrealized_gain_loss += gain_loss
+        valuations = [
+            portfolio_valuation.calculate_holding_valuation(
+                quantity=item.quantity,
+                purchase_price=item.purchase_price,
+                unit_market_value=unit_value,
+            )
+            for item in grouped_items
+        ]
+        holding_valuations.extend(valuations)
+        current_value = (
+            _money(
+                sum(
+                    valuation.market_value
+                    for valuation in valuations
+                    if valuation.market_value is not None
+                )
+            )
+            if unit_value is not None
+            else None
+        )
+        gain_loss = (
+            _money(
+                sum(
+                    valuation.unrealized_gain_loss
+                    for valuation in valuations
+                    if valuation.unrealized_gain_loss is not None
+                )
+            )
+            if unit_value is not None
+            else None
+        )
+        gain_loss_percent = (
+            _money((gain_loss / cost_basis) * 100)
+            if gain_loss is not None and cost_basis > 0
+            else None
+        )
 
         holdings.append(
             {
@@ -194,34 +217,31 @@ async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
                 "cost_basis": _money(cost_basis),
                 "estimated_current_value": current_value,
                 "unrealized_gain_loss": gain_loss,
+                "unrealized_gain_loss_percent": gain_loss_percent,
                 "valuation_status": status,
             }
         )
 
-    gain_loss_percent = None
-    if valued_cost_basis > 0:
-        gain_loss_percent = _money((unrealized_gain_loss / valued_cost_basis) * 100)
+    totals = portfolio_valuation.calculate_portfolio_totals(holding_valuations)
 
     return {
         "total_items": len(items),
         "total_sets": len({item.set_number for item in items}),
         "total_quantity": total_quantity,
-        "total_cost_basis": _money(total_cost_basis),
-        "estimated_current_value": _money(estimated_current_value),
-        "unrealized_gain_loss": _money(unrealized_gain_loss),
-        "unrealized_gain_loss_percent": gain_loss_percent,
+        "total_cost_basis": totals["total_cost_basis"],
+        "estimated_current_value": totals["total_market_value"],
+        "unrealized_gain_loss": totals["total_gain_loss"],
+        "unrealized_gain_loss_percent": totals["total_gain_loss_percent"],
         "holdings": holdings,
     }
 
 
 def _portfolio_item_response(item, value_map: dict[tuple[str, str], tuple]) -> dict:
     unit_value, status = value_map[(item.set_number, item.condition)]
-    cost_basis = _money(item.purchase_price * item.quantity)
-    current_total_value = _money(unit_value * item.quantity) if unit_value else None
-    gain_loss = (
-        _money(current_total_value - cost_basis)
-        if current_total_value is not None
-        else None
+    valuation = portfolio_valuation.calculate_holding_valuation(
+        quantity=item.quantity,
+        purchase_price=item.purchase_price,
+        unit_market_value=unit_value,
     )
     return {
         "id": item.id,
@@ -237,9 +257,10 @@ def _portfolio_item_response(item, value_map: dict[tuple[str, str], tuple]) -> d
         "updated_at": item.updated_at,
         "set_name": getattr(item.lego_set, "name", None),
         "current_unit_value": unit_value,
-        "current_total_value": current_total_value,
-        "cost_basis": cost_basis,
-        "unrealized_gain_loss": gain_loss,
+        "current_total_value": valuation.market_value,
+        "cost_basis": valuation.cost_basis,
+        "unrealized_gain_loss": valuation.unrealized_gain_loss,
+        "unrealized_gain_loss_percent": valuation.unrealized_gain_loss_percent,
         "valuation_status": status,
     }
 

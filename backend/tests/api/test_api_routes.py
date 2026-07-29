@@ -2267,6 +2267,7 @@ def test_portfolio_purchase_details_filters_and_valuation_sorts(client: TestClie
     )
     gain_items = collection_data(gains)
     assert [item["purchase_price"] for item in gain_items] == ["100.00", "150.00"]
+    assert gain_items[0]["unrealized_gain_loss_percent"] == "100.00"
 
     losses = client.get("/portfolio", headers=headers, params={"performance": "loss"})
     assert [item["set_number"] for item in collection_data(losses)] == ["42100"]
@@ -2278,6 +2279,11 @@ def test_portfolio_purchase_details_filters_and_valuation_sorts(client: TestClie
     assert first_item["set_number"] == "42100"
     assert first_item["purchase_date"].startswith("2020-03-10")
     assert first_item["currency"] == "USD"
+
+    summary = client.get("/portfolio/summary", headers=headers).json()
+    assert summary["estimated_current_value"] == "450.00"
+    assert summary["unrealized_gain_loss"] == "100.00"
+    assert summary["unrealized_gain_loss_percent"] == "28.57"
 
 
 def test_set_detail_returns_metadata_and_latest_snapshot(client: TestClient):

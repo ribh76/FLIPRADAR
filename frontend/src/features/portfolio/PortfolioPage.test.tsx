@@ -40,6 +40,7 @@ const holding: PortfolioItem = {
   current_total_value: "200.00",
   cost_basis: "100.00",
   unrealized_gain_loss: "100.00",
+  unrealized_gain_loss_percent: "100.00",
   valuation_status: "valued",
 };
 

@@ -24,7 +24,7 @@ import type {
   PortfolioItem,
   PortfolioItemCreate,
 } from "../../types";
-import { currency, signedCurrency } from "../../utils/format";
+import { currency, percent, signedCurrency } from "../../utils/format";
 
 const portfolioKey = ["portfolio"];
 const portfolioSummaryKey = ["portfolio-summary"];
@@ -253,6 +253,9 @@ export function PortfolioPage() {
           }
         >
           {signedCurrency(item.unrealized_gain_loss)}
+          {item.unrealized_gain_loss_percent === null
+            ? ""
+            : ` (${percent(item.unrealized_gain_loss_percent)})`}
         </span>
       ),
     },
@@ -300,7 +303,7 @@ export function PortfolioPage() {
         <MetricCard
           label="Unrealized Gain/Loss"
           tone="good"
-          value={signedCurrency(summaryQuery.data?.unrealized_gain_loss)}
+          value={`${signedCurrency(summaryQuery.data?.unrealized_gain_loss)} (${percent(summaryQuery.data?.unrealized_gain_loss_percent)})`}
         />
         <MetricCard
           label="Total Quantity"
