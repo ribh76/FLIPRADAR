@@ -2200,6 +2200,86 @@ def test_portfolio_summary_handles_quantities_prices_and_conditions(
     assert holdings_by_condition["used"]["unrealized_gain_loss"] == "60.00"
 
 
+def test_portfolio_purchase_details_filters_and_valuation_sorts(client: TestClient):
+    icons = create_set_payload("10300")
+    technic = create_set_payload("42100")
+    technic.update({"theme": "Technic", "release_year": 2020})
+    assert client.post("/sets", json=icons).status_code == 201
+    assert client.post("/sets", json=technic).status_code == 201
+    for set_number, value in (("10300", "200.00"), ("42100", "50.00")):
+        response = client.post(
+            "/snapshots",
+            json={
+                "set_number": set_number,
+                "marketplace_name": "ebay",
+                "condition": "new",
+                "currency": "USD",
+                "metric_type": "fair_market_value",
+                "value": value,
+                "sample_size": 10,
+            },
+        )
+        assert response.status_code == 201, response.text
+
+    headers = auth_headers(client, "portfolio-filter-user")
+    payloads = [
+        {
+            "set_number": "10300",
+            "quantity": 1,
+            "purchase_price": "100.00",
+            "condition": "new",
+            "purchase_date": "2024-01-10T00:00:00Z",
+            "currency": "USD",
+        },
+        {
+            "set_number": "10300",
+            "quantity": 1,
+            "purchase_price": "150.00",
+            "condition": "new",
+            "purchase_date": "2024-02-10T00:00:00Z",
+            "currency": "USD",
+        },
+        {
+            "set_number": "42100",
+            "quantity": 1,
+            "purchase_price": "100.00",
+            "condition": "new",
+            "purchase_date": "2020-03-10T00:00:00Z",
+            "currency": "USD",
+        },
+    ]
+    for payload in payloads:
+        response = client.post("/portfolio/items", headers=headers, json=payload)
+        assert response.status_code == 201, response.text
+
+    filtered = client.get(
+        "/portfolio",
+        headers=headers,
+        params={"theme": "Icons", "year": 2024, "condition": "new"},
+    )
+    assert filtered.status_code == 200
+    assert len(collection_data(filtered)) == 2
+
+    gains = client.get(
+        "/portfolio",
+        headers=headers,
+        params={"performance": "gain", "order": "gain_desc"},
+    )
+    gain_items = collection_data(gains)
+    assert [item["purchase_price"] for item in gain_items] == ["100.00", "150.00"]
+
+    losses = client.get("/portfolio", headers=headers, params={"performance": "loss"})
+    assert [item["set_number"] for item in collection_data(losses)] == ["42100"]
+
+    purchase_dates = client.get(
+        "/portfolio", headers=headers, params={"order": "purchase_date_asc", "limit": 1}
+    )
+    first_item = collection_data(purchase_dates)[0]
+    assert first_item["set_number"] == "42100"
+    assert first_item["purchase_date"].startswith("2020-03-10")
+    assert first_item["currency"] == "USD"
+
+
 def test_set_detail_returns_metadata_and_latest_snapshot(client: TestClient):
     lego_set = create_lego_set(client, "75313")
     snapshot = client.post(

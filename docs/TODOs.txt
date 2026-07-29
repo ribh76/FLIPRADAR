@@ -434,7 +434,7 @@ Classification: MUST SHIP
 10. Add ownership checks. -
 11. Build portfolio tables and mobile cards. -
 12. Build add and edit forms. - 
-13. Add full backend and frontend tests.
+13. Add full backend and frontend tests.-  (passed) 
 
 PHASE 22: PORTFOLIO VALUATION
 Classification: MUST SHIP
