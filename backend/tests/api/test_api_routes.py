@@ -2100,6 +2100,20 @@ def test_portfolio_summary_empty_portfolio(client: TestClient):
     }
 
 
+def test_portfolio_history_returns_a_user_interpretable_unavailable_message(
+    client: TestClient,
+):
+    response = client.get(
+        "/portfolio/history", headers=auth_headers(client, "history-empty-user")
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == (
+        "Portfolio history is unavailable until at least two valuation snapshots "
+        "have been recorded."
+    )
+
+
 def test_portfolio_summary_missing_snapshot_does_not_crash(client: TestClient):
     lego_set = create_lego_set(client, "42071")
     headers = auth_headers(client, "missing-market-user")

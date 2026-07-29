@@ -3,6 +3,9 @@ from flipradar.domain.models.lego_set import LegoSet
 from flipradar.domain.models.listing import MarketplaceListing
 from flipradar.domain.models.marketplace import Marketplace
 from flipradar.domain.models.portfolio import PortfolioItem
+from flipradar.domain.models.portfolio_valuation_rollup import (
+    PortfolioValuationDailyRollup,
+)
 from flipradar.domain.models.portfolio_valuation_snapshot import (
     PortfolioItemValuationSnapshot,
     PortfolioValuationSnapshot,
@@ -23,6 +26,7 @@ __all__ = [
     "PortfolioItem",
     "PortfolioItemValuationSnapshot",
     "PortfolioValuationSnapshot",
+    "PortfolioValuationDailyRollup",
     "PriceSnapshot",
     "Recommendation",
     "RefreshTokenBlacklist",

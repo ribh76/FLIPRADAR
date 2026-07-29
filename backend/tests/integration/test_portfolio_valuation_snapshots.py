@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -14,10 +14,14 @@ from flipradar.database import Base
 from flipradar.domain.models import (
     LegoSet,
     PortfolioItemValuationSnapshot,
+    PortfolioValuationDailyRollup,
     PortfolioValuationSnapshot,
     User,
 )
 from flipradar.services import portfolio_service
+from flipradar.services.portfolio_valuation_retention import (
+    aggregate_and_prune_portfolio_valuations,
+)
 
 
 @pytest_asyncio.fixture
@@ -132,3 +136,64 @@ async def test_user_snapshot_is_deduplicated_within_an_hour(db_session: AsyncSes
         == datetime(2026, 7, 29, 12, tzinfo=UTC)
     ]
     assert len(matching_window) == 1
+
+
+@pytest.mark.asyncio
+async def test_history_returns_requested_points_and_cleanly_rejects_short_history(
+    db_session: AsyncSession,
+):
+    user, lego_set = await _seed_user_and_set(db_session)
+    await portfolio_service.add_item_to_portfolio(
+        db_session,
+        user.id,
+        PortfolioItemCreate(
+            set_number=lego_set.set_number,
+            quantity=1,
+            purchase_price=Decimal("50.00"),
+            condition="new",
+            currency="USD",
+        ),
+    )
+    now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+    await portfolio_service.create_user_valuation_snapshot(
+        db_session, user.id, snapshot_at=now - timedelta(hours=2)
+    )
+    await portfolio_service.create_user_valuation_snapshot(
+        db_session, user.id, snapshot_at=now - timedelta(hours=1)
+    )
+
+    history = await portfolio_service.get_portfolio_valuation_history(
+        db_session, user.id, "1d"
+    )
+    assert history["range"] == "1d"
+    assert len(history["points"]) >= 2
+
+
+@pytest.mark.asyncio
+async def test_retention_rolls_old_hourly_snapshots_into_daily_history(
+    db_session: AsyncSession,
+):
+    user, lego_set = await _seed_user_and_set(db_session)
+    await portfolio_service.add_item_to_portfolio(
+        db_session,
+        user.id,
+        PortfolioItemCreate(
+            set_number=lego_set.set_number,
+            quantity=1,
+            purchase_price=Decimal("50.00"),
+            condition="new",
+            currency="USD",
+        ),
+    )
+    old_timestamp = datetime.now(UTC) - timedelta(days=181)
+    await portfolio_service.create_user_valuation_snapshot(
+        db_session, user.id, snapshot_at=old_timestamp
+    )
+
+    deleted = await aggregate_and_prune_portfolio_valuations(db_session)
+
+    assert deleted >= 1
+    rollups = list(
+        (await db_session.execute(select(PortfolioValuationDailyRollup))).scalars()
+    )
+    assert any(rollup.user_id == user.id for rollup in rollups)

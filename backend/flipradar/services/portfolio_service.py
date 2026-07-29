@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
@@ -21,6 +21,7 @@ from flipradar.database.repositories import (
     get_portfolio_valuation_snapshot_for_window,
     get_recent_snapshots_by_set_number,
     get_set_by_number,
+    list_portfolio_history,
     update_portfolio_item,
 )
 from flipradar.domain.engines import portfolio_valuation, price_estimator
@@ -398,6 +399,41 @@ async def create_user_valuation_snapshot(
         # The unique window constraint handles concurrent refreshes without
         # failing the portfolio mutation or creating duplicate history rows.
         return
+
+
+async def get_portfolio_valuation_history(
+    db: AsyncSession, user_id: UUID, history_range: str
+) -> dict:
+    days_by_range = {
+        "1d": 1,
+        "1w": 7,
+        "1m": 30,
+        "3m": 90,
+        "180d": 180,
+        "1y": 365,
+        "all": None,
+    }
+    days = days_by_range[history_range]
+    start = datetime.now(UTC) - timedelta(days=days) if days is not None else None
+    snapshots = await list_portfolio_history(db, user_id, start)
+    if len(snapshots) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Portfolio history is unavailable until at least two valuation snapshots have been recorded.",
+        )
+    return {
+        "range": history_range,
+        "points": [
+            {
+                "timestamp": snapshot.snapshot_at,
+                "cost_basis": snapshot.cost_basis,
+                "market_value": snapshot.market_value,
+                "gain_loss": snapshot.gain_loss,
+                "currency": snapshot.currency,
+            }
+            for snapshot in snapshots
+        ],
+    }
 
 
 def _snapshot_condition(condition: str) -> str | None:

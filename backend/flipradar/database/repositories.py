@@ -23,6 +23,7 @@ from flipradar.domain.models import (
     MarketplaceListing,
     PortfolioItem,
     PortfolioItemValuationSnapshot,
+    PortfolioValuationDailyRollup,
     PortfolioValuationSnapshot,
     PriceSnapshot,
     Recommendation,
@@ -1072,6 +1073,88 @@ async def get_user_ids_with_portfolio_set(
         .distinct()
     )
     return list(result.scalars())
+
+
+async def get_all_user_ids(db: AsyncSession) -> list[UUID]:
+    return list((await db.execute(select(User.id))).scalars())
+
+
+async def get_portfolio_snapshots_before(
+    db: AsyncSession, cutoff: datetime
+) -> list[PortfolioValuationSnapshot]:
+    return list(
+        (
+            await db.execute(
+                select(PortfolioValuationSnapshot)
+                .where(PortfolioValuationSnapshot.snapshot_at < cutoff)
+                .order_by(
+                    PortfolioValuationSnapshot.user_id,
+                    PortfolioValuationSnapshot.snapshot_at.desc(),
+                )
+            )
+        ).scalars()
+    )
+
+
+async def upsert_portfolio_daily_rollup(
+    db: AsyncSession, snapshot: PortfolioValuationSnapshot
+) -> None:
+    existing = (
+        await db.execute(
+            select(PortfolioValuationDailyRollup).where(
+                PortfolioValuationDailyRollup.user_id == snapshot.user_id,
+                PortfolioValuationDailyRollup.rollup_date
+                == snapshot.snapshot_at.date(),
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        db.add(
+            PortfolioValuationDailyRollup(
+                user_id=snapshot.user_id,
+                rollup_date=snapshot.snapshot_at.date(),
+                cost_basis=snapshot.cost_basis,
+                market_value=snapshot.market_value,
+                gain_loss=snapshot.gain_loss,
+                currency=snapshot.currency,
+                snapshot_at=snapshot.snapshot_at,
+            )
+        )
+    elif snapshot.snapshot_at > existing.snapshot_at:
+        for field in (
+            "cost_basis",
+            "market_value",
+            "gain_loss",
+            "currency",
+            "snapshot_at",
+        ):
+            setattr(existing, field, getattr(snapshot, field))
+
+
+async def delete_portfolio_snapshots_before(db: AsyncSession, cutoff: datetime) -> int:
+    result = await db.execute(
+        delete(PortfolioValuationSnapshot)
+        .where(PortfolioValuationSnapshot.snapshot_at < cutoff)
+        .execution_options(synchronize_session=False)
+    )
+    return cast(CursorResult, result).rowcount or 0
+
+
+async def list_portfolio_history(
+    db: AsyncSession, user_id: UUID, start: datetime | None
+) -> list[PortfolioValuationSnapshot | PortfolioValuationDailyRollup]:
+    raw = select(PortfolioValuationSnapshot).where(
+        PortfolioValuationSnapshot.user_id == user_id
+    )
+    rollups = select(PortfolioValuationDailyRollup).where(
+        PortfolioValuationDailyRollup.user_id == user_id
+    )
+    if start is not None:
+        raw = raw.where(PortfolioValuationSnapshot.snapshot_at >= start)
+        rollups = rollups.where(PortfolioValuationDailyRollup.snapshot_at >= start)
+    raw_rows = list((await db.execute(raw)).scalars())
+    rollup_rows = list((await db.execute(rollups)).scalars())
+    return sorted([*raw_rows, *rollup_rows], key=lambda snapshot: snapshot.snapshot_at)
 
 
 # Recommendation repository

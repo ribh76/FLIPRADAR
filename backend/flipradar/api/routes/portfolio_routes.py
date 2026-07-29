@@ -13,6 +13,7 @@ from flipradar.api.schemas import (
     PortfolioItemResponse,
     PortfolioItemUpdate,
     PortfolioSummaryResponse,
+    PortfolioValuationHistoryResponse,
 )
 from flipradar.api.schemas.common_schema import collection_response
 from flipradar.services import portfolio_service
@@ -145,3 +146,18 @@ async def get_portfolio_summary(
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     return await portfolio_service.calculate_portfolio_summary(db, current_user.id)
+
+
+@router.get(
+    "/history",
+    response_model=PortfolioValuationHistoryResponse,
+    summary="Get portfolio valuation history",
+)
+async def get_portfolio_history(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+    range: str = Query(default="1m", pattern="^(1d|1w|1m|3m|180d|1y|all)$"),
+) -> dict:
+    return await portfolio_service.get_portfolio_valuation_history(
+        db, current_user.id, range
+    )

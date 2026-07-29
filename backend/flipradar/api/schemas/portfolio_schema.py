@@ -81,3 +81,16 @@ class PortfolioSummaryResponse(BaseModel):
     unrealized_gain_loss: Decimal
     unrealized_gain_loss_percent: Decimal | None
     holdings: list[PortfolioHoldingSummary]
+
+
+class PortfolioValuationHistoryPoint(BaseModel):
+    timestamp: datetime
+    cost_basis: Decimal
+    market_value: Decimal
+    gain_loss: Decimal
+    currency: str
+
+
+class PortfolioValuationHistoryResponse(BaseModel):
+    range: str
+    points: list[PortfolioValuationHistoryPoint]

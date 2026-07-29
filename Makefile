@@ -1,4 +1,4 @@
-.PHONY: dev start stop inspect reset setup migrate-seed reset-db refresh-prices prune-prices quality format format-check backend-quality frontend-quality
+.PHONY: dev start stop inspect reset setup migrate-seed reset-db refresh-prices prune-prices snapshot-portfolios quality format format-check backend-quality frontend-quality
 
 dev:
 	./scripts/run_local_app.sh
@@ -29,6 +29,9 @@ refresh-prices:
 
 prune-prices:
 	./venv/bin/python scripts/prune_price_snapshots.py
+
+snapshot-portfolios:
+	./venv/bin/python scripts/snapshot_portfolio_valuations.py
 
 quality:
 	./scripts/check_quality.sh

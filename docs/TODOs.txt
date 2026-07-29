@@ -458,21 +458,21 @@ Classification: MUST SHIP
 PHASE 23: HISTORICAL PORTFOLIO SNAPSHOTS
 Classification: MUST SHIP
 
-1. Create a portfolio valuation snapshot model.
-2. Store user, cost basis, market value, gain or loss, currency, and timestamp.
-3. Create an item valuation snapshot model.
-4. Store item, unit value, total value, confidence, and timestamp.
-5. Create snapshots after portfolio changes.
-6. Create snapshots after pricing refreshes.
-7. Prevent duplicate snapshots in the same time window.
-8. Generate user snapshots transactionally.
-9. Add a scheduled snapshot script.
-10. Add historical API endpoints.
-11. Support one-month, three-month, one-year, and all-time ranges.
-12. Add fallback behavior for limited history.
-13. Add retention and aggregation rules.
+1. Create a portfolio valuation snapshot model. -
+2. Store user, cost basis, market value, gain or loss, currency, and timestamp. -
+3. Create an item valuation snapshot model. -
+4. Store item, unit value, total value, confidence, and timestamp. -
+5. Create snapshots after portfolio changes. -
+6. Create snapshots after pricing refreshes. 
+7. Prevent duplicate snapshots in the same time window. -
+8. Generate user snapshots transactionally. -
+9. Add a scheduled snapshot script. 
+10. Add historical API endpoints. -
+11. Support one-month, three-month, one-year, and all-time ranges. -
+12. Add fallback behavior for limited history. -
+13. Add retention and aggregation rules. -
 14. Add snapshot and history tests.
-15. Document when historical tracking begins.
+15. Document when historical tracking begins. 
 
 PHASE 24: PORTFOLIO DASHBOARD
 Classification: MUST SHIP
