@@ -102,6 +102,49 @@ async def test_portfolio_change_creates_user_and_item_valuation_snapshots(
 
 
 @pytest.mark.asyncio
+async def test_valuation_snapshot_persists_fake_market_value_and_confidence(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+):
+    user, lego_set = await _seed_user_and_set(db_session)
+
+    async def fake_value_map(db, items):
+        del db
+        return {
+            (item.set_number, item.condition): (
+                Decimal("125.00"),
+                "valued",
+                "high",
+            )
+            for item in items
+        }
+
+    monkeypatch.setattr(portfolio_service, "_current_unit_value_map", fake_value_map)
+    await portfolio_service.add_item_to_portfolio(
+        db_session,
+        user.id,
+        PortfolioItemCreate(
+            set_number=lego_set.set_number,
+            quantity=2,
+            purchase_price=Decimal("50.00"),
+            condition="new",
+            currency="USD",
+        ),
+    )
+
+    portfolio_snapshot = (
+        await db_session.execute(select(PortfolioValuationSnapshot))
+    ).scalar_one()
+    item_snapshot = (
+        await db_session.execute(select(PortfolioItemValuationSnapshot))
+    ).scalar_one()
+    assert portfolio_snapshot.market_value == Decimal("250.00")
+    assert portfolio_snapshot.gain_loss == Decimal("150.00")
+    assert item_snapshot.unit_value == Decimal("125.00")
+    assert item_snapshot.total_value == Decimal("250.00")
+    assert item_snapshot.confidence == "high"
+
+
+@pytest.mark.asyncio
 async def test_user_snapshot_is_deduplicated_within_an_hour(db_session: AsyncSession):
     user, lego_set = await _seed_user_and_set(db_session)
     await portfolio_service.add_item_to_portfolio(

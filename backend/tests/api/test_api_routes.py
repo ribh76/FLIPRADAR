@@ -22,6 +22,7 @@ from flipradar.main import create_app
 from flipradar.services import (
     auth_service,
     marketplace_service,
+    portfolio_service,
     recommendation_service,
 )
 from flipradar.services.errors import ServiceProviderError, ServiceProviderTimeoutError
@@ -2106,12 +2107,50 @@ def test_portfolio_history_returns_a_user_interpretable_unavailable_message(
     response = client.get(
         "/portfolio/history", headers=auth_headers(client, "history-empty-user")
     )
-
     assert response.status_code == 404
     assert response.json()["detail"] == (
         "Portfolio history is unavailable until at least two valuation snapshots "
         "have been recorded."
     )
+
+
+def test_portfolio_history_endpoint_returns_requested_range_and_points(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    async def fake_history(db, user_id, history_range):
+        del db, user_id
+        return {
+            "range": history_range,
+            "points": [
+                {
+                    "timestamp": "2026-07-28T12:00:00Z",
+                    "cost_basis": "100.00",
+                    "market_value": "120.00",
+                    "gain_loss": "20.00",
+                    "currency": "USD",
+                },
+                {
+                    "timestamp": "2026-07-29T12:00:00Z",
+                    "cost_basis": "100.00",
+                    "market_value": "125.00",
+                    "gain_loss": "25.00",
+                    "currency": "USD",
+                },
+            ],
+        }
+
+    monkeypatch.setattr(
+        portfolio_service, "get_portfolio_valuation_history", fake_history
+    )
+    response = client.get(
+        "/portfolio/history",
+        headers=auth_headers(client, "history-api-user"),
+        params={"range": "1w"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["range"] == "1w"
+    assert response.json()["points"][-1]["market_value"] == "125.00"
 
 
 def test_portfolio_summary_missing_snapshot_does_not_crash(client: TestClient):
