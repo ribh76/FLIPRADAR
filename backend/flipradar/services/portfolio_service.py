@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
@@ -11,11 +12,13 @@ from flipradar.database.repositories import (
     DEFAULT_PAGE_LIMIT,
     Pagination,
     create_portfolio_item,
+    create_portfolio_valuation_snapshot,
     delete_portfolio_item,
     get_all_portfolio_items_for_user,
     get_latest_snapshots_by_set_number,
     get_latest_snapshots_for_set_numbers,
     get_portfolio_items_for_user,
+    get_portfolio_valuation_snapshot_for_window,
     get_recent_snapshots_by_set_number,
     get_set_by_number,
     update_portfolio_item,
@@ -37,11 +40,13 @@ async def add_item_to_portfolio(
         )
 
     try:
-        item = await create_portfolio_item(
-            db,
-            user_id,
-            payload.model_dump(exclude_none=True),
-        )
+        async with db.begin_nested():
+            item = await create_portfolio_item(
+                db,
+                user_id,
+                payload.model_dump(exclude_none=True),
+            )
+            await create_user_valuation_snapshot(db, user_id)
     except IntegrityError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid portfolio item"
@@ -134,11 +139,14 @@ async def update_user_portfolio_item(
                 status_code=status.HTTP_404_NOT_FOUND, detail="LEGO set not found"
             )
 
-    item = await update_portfolio_item(db, item_id, user_id, update_data)
-    if item is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found"
-        )
+    async with db.begin_nested():
+        item = await update_portfolio_item(db, item_id, user_id, update_data)
+        if item is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Portfolio item not found",
+            )
+        await create_user_valuation_snapshot(db, user_id)
     value_map = await _current_unit_value_map(db, [item])
     return _portfolio_item_response(item, value_map)
 
@@ -146,11 +154,14 @@ async def update_user_portfolio_item(
 async def delete_user_portfolio_item(
     db: AsyncSession, user_id: UUID, item_id: UUID
 ) -> None:
-    deleted = await delete_portfolio_item(db, item_id, user_id)
-    if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found"
-        )
+    async with db.begin_nested():
+        deleted = await delete_portfolio_item(db, item_id, user_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Portfolio item not found",
+            )
+        await create_user_valuation_snapshot(db, user_id)
 
 
 async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
@@ -169,7 +180,7 @@ async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
         cost_basis = sum(item.purchase_price * item.quantity for item in grouped_items)
         total_quantity += quantity
 
-        unit_value, status = value_map[(set_number, condition)]
+        unit_value, status, _confidence = value_map[(set_number, condition)]
         set_name = getattr(grouped_items[0].lego_set, "name", None)
         valuations = [
             portfolio_valuation.calculate_holding_valuation(
@@ -237,7 +248,7 @@ async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
 
 
 def _portfolio_item_response(item, value_map: dict[tuple[str, str], tuple]) -> dict:
-    unit_value, status = value_map[(item.set_number, item.condition)]
+    unit_value, status, _confidence = value_map[(item.set_number, item.condition)]
     valuation = portfolio_valuation.calculate_holding_valuation(
         quantity=item.quantity,
         purchase_price=item.purchase_price,
@@ -267,7 +278,7 @@ def _portfolio_item_response(item, value_map: dict[tuple[str, str], tuple]) -> d
 
 async def _current_unit_value(
     db: AsyncSession, set_number: str, condition: str = "unknown"
-) -> tuple[Decimal | None, str]:
+) -> tuple[Decimal | None, str, str]:
     snapshot_condition = _snapshot_condition(condition)
     if snapshot_condition is None:
         snapshots = await get_latest_snapshots_by_set_number(db, set_number)
@@ -280,19 +291,19 @@ async def _current_unit_value(
             if snapshot.condition == snapshot_condition
         ]
     if not snapshots:
-        return None, "missing_market_data"
+        return None, "missing_market_data", "missing_market_data"
     estimate = price_estimator.estimate_fair_value(
         snapshots, condition=snapshot_condition
     )
     fair_value = estimate["fair_value"]
     if fair_value <= 0:
-        return None, "missing_market_data"
-    return _money(fair_value), "valued"
+        return None, "missing_market_data", "missing_market_data"
+    return _money(fair_value), "valued", estimate["confidence"]
 
 
 async def _current_unit_value_map(
     db: AsyncSession, items: list
-) -> dict[tuple[str, str], tuple]:
+) -> dict[tuple[str, str], tuple[Decimal | None, str, str]]:
     keys = {(item.set_number, item.condition) for item in items}
     if not keys:
         return {}
@@ -311,17 +322,82 @@ async def _current_unit_value_map(
                 if snapshot.condition == snapshot_condition
             ]
         if not snapshots:
-            values[(set_number, condition)] = (None, "missing_market_data")
+            values[(set_number, condition)] = (
+                None,
+                "missing_market_data",
+                "missing_market_data",
+            )
             continue
         estimate = price_estimator.estimate_fair_value(
             snapshots, condition=snapshot_condition
         )
         fair_value = estimate["fair_value"]
         if fair_value <= 0:
-            values[(set_number, condition)] = (None, "missing_market_data")
+            values[(set_number, condition)] = (
+                None,
+                "missing_market_data",
+                "missing_market_data",
+            )
         else:
-            values[(set_number, condition)] = (_money(fair_value), "valued")
+            values[(set_number, condition)] = (
+                _money(fair_value),
+                "valued",
+                estimate["confidence"],
+            )
     return values
+
+
+async def create_user_valuation_snapshot(
+    db: AsyncSession, user_id: UUID, *, snapshot_at: datetime | None = None
+) -> None:
+    """Persist one transactional valuation per user per hourly time window."""
+    timestamp = (snapshot_at or datetime.now(UTC)).astimezone(UTC)
+    window_start = timestamp.replace(minute=0, second=0, microsecond=0)
+    if await get_portfolio_valuation_snapshot_for_window(db, user_id, window_start):
+        return
+
+    items = await get_all_portfolio_items_for_user(db, user_id)
+    value_map = await _current_unit_value_map(db, items)
+    valuations = []
+    item_snapshots = []
+    for item in items:
+        unit_value, _status, confidence = value_map[(item.set_number, item.condition)]
+        valuation = portfolio_valuation.calculate_holding_valuation(
+            quantity=item.quantity,
+            purchase_price=item.purchase_price,
+            unit_market_value=unit_value,
+        )
+        valuations.append(valuation)
+        item_snapshots.append(
+            {
+                "portfolio_item_id": item.id,
+                "unit_value": unit_value,
+                "total_value": valuation.market_value,
+                "confidence": confidence,
+                "snapshot_at": timestamp,
+            }
+        )
+    totals = portfolio_valuation.calculate_portfolio_totals(valuations)
+    currencies = {item.currency for item in items}
+    try:
+        async with db.begin_nested():
+            await create_portfolio_valuation_snapshot(
+                db,
+                snapshot_data={
+                    "user_id": user_id,
+                    "cost_basis": totals["total_cost_basis"],
+                    "market_value": totals["total_market_value"],
+                    "gain_loss": totals["total_gain_loss"],
+                    "currency": currencies.pop() if len(currencies) == 1 else "USD",
+                    "window_start": window_start,
+                    "snapshot_at": timestamp,
+                },
+                item_snapshots_data=item_snapshots,
+            )
+    except IntegrityError:
+        # The unique window constraint handles concurrent refreshes without
+        # failing the portfolio mutation or creating duplicate history rows.
+        return
 
 
 def _snapshot_condition(condition: str) -> str | None:

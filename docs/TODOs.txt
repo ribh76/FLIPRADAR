@@ -439,21 +439,21 @@ Classification: MUST SHIP
 PHASE 22: PORTFOLIO VALUATION
 Classification: MUST SHIP
 
-1. Calculate cost basis for each holding.
-2. Retrieve estimated unit value by condition.
-3. Apply manual valuation overrides.
-4. Calculate total market value.
-5. Calculate unrealized gain or loss.
-6. Calculate percentage gain or loss.
-7. Calculate total portfolio cost basis.
-8. Calculate total portfolio value.
-9. Calculate total portfolio gain or loss.
-10. Include confidence and freshness.
-11. Mark holdings with insufficient pricing.
-12. Prevent missing values from silently becoming zero.
-13. Add portfolio summary endpoints.
-14. Add dashboard summary cards.
-15. Add valuation tests.
+1. Calculate cost basis for each holding. -
+2. Retrieve estimated unit value by condition. -
+3. Apply manual valuation overrides. -
+4. Calculate total market value. -
+5. Calculate unrealized gain or loss. -
+6. Calculate percentage gain or loss. -
+7. Calculate total portfolio cost basis. -
+8. Calculate total portfolio value. -
+9. Calculate total portfolio gain or loss. -
+10. Include confidence and freshness. -
+11. Mark holdings with insufficient pricing. -
+12. Prevent missing values from silently becoming zero. -
+13. Add portfolio summary endpoints. -
+14. Add dashboard summary cards. -
+15. Add valuation tests. -
 
 PHASE 23: HISTORICAL PORTFOLIO SNAPSHOTS
 Classification: MUST SHIP

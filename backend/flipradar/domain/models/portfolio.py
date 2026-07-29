@@ -68,6 +68,11 @@ class PortfolioItem(Base):
 
     user = relationship("User", back_populates="portfolio_items")
     lego_set = relationship("LegoSet", back_populates="portfolio_items")
+    valuation_snapshots = relationship(
+        "PortfolioItemValuationSnapshot",
+        back_populates="portfolio_item",
+        passive_deletes=True,
+    )
 
     @property
     def set_number(self) -> str:

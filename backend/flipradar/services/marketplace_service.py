@@ -20,6 +20,7 @@ from flipradar.integrations.ebay_mock_client import adapter as ebay_adapter
 from flipradar.integrations.marketplace_adapter import MarketplaceAdapter
 from flipradar.services import (
     listing_normalizer,
+    portfolio_service,
     product_matching_engine,
     snapshot_builder,
 )
@@ -312,6 +313,11 @@ async def _save_snapshots_by_marketplace(
             for metric_snapshot in snapshot_data
         )
     snapshots.extend(await repositories.bulk_create_price_snapshots(db, snapshot_rows))
+    if snapshots:
+        for user_id in await repositories.get_user_ids_with_portfolio_set(
+            db, lego_set.id
+        ):
+            await portfolio_service.create_user_valuation_snapshot(db, user_id)
     return snapshots
 
 

@@ -22,6 +22,8 @@ from flipradar.domain.models import (
     Marketplace,
     MarketplaceListing,
     PortfolioItem,
+    PortfolioItemValuationSnapshot,
+    PortfolioValuationSnapshot,
     PriceSnapshot,
     Recommendation,
     RefreshTokenBlacklist,
@@ -1026,6 +1028,50 @@ async def delete_portfolio_item(db: AsyncSession, item_id: UUID, user_id: UUID) 
         ),
     )
     return bool(result.rowcount)
+
+
+async def get_portfolio_valuation_snapshot_for_window(
+    db: AsyncSession, user_id: UUID, window_start: datetime
+) -> PortfolioValuationSnapshot | None:
+    result = await db.execute(
+        select(PortfolioValuationSnapshot).where(
+            PortfolioValuationSnapshot.user_id == user_id,
+            PortfolioValuationSnapshot.window_start == window_start,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_portfolio_valuation_snapshot(
+    db: AsyncSession,
+    *,
+    snapshot_data: dict[str, Any],
+    item_snapshots_data: list[dict[str, Any]],
+) -> PortfolioValuationSnapshot:
+    snapshot = PortfolioValuationSnapshot(**snapshot_data)
+    db.add(snapshot)
+    await db.flush()
+    db.add_all(
+        [
+            PortfolioItemValuationSnapshot(
+                portfolio_snapshot_id=snapshot.id, **item_snapshot_data
+            )
+            for item_snapshot_data in item_snapshots_data
+        ]
+    )
+    await db.flush()
+    return snapshot
+
+
+async def get_user_ids_with_portfolio_set(
+    db: AsyncSession, lego_set_id: UUID
+) -> list[UUID]:
+    result = await db.execute(
+        select(PortfolioItem.user_id)
+        .where(PortfolioItem.lego_set_id == lego_set_id)
+        .distinct()
+    )
+    return list(result.scalars())
 
 
 # Recommendation repository
