@@ -61,13 +61,62 @@ async def list_user_portfolio_page(
     limit: int = DEFAULT_PAGE_LIMIT,
     offset: int = 0,
     condition: str | None = None,
+    theme: str | None = None,
+    year: int | None = None,
+    performance: str | None = None,
     order: str = "created_at_desc",
 ) -> list[dict]:
+    # Valuation-derived filters and orders must be applied after fair values are
+    # calculated. Fetching the matching ownership rows first keeps all DB access
+    # user-scoped and preserves independently purchased duplicate holdings.
+    valuation_order = order in {"value_asc", "value_desc", "gain_asc", "gain_desc"}
+    if performance or valuation_order:
+        items = await get_portfolio_items_for_user(
+            db,
+            user_id,
+            condition=condition,
+            theme=theme,
+            year=year,
+            unpaginated=True,
+            order="created_at_desc",
+        )
+        value_map = await _current_unit_value_map(db, items)
+        responses = [_portfolio_item_response(item, value_map) for item in items]
+        if performance == "gain":
+            responses = [
+                item
+                for item in responses
+                if (item["unrealized_gain_loss"] or Decimal("0")) > 0
+            ]
+        elif performance == "loss":
+            responses = [
+                item
+                for item in responses
+                if (item["unrealized_gain_loss"] or Decimal("0")) < 0
+            ]
+        elif performance == "unvalued":
+            responses = [
+                item for item in responses if item["current_total_value"] is None
+            ]
+        if valuation_order:
+            field = (
+                "current_total_value"
+                if order.startswith("value")
+                else "unrealized_gain_loss"
+            )
+            responses.sort(
+                key=lambda item: item[field] or Decimal("0"),
+                reverse=order.endswith("_desc"),
+            )
+            responses.sort(key=lambda item: item[field] is None)
+        return responses[offset : offset + limit]
     items = await get_portfolio_items_for_user(
         db,
         user_id,
         pagination=Pagination(limit=limit, offset=offset),
         condition=condition,
+        theme=theme,
+        year=year,
         order=order,
     )
     value_map = await _current_unit_value_map(db, items)
@@ -181,7 +230,8 @@ def _portfolio_item_response(item, value_map: dict[tuple[str, str], tuple]) -> d
         "quantity": item.quantity,
         "purchase_price": item.purchase_price,
         "condition": item.condition,
-        "acquired_at": item.acquired_at,
+        "purchase_date": item.purchase_date,
+        "currency": item.currency,
         "notes": item.notes,
         "created_at": item.created_at,
         "updated_at": item.updated_at,

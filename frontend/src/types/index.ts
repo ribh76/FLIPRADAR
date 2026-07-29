@@ -62,7 +62,8 @@ export type PortfolioItem = {
   quantity: number;
   purchase_price: string | number;
   condition: string;
-  acquired_at: string | null;
+  purchase_date: string | null;
+  currency: string;
   notes: string | null;
   created_at?: string;
   updated_at?: string;
@@ -79,8 +80,21 @@ export type PortfolioItemCreate = {
   quantity: number;
   purchase_price: number;
   condition: Condition;
-  acquired_at: string | null;
+  purchase_date: string | null;
+  currency: string;
   notes: string | null;
+};
+
+export type PortfolioItemUpdate = Partial<PortfolioItemCreate>;
+
+export type PortfolioFilters = {
+  condition?: Condition | "";
+  theme?: string;
+  year?: number | "";
+  performance?: "gain" | "loss" | "unvalued" | "";
+  order?: string;
+  limit?: number;
+  offset?: number;
 };
 
 export type PortfolioSummary = {

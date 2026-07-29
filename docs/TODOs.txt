@@ -422,18 +422,18 @@ PART VI - PORTFOLIO MANAGEMENT
 PHASE 21: PORTFOLIO CRUD
 Classification: MUST SHIP
 
-1. Finalize the portfolio-item model.
-2. Link each item to the user and catalog set.
-3. Store condition, quantity, purchase price, purchase date, currency, and notes.
-4. Store optional manual current valuation.
-5. Decide whether duplicate purchases are combined or stored separately.
-6. Add create, edit, delete, and retrieve operations.
-7. Add pagination.
-8. Add filtering by theme, condition, year, and performance.
-9. Add sorting by value, gain, purchase date, and set number.
-10. Add ownership checks.
-11. Build portfolio tables and mobile cards.
-12. Build add and edit forms.
+1. Finalize the portfolio-item model. -
+2. Link each item to the user and catalog set. -
+3. Store condition, quantity, purchase price, purchase date, currency, and notes. -
+4. Store optional manual current valuation. (Skipped) 
+5. Decide whether duplicate purchases are combined or stored separately. - 
+6. Add create, edit, delete, and retrieve operations. -
+7. Add pagination. -
+8. Add filtering by theme, condition, year, and performance. -
+9. Add sorting by value, gain, purchase date, and set number. -
+10. Add ownership checks. -
+11. Build portfolio tables and mobile cards. -
+12. Build add and edit forms. - 
 13. Add full backend and frontend tests.
 
 PHASE 22: PORTFOLIO VALUATION
@@ -1277,13 +1277,13 @@ Classification: SHIP LATER
 RELEASE MILESTONES
 ==================================================
 
-MILESTONE A: ENGINEERING FOUNDATION
+MILESTONE A: ENGINEERING FOUNDATION (COmplete) 
 Complete Phases 0-14.
 
-MILESTONE B: CATALOG AND PRICING FOUNDATION
+MILESTONE B: CATALOG AND PRICING FOUNDATION (Complete) 
 Complete Phases 15-20.
 
-MILESTONE C: PORTFOLIO PRODUCT
+MILESTONE C: PORTFOLIO PRODUCT 
 Complete Phases 21-25.
 
 MILESTONE D: MARKETPLACE PRODUCT

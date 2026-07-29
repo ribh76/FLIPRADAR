@@ -26,6 +26,7 @@ class PortfolioItem(Base):
     __table_args__ = (
         CheckConstraint("quantity > 0", name="quantity_positive"),
         CheckConstraint("purchase_price >= 0", name="purchase_price_non_negative"),
+        CheckConstraint("currency = upper(currency)", name="currency_uppercase"),
         CheckConstraint(
             f"condition IN ({sql_values(PortfolioCondition)})",
             name="condition_allowed",
@@ -52,7 +53,8 @@ class PortfolioItem(Base):
     condition: Mapped[str] = mapped_column(
         String(20), nullable=False, default="unknown"
     )
-    acquired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    purchase_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

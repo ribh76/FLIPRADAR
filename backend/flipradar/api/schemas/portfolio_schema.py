@@ -18,7 +18,10 @@ class PortfolioItemCreate(BaseModel):
     quantity: int = Field(default=1, gt=0)
     purchase_price: Money = Field(..., ge=0, decimal_places=2)
     condition: PortfolioConditionValue = PortfolioCondition.UNKNOWN
-    acquired_at: datetime | None = None
+    purchase_date: datetime | None = None
+    currency: str = Field(
+        default="USD", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$"
+    )
     notes: str | None = Field(default=None, max_length=2000)
 
 
@@ -27,7 +30,10 @@ class PortfolioItemUpdate(BaseModel):
     quantity: int | None = Field(default=None, gt=0)
     purchase_price: OptionalMoney = Field(default=None, ge=0, decimal_places=2)
     condition: PortfolioConditionValue | None = None
-    acquired_at: datetime | None = None
+    purchase_date: datetime | None = None
+    currency: str | None = Field(
+        default=None, min_length=3, max_length=3, pattern=r"^[A-Z]{3}$"
+    )
     notes: str | None = Field(default=None, max_length=2000)
 
 
@@ -38,7 +44,8 @@ class PortfolioItemResponse(BaseModel):
     quantity: int
     purchase_price: Decimal
     condition: str
-    acquired_at: datetime | None
+    purchase_date: datetime | None
+    currency: str
     notes: str | None
     created_at: datetime
     updated_at: datetime

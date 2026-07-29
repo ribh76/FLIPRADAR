@@ -920,21 +920,50 @@ async def get_portfolio_items_for_user(
     *,
     pagination: Pagination | None = None,
     condition: str | None = None,
+    theme: str | None = None,
+    year: int | None = None,
+    unpaginated: bool = False,
     order: str = "created_at_desc",
 ) -> list[PortfolioItem]:
-    pagination = pagination or page()
+    if pagination is None and not unpaginated:
+        pagination = page()
     statement = (
         select(PortfolioItem)
         .options(selectinload(PortfolioItem.lego_set))
         .where(PortfolioItem.user_id == user_id)
     )
+    needs_catalog_join = bool(theme) or year is not None or order.startswith("theme_")
+    if needs_catalog_join:
+        statement = statement.join(PortfolioItem.lego_set)
     if condition:
         statement = statement.where(PortfolioItem.condition == condition)
-    if order == "created_at_asc":
+    if theme:
+        statement = statement.where(LegoSet.theme == theme)
+    if year is not None:
+        statement = statement.where(LegoSet.release_year == year)
+    if order == "purchase_date_asc":
+        statement = statement.order_by(
+            PortfolioItem.purchase_date.asc(), PortfolioItem.created_at.asc()
+        )
+    elif order == "purchase_date_desc":
+        statement = statement.order_by(
+            PortfolioItem.purchase_date.desc(), PortfolioItem.created_at.desc()
+        )
+    elif order == "theme_asc":
+        statement = statement.order_by(
+            LegoSet.theme.asc(), PortfolioItem.created_at.desc()
+        )
+    elif order == "theme_desc":
+        statement = statement.order_by(
+            LegoSet.theme.desc(), PortfolioItem.created_at.desc()
+        )
+    elif order == "created_at_asc":
         statement = statement.order_by(PortfolioItem.created_at.asc())
     else:
         statement = statement.order_by(PortfolioItem.created_at.desc())
-    result = await db.execute(_apply_pagination(statement, pagination))
+    result = await db.execute(
+        _apply_pagination(statement, pagination) if pagination else statement
+    )
     return list(result.scalars())
 
 

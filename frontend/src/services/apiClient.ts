@@ -10,6 +10,8 @@ import type {
   CurrentUser,
   PortfolioItem,
   PortfolioItemCreate,
+  PortfolioItemUpdate,
+  PortfolioFilters,
   PortfolioSummary,
   RefreshSession,
   LegoSet,
@@ -261,9 +263,11 @@ export const apiClient = {
     },
   },
   portfolio: {
-    list() {
+    list(filters: PortfolioFilters = {}) {
       return requestData(
-        api.get<CollectionResponse<PortfolioItem>>("/portfolio"),
+        api.get<CollectionResponse<PortfolioItem>>("/portfolio", {
+          params: filters,
+        }),
       );
     },
     summary() {
@@ -271,6 +275,11 @@ export const apiClient = {
     },
     addItem(payload: PortfolioItemCreate) {
       return requestData(api.post<PortfolioItem>("/portfolio/items", payload));
+    },
+    updateItem(itemId: string, payload: PortfolioItemUpdate) {
+      return requestData(
+        api.patch<PortfolioItem>(`/portfolio/items/${itemId}`, payload),
+      );
     },
     deleteItem(itemId: string) {
       return requestData(api.delete<void>(`/portfolio/items/${itemId}`));

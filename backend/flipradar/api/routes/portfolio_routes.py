@@ -33,7 +33,13 @@ async def list_portfolio(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     condition: str | None = Query(default=None),
-    order: str = Query(default="created_at_desc"),
+    theme: str | None = Query(default=None, min_length=1, max_length=120),
+    year: int | None = Query(default=None, ge=1949, le=2100),
+    performance: str | None = Query(default=None, pattern="^(gain|loss|unvalued)$"),
+    order: str = Query(
+        default="purchase_date_desc",
+        pattern="^(purchase_date_(asc|desc)|theme_(asc|desc)|value_(asc|desc)|gain_(asc|desc)|created_at_(asc|desc))$",
+    ),
 ) -> dict:
     logger.info("request started route=list_portfolio user_id=%s", current_user.id)
     items = await portfolio_service.list_user_portfolio_page(
@@ -42,6 +48,9 @@ async def list_portfolio(
         limit=limit + 1,
         offset=offset,
         condition=condition,
+        theme=theme,
+        year=year,
+        performance=performance,
         order=order,
     )
     logger.info("request finished route=list_portfolio user_id=%s", current_user.id)
