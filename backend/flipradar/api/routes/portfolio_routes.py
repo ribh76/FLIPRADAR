@@ -8,11 +8,12 @@ from flipradar.api.dependencies.auth import AuthenticatedUser
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.dependencies.ownership import OwnedPortfolioItem
 from flipradar.api.schemas import (
+    PortfolioDashboardResponse,
+    PortfolioHoldingDetailResponse,
     PortfolioItemCollectionResponse,
     PortfolioItemCreate,
     PortfolioItemResponse,
     PortfolioItemUpdate,
-    PortfolioDashboardResponse,
     PortfolioSummaryResponse,
     PortfolioValuationHistoryResponse,
 )
@@ -117,6 +118,22 @@ async def add_portfolio_item(
         payload.set_number,
     )
     return item
+
+
+@router.get(
+    "/items/{item_id}/detail",
+    response_model=PortfolioHoldingDetailResponse,
+    summary="Get holding analytics",
+    description="Get an owned holding with valuation history, condition comparisons, and concentration risk.",
+)
+async def get_portfolio_holding_detail(
+    item_id: UUID,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    return await portfolio_service.get_portfolio_holding_detail(
+        db, current_user.id, item_id
+    )
 
 
 @router.put(

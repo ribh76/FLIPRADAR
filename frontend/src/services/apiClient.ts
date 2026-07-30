@@ -13,6 +13,7 @@ import type {
   PortfolioItemUpdate,
   PortfolioFilters,
   PortfolioDashboard,
+  PortfolioHoldingDetail,
   PortfolioHistory,
   PortfolioSummary,
   RefreshSession,
@@ -265,6 +266,11 @@ export const apiClient = {
     },
   },
   portfolio: {
+    detail(itemId: string) {
+      return requestData(
+        api.get<PortfolioHoldingDetail>(`/portfolio/items/${itemId}/detail`),
+      );
+    },
     dashboard(filters: PortfolioFilters, range: PortfolioHistory["range"]) {
       return requestData(
         api.get<PortfolioDashboard>("/portfolio/dashboard", {

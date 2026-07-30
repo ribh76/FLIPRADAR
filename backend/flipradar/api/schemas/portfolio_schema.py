@@ -103,3 +103,37 @@ class PortfolioDashboardResponse(BaseModel):
     summary: PortfolioSummaryResponse
     history: PortfolioValuationHistoryResponse | None = None
     history_unavailable: str | None = None
+
+
+class HoldingMarketSnapshot(BaseModel):
+    timestamp: datetime
+    marketplace: str
+    condition: str
+    metric_type: str
+    value: Decimal
+    sample_size: int
+    currency: str
+
+
+class HoldingConditionPrice(BaseModel):
+    condition: str
+    estimated_unit_value: Decimal | None
+    confidence: str | None
+    latest_snapshot_at: datetime | None
+
+
+class HoldingConcentrationRisk(BaseModel):
+    level: str
+    message: str
+    portfolio_share_percent: Decimal | None
+    value_rank: int | None
+
+
+class PortfolioHoldingDetailResponse(BaseModel):
+    holding: PortfolioItemResponse
+    portfolio_total_value: Decimal
+    portfolio_share_percent: Decimal | None
+    concentration_risk: HoldingConcentrationRisk
+    market_freshness_at: datetime | None
+    market_snapshots: list[HoldingMarketSnapshot]
+    condition_pricing: list[HoldingConditionPrice]

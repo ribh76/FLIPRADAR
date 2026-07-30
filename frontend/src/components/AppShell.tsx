@@ -62,6 +62,20 @@ const navItems = [
 ];
 
 function getRouteMeta(pathname: string) {
+  if (pathname.startsWith("/portfolio/items/")) {
+    return {
+      breadcrumbs: [
+        { label: "Dashboard", to: "/dashboard" },
+        { label: "Portfolio", to: "/portfolio" },
+        { label: "Holding analytics" },
+      ],
+      description:
+        "Value performance, market evidence, and risk for one holding.",
+      eyebrow: "Portfolio intelligence",
+      title: "Holding Analytics",
+    };
+  }
+
   if (pathname.startsWith("/sets/")) {
     return {
       breadcrumbs: [

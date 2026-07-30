@@ -42,6 +42,7 @@ from flipradar.api.schemas.listing_schema import (
     MarketplaceResponse,
 )
 from flipradar.api.schemas.portfolio_schema import (
+    PortfolioHoldingDetailResponse,
     PortfolioDashboardResponse,
     PortfolioHoldingSummary,
     PortfolioItemCreate,
@@ -99,6 +100,7 @@ __all__ = [
     "PasswordResetRequest",
     "PasswordResetResponse",
     "PortfolioDashboardResponse",
+    "PortfolioHoldingDetailResponse",
     "PaginationMeta",
     "PortfolioHoldingSummary",
     "PortfolioItemCollectionResponse",

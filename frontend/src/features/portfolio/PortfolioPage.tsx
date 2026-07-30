@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { apiClient } from "../../services/apiClient";
 import {
   invalidateServerState,
@@ -269,6 +270,9 @@ export function PortfolioPage() {
       key: "actions",
       render: (item: PortfolioItem) => (
         <div className="flex gap-2">
+          <Link className="secondary-button" to={`/portfolio/items/${item.id}`}>
+            Details
+          </Link>
           <button
             className="secondary-button"
             onClick={() => setEditCandidate(item)}

@@ -17,6 +17,7 @@ from flipradar.database.repositories import (
     get_all_portfolio_items_for_user,
     get_latest_snapshots_by_set_number,
     get_latest_snapshots_for_set_numbers,
+    get_portfolio_item_by_id,
     get_portfolio_items_for_user,
     get_portfolio_valuation_snapshot_for_window,
     get_recent_snapshots_by_set_number,
@@ -155,6 +156,142 @@ async def update_user_portfolio_item(
     return _portfolio_item_response(item, value_map)
 
 
+async def get_portfolio_holding_detail(
+    db: AsyncSession, user_id: UUID, item_id: UUID
+) -> dict:
+    """Return one user-owned holding with the market evidence behind its value."""
+    item = await get_portfolio_item_by_id(db, item_id, user_id)
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found"
+        )
+
+    all_items = await get_all_portfolio_items_for_user(db, user_id)
+    value_map = await _current_unit_value_map(db, all_items)
+    holding = _portfolio_item_response(item, value_map)
+    valuations = [
+        portfolio_valuation.calculate_holding_valuation(
+            quantity=portfolio_item.quantity,
+            purchase_price=portfolio_item.purchase_price,
+            unit_market_value=value_map[
+                (portfolio_item.set_number, portfolio_item.condition)
+            ][0],
+        )
+        for portfolio_item in all_items
+    ]
+    portfolio_total = portfolio_valuation.calculate_portfolio_totals(valuations)[
+        "total_market_value"
+    ]
+    holding_value = holding["current_total_value"]
+    share = (
+        _money((holding_value / portfolio_total) * 100)
+        if holding_value is not None and (portfolio_total > 0)
+        else None
+    )
+    valued_holdings = sorted(
+        (
+            response["current_total_value"]
+            for response in (
+                _portfolio_item_response(portfolio_item, value_map)
+                for portfolio_item in all_items
+            )
+            if response["current_total_value"] is not None
+        ),
+        reverse=True,
+    )
+    rank = (
+        valued_holdings.index(holding_value) + 1
+        if holding_value is not None and holding_value in valued_holdings
+        else None
+    )
+    risk_level = (
+        "high"
+        if share is not None and share >= 40
+        else "moderate" if share is not None and share >= 20 else "low"
+    )
+    risk_message = (
+        "This holding represents a large share of the portfolio."
+        if risk_level == "high"
+        else (
+            "This holding is a meaningful part of the portfolio."
+            if risk_level == "moderate"
+            else (
+                "This holding has limited concentration impact."
+                if share is not None
+                else "Concentration will be available when this holding has a market value."
+            )
+        )
+    )
+
+    snapshots = await get_recent_snapshots_by_set_number(db, item.set_number, limit=100)
+    fair_value_snapshots = [
+        snapshot
+        for snapshot in snapshots
+        if snapshot.metric_type == "fair_market_value"
+    ]
+    latest_snapshot_at = max(
+        (snapshot.retrieval_time for snapshot in fair_value_snapshots), default=None
+    )
+    condition_pricing = []
+    for condition in ("new", "used_complete", "incomplete"):
+        condition_snapshots = [
+            snapshot
+            for snapshot in fair_value_snapshots
+            if snapshot.condition == condition
+        ]
+        if condition_snapshots:
+            estimate = price_estimator.estimate_fair_value(
+                condition_snapshots, condition=condition
+            )
+            estimated_value = _money(estimate["fair_value"])
+            confidence = estimate["confidence"]
+            condition_latest_at = max(
+                snapshot.retrieval_time for snapshot in condition_snapshots
+            )
+        else:
+            estimated_value = None
+            confidence = None
+            condition_latest_at = None
+        condition_pricing.append(
+            {
+                "condition": "used" if condition == "used_complete" else condition,
+                "estimated_unit_value": estimated_value,
+                "confidence": confidence,
+                "latest_snapshot_at": condition_latest_at,
+            }
+        )
+
+    return {
+        "holding": holding,
+        "portfolio_total_value": portfolio_total,
+        "portfolio_share_percent": share,
+        "concentration_risk": {
+            "level": risk_level,
+            "message": risk_message,
+            "portfolio_share_percent": share,
+            "value_rank": rank,
+        },
+        "market_freshness_at": latest_snapshot_at,
+        "market_snapshots": [
+            {
+                "timestamp": snapshot.retrieval_time,
+                "marketplace": snapshot.marketplace.display_name,
+                "condition": (
+                    "used"
+                    if snapshot.condition == "used_complete"
+                    else snapshot.condition
+                ),
+                "metric_type": snapshot.metric_type,
+                "value": snapshot.value,
+                "sample_size": snapshot.sample_size,
+                "currency": snapshot.currency,
+            }
+            for snapshot in reversed(fair_value_snapshots)
+        ],
+        "condition_pricing": condition_pricing,
+    }
+
+
 async def delete_user_portfolio_item(
     db: AsyncSession, user_id: UUID, item_id: UUID
 ) -> None:
@@ -283,8 +420,13 @@ async def get_portfolio_dashboard(
         value_map = await _current_unit_value_map(db, items)
         responses = [_portfolio_item_response(item, value_map) for item in items]
         filtered = _filter_and_order_portfolio_responses(
-            responses, performance=performance, order=order, condition=condition,
-            theme=theme, year=year, items=items,
+            responses,
+            performance=performance,
+            order=order,
+            condition=condition,
+            theme=theme,
+            year=year,
+            items=items,
         )
         history: dict | None = None
         history_unavailable: str | None = None
@@ -329,28 +471,55 @@ def _filter_and_order_portfolio_responses(
         for response in responses
         if (condition is None or response["condition"] == condition)
         and (theme is None or response["theme"] == theme)
-        and (year is None or getattr(by_id[response["id"]].lego_set, "release_year", None) == year)
+        and (
+            year is None
+            or getattr(by_id[response["id"]].lego_set, "release_year", None) == year
+        )
     ]
     if performance == "gain":
-        filtered = [item for item in filtered if (item["unrealized_gain_loss"] or Decimal("0")) > 0]
+        filtered = [
+            item
+            for item in filtered
+            if (item["unrealized_gain_loss"] or Decimal("0")) > 0
+        ]
     elif performance == "loss":
-        filtered = [item for item in filtered if (item["unrealized_gain_loss"] or Decimal("0")) < 0]
+        filtered = [
+            item
+            for item in filtered
+            if (item["unrealized_gain_loss"] or Decimal("0")) < 0
+        ]
     elif performance == "unvalued":
         filtered = [item for item in filtered if item["current_total_value"] is None]
     if order in {"value_asc", "value_desc", "gain_asc", "gain_desc"}:
-        field = "current_total_value" if order.startswith("value") else "unrealized_gain_loss"
+        field = (
+            "current_total_value"
+            if order.startswith("value")
+            else "unrealized_gain_loss"
+        )
         filtered.sort(key=lambda item: item[field] is None)
-        filtered.sort(key=lambda item: item[field] or Decimal("0"), reverse=order.endswith("_desc"))
+        filtered.sort(
+            key=lambda item: item[field] or Decimal("0"),
+            reverse=order.endswith("_desc"),
+        )
     elif order.startswith("theme_"):
-        filtered.sort(key=lambda item: item["theme"] or "", reverse=order.endswith("_desc"))
+        filtered.sort(
+            key=lambda item: item["theme"] or "", reverse=order.endswith("_desc")
+        )
     elif order.startswith("purchase_date_"):
-        filtered.sort(key=lambda item: item["purchase_date"] or datetime.min.replace(tzinfo=UTC), reverse=order.endswith("_desc"))
+        filtered.sort(
+            key=lambda item: item["purchase_date"] or datetime.min.replace(tzinfo=UTC),
+            reverse=order.endswith("_desc"),
+        )
     else:
-        filtered.sort(key=lambda item: item["created_at"], reverse=order.endswith("_desc"))
+        filtered.sort(
+            key=lambda item: item["created_at"], reverse=order.endswith("_desc")
+        )
     return filtered
 
 
-def _portfolio_summary_from_items(items: list, value_map: dict[tuple[str, str], tuple]) -> dict:
+def _portfolio_summary_from_items(
+    items: list, value_map: dict[tuple[str, str], tuple]
+) -> dict:
     valuations = [
         portfolio_valuation.calculate_holding_valuation(
             quantity=item.quantity,

@@ -1918,6 +1918,91 @@ def test_portfolio_add_list_summary_delete(client: TestClient):
     assert client.get("/portfolio", headers=headers).json()["data"] == []
 
 
+def test_portfolio_holding_detail_returns_analytics_and_is_user_scoped(
+    client: TestClient,
+):
+    def metric_snapshot(set_number: str, value: str, condition: str = "new") -> dict:
+        return {
+            "set_number": set_number,
+            "marketplace_name": "ebay",
+            "condition": condition,
+            "currency": "USD",
+            "metric_type": "fair_market_value",
+            "value": value,
+            "sample_size": 12,
+        }
+
+    create_lego_set(client, "10300")
+    create_lego_set(client, "10301")
+    assert (
+        client.post("/snapshots", json=metric_snapshot("10300", "200.00")).status_code
+        == 201
+    )
+    client.post(
+        "/snapshots",
+        json=metric_snapshot("10300", "125.00", "used_complete"),
+    )
+    assert (
+        client.post("/snapshots", json=metric_snapshot("10301", "100.00")).status_code
+        == 201
+    )
+    headers = auth_headers(client, "holding-detail-user")
+    item = client.post(
+        "/portfolio/items",
+        headers=headers,
+        json={
+            "set_number": "10300",
+            "quantity": 1,
+            "purchase_price": "150.00",
+            "condition": "new",
+            "purchase_date": "2025-01-15T00:00:00Z",
+            "notes": "Bought during a sale",
+        },
+    ).json()
+    client.post(
+        "/portfolio/items",
+        headers=headers,
+        json={
+            "set_number": "10301",
+            "quantity": 1,
+            "purchase_price": "80.00",
+            "condition": "new",
+        },
+    )
+
+    response = client.get(f"/portfolio/items/{item['id']}/detail", headers=headers)
+
+    assert response.status_code == 200, response.text
+    detail = response.json()
+    assert detail["holding"]["notes"] == "Bought during a sale"
+    assert detail["holding"]["current_total_value"] == "200.00"
+    assert detail["holding"]["unrealized_gain_loss_percent"] == "33.33"
+    assert detail["portfolio_total_value"] == "300.00"
+    assert detail["portfolio_share_percent"] == "66.67"
+    assert detail["concentration_risk"]["level"] == "high"
+    assert detail["market_freshness_at"] is not None
+    assert len(detail["market_snapshots"]) == 2
+    assert {row["condition"] for row in detail["condition_pricing"]} == {
+        "new",
+        "used",
+        "incomplete",
+    }
+    assert (
+        next(row for row in detail["condition_pricing"] if row["condition"] == "used")[
+            "estimated_unit_value"
+        ]
+        == "125.00"
+    )
+
+    other_headers = auth_headers(client, "holding-detail-other-user")
+    assert (
+        client.get(
+            f"/portfolio/items/{item['id']}/detail", headers=other_headers
+        ).status_code
+        == 404
+    )
+
+
 def test_portfolio_update_item_with_patch_and_put(client: TestClient):
     create_lego_set(client, "10305")
     create_lego_set(client, "21325")

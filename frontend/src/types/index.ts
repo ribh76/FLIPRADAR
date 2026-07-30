@@ -130,6 +130,38 @@ export type PortfolioDashboard = {
   history_unavailable: string | null;
 };
 
+export type HoldingMarketSnapshot = {
+  timestamp: string;
+  marketplace: string;
+  condition: string;
+  metric_type: string;
+  value: string | number;
+  sample_size: number;
+  currency: string;
+};
+
+export type HoldingConditionPrice = {
+  condition: string;
+  estimated_unit_value: string | number | null;
+  confidence: string | null;
+  latest_snapshot_at: string | null;
+};
+
+export type PortfolioHoldingDetail = {
+  holding: PortfolioItem;
+  portfolio_total_value: string | number;
+  portfolio_share_percent: string | number | null;
+  concentration_risk: {
+    level: "low" | "moderate" | "high" | string;
+    message: string;
+    portfolio_share_percent: string | number | null;
+    value_rank: number | null;
+  };
+  market_freshness_at: string | null;
+  market_snapshots: HoldingMarketSnapshot[];
+  condition_pricing: HoldingConditionPrice[];
+};
+
 export type SetDetail = {
   set_number: string;
   name: string;

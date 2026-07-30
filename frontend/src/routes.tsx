@@ -11,6 +11,7 @@ import { ResetPasswordPage } from "./features/auth/ResetPasswordPage";
 import { VerifyEmailPage } from "./features/auth/VerifyEmailPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { PortfolioPage } from "./features/portfolio/PortfolioPage";
+import { HoldingDetailPage } from "./features/portfolio/HoldingDetailPage";
 import { SetDetailPage } from "./features/sets/SetDetailPage";
 import { SetsPage } from "./features/sets/SetsPage";
 import { ShowcasePage } from "./features/showcase/ShowcasePage";
@@ -42,6 +43,7 @@ export const appRoutes: RouteObject[] = [
           { path: "/dashboard", element: <DashboardPage /> },
           { path: "/analyze", element: <AnalyzePage /> },
           { path: "/portfolio", element: <PortfolioPage /> },
+          { path: "/portfolio/items/:itemId", element: <HoldingDetailPage /> },
           { path: "/sets", element: <SetsPage /> },
           { path: "/sets/:setNumber", element: <SetDetailPage /> },
           { path: "/showcase", element: <ShowcasePage /> },
