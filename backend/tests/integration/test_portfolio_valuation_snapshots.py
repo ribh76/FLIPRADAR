@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
@@ -19,6 +20,7 @@ from flipradar.domain.models import (
     User,
 )
 from flipradar.services import portfolio_service
+from flipradar.services import portfolio_dashboard_cache
 from flipradar.services.portfolio_valuation_retention import (
     aggregate_and_prune_portfolio_valuations,
 )
@@ -240,3 +242,48 @@ async def test_retention_rolls_old_hourly_snapshots_into_daily_history(
         (await db_session.execute(select(PortfolioValuationDailyRollup))).scalars()
     )
     assert any(rollup.user_id == user.id for rollup in rollups)
+
+
+@pytest.mark.asyncio
+async def test_dashboard_read_reuses_one_valuation_pass_and_handles_missing_history(
+    db_session: AsyncSession,
+):
+    user, _lego_set = await _seed_user_and_set(db_session)
+    portfolio_dashboard_cache.clear()
+
+    dashboard = await portfolio_service.get_portfolio_dashboard(
+        db_session,
+        user.id,
+        limit=25,
+        offset=0,
+        condition=None,
+        theme=None,
+        year=None,
+        performance=None,
+        order="purchase_date_desc",
+        history_range="1m",
+    )
+
+    assert dashboard["portfolio"]["data"] == []
+    assert dashboard["summary"]["total_items"] == 0
+    assert dashboard["history"] is None
+    assert "unavailable" in dashboard["history_unavailable"]
+
+
+@pytest.mark.asyncio
+async def test_dashboard_cache_coalesces_concurrent_reads():
+    portfolio_dashboard_cache.clear()
+    calls = 0
+
+    async def load() -> dict:
+        nonlocal calls
+        calls += 1
+        await asyncio.sleep(0.01)
+        return {"calls": calls}
+
+    results = await asyncio.gather(
+        *(portfolio_dashboard_cache.get_or_load(("concurrent-user",), load) for _ in range(12))
+    )
+
+    assert calls == 1
+    assert results == [{"calls": 1}] * 12

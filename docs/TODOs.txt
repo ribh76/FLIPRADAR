@@ -477,19 +477,19 @@ Classification: MUST SHIP
 PHASE 24: PORTFOLIO DASHBOARD
 Classification: MUST SHIP
 
-1. Display total portfolio value.
-2. Display total cost basis.
-3. Display unrealized gain or loss.
-4. Display total item and unique-set counts.
-5. Add a portfolio-value history chart.
-6. Add cost-basis comparison.
-7. Add top-performing holdings.
-8. Add worst-performing holdings.
-9. Add recently added holdings.
-10. Add stale or low-confidence valuation warnings.
-11. Add theme and condition allocation.
-12. Add quick actions for portfolio, lookup, deals, and analysis.
-13. Add loading, empty, error, and partial-data states.
+1. Display total portfolio value.  (Complete)
+2. Display total cost basis. (Complete)
+3. Display unrealized gain or loss. (Complete)
+4. Display total item and unique-set counts. (Complete)
+5. Add a portfolio-value history chart. (Complete)
+6. Add cost-basis comparison. (Complete)
+7. Add top-performing holdings. (Complete)
+8. Add worst-performing holdings. (Complete)
+9. Add recently added holdings. (Complete)
+10. Add stale or low-confidence valuation warnings. (Complete)
+11. Add theme and condition allocation. (Complete)
+12. Add quick actions for portfolio, lookup, deals, and analysis. (Complete)
+13. Add loading, empty, error, and partial-data states. (Complete)
 14. Optimize dashboard queries.
 15. Add responsive and integration tests.
 

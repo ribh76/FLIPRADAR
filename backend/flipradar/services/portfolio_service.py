@@ -25,6 +25,7 @@ from flipradar.database.repositories import (
     update_portfolio_item,
 )
 from flipradar.domain.engines import portfolio_valuation, price_estimator
+from flipradar.services import portfolio_dashboard_cache
 
 
 def _money(value: Decimal | int) -> Decimal:
@@ -53,6 +54,7 @@ async def add_item_to_portfolio(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid portfolio item"
         ) from exc
     value_map = await _current_unit_value_map(db, [item])
+    portfolio_dashboard_cache.invalidate_user(user_id)
     return _portfolio_item_response(item, value_map)
 
 
@@ -149,6 +151,7 @@ async def update_user_portfolio_item(
             )
         await create_user_valuation_snapshot(db, user_id)
     value_map = await _current_unit_value_map(db, [item])
+    portfolio_dashboard_cache.invalidate_user(user_id)
     return _portfolio_item_response(item, value_map)
 
 
@@ -163,6 +166,7 @@ async def delete_user_portfolio_item(
                 detail="Portfolio item not found",
             )
         await create_user_valuation_snapshot(db, user_id)
+    portfolio_dashboard_cache.invalidate_user(user_id)
 
 
 async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
@@ -245,6 +249,126 @@ async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
         "unrealized_gain_loss": totals["total_gain_loss"],
         "unrealized_gain_loss_percent": totals["total_gain_loss_percent"],
         "holdings": holdings,
+    }
+
+
+async def get_portfolio_dashboard(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    limit: int,
+    offset: int,
+    condition: str | None,
+    theme: str | None,
+    year: int | None,
+    performance: str | None,
+    order: str,
+    history_range: str,
+) -> dict:
+    """Serve all dashboard panels from one valuation pass and one bounded cache key."""
+    key = (
+        user_id,
+        limit,
+        offset,
+        condition,
+        theme,
+        year,
+        performance,
+        order,
+        history_range,
+    )
+
+    async def load() -> dict:
+        items = await get_all_portfolio_items_for_user(db, user_id)
+        value_map = await _current_unit_value_map(db, items)
+        responses = [_portfolio_item_response(item, value_map) for item in items]
+        filtered = _filter_and_order_portfolio_responses(
+            responses, performance=performance, order=order, condition=condition,
+            theme=theme, year=year, items=items,
+        )
+        history: dict | None = None
+        history_unavailable: str | None = None
+        try:
+            history = await get_portfolio_valuation_history(db, user_id, history_range)
+        except HTTPException as exc:
+            if exc.status_code != status.HTTP_404_NOT_FOUND:
+                raise
+            history_unavailable = str(exc.detail)
+        page = filtered[offset : offset + limit + 1]
+        return {
+            "portfolio": {
+                "data": page[:limit],
+                "pagination": {
+                    "limit": limit,
+                    "offset": offset,
+                    "count": len(page[:limit]),
+                    "has_more": len(page) > limit,
+                },
+            },
+            "summary": _portfolio_summary_from_items(items, value_map),
+            "history": history,
+            "history_unavailable": history_unavailable,
+        }
+
+    return await portfolio_dashboard_cache.get_or_load(key, load)
+
+
+def _filter_and_order_portfolio_responses(
+    responses: list[dict],
+    *,
+    performance: str | None,
+    order: str,
+    condition: str | None,
+    theme: str | None,
+    year: int | None,
+    items: list,
+) -> list[dict]:
+    by_id = {item.id: item for item in items}
+    filtered = [
+        response
+        for response in responses
+        if (condition is None or response["condition"] == condition)
+        and (theme is None or response["theme"] == theme)
+        and (year is None or getattr(by_id[response["id"]].lego_set, "release_year", None) == year)
+    ]
+    if performance == "gain":
+        filtered = [item for item in filtered if (item["unrealized_gain_loss"] or Decimal("0")) > 0]
+    elif performance == "loss":
+        filtered = [item for item in filtered if (item["unrealized_gain_loss"] or Decimal("0")) < 0]
+    elif performance == "unvalued":
+        filtered = [item for item in filtered if item["current_total_value"] is None]
+    if order in {"value_asc", "value_desc", "gain_asc", "gain_desc"}:
+        field = "current_total_value" if order.startswith("value") else "unrealized_gain_loss"
+        filtered.sort(key=lambda item: item[field] is None)
+        filtered.sort(key=lambda item: item[field] or Decimal("0"), reverse=order.endswith("_desc"))
+    elif order.startswith("theme_"):
+        filtered.sort(key=lambda item: item["theme"] or "", reverse=order.endswith("_desc"))
+    elif order.startswith("purchase_date_"):
+        filtered.sort(key=lambda item: item["purchase_date"] or datetime.min.replace(tzinfo=UTC), reverse=order.endswith("_desc"))
+    else:
+        filtered.sort(key=lambda item: item["created_at"], reverse=order.endswith("_desc"))
+    return filtered
+
+
+def _portfolio_summary_from_items(items: list, value_map: dict[tuple[str, str], tuple]) -> dict:
+    valuations = [
+        portfolio_valuation.calculate_holding_valuation(
+            quantity=item.quantity,
+            purchase_price=item.purchase_price,
+            unit_market_value=value_map[(item.set_number, item.condition)][0],
+        )
+        for item in items
+    ]
+    totals = portfolio_valuation.calculate_portfolio_totals(valuations)
+    return {
+        "total_items": len(items),
+        "total_sets": len({item.set_number for item in items}),
+        "total_quantity": sum(item.quantity for item in items),
+        "total_cost_basis": totals["total_cost_basis"],
+        "estimated_current_value": totals["total_market_value"],
+        "unrealized_gain_loss": totals["total_gain_loss"],
+        "unrealized_gain_loss_percent": totals["total_gain_loss_percent"],
+        "holdings": [],
     }
 
 

@@ -12,6 +12,7 @@ from flipradar.api.schemas import (
     PortfolioItemCreate,
     PortfolioItemResponse,
     PortfolioItemUpdate,
+    PortfolioDashboardResponse,
     PortfolioSummaryResponse,
     PortfolioValuationHistoryResponse,
 )
@@ -20,6 +21,40 @@ from flipradar.services import portfolio_service
 
 router = APIRouter(prefix="/portfolio", tags=["Portfolio"])
 logger = logging.getLogger(__name__)
+
+
+@router.get(
+    "/dashboard",
+    response_model=PortfolioDashboardResponse,
+    summary="Get optimized portfolio dashboard data",
+)
+async def get_portfolio_dashboard(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+    limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    condition: str | None = Query(default=None),
+    theme: str | None = Query(default=None, min_length=1, max_length=120),
+    year: int | None = Query(default=None, ge=1949, le=2100),
+    performance: str | None = Query(default=None, pattern="^(gain|loss|unvalued)$"),
+    order: str = Query(
+        default="purchase_date_desc",
+        pattern="^(purchase_date_(asc|desc)|theme_(asc|desc)|value_(asc|desc)|gain_(asc|desc)|created_at_(asc|desc))$",
+    ),
+    range: str = Query(default="1m", pattern="^(1d|1w|1m|3m|180d|1y|all)$"),
+) -> dict:
+    return await portfolio_service.get_portfolio_dashboard(
+        db,
+        current_user.id,
+        limit=limit,
+        offset=offset,
+        condition=condition,
+        theme=theme,
+        year=year,
+        performance=performance,
+        order=order,
+        history_range=range,
+    )
 
 
 @router.get(

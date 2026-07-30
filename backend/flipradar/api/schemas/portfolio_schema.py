@@ -96,3 +96,10 @@ class PortfolioValuationHistoryPoint(BaseModel):
 class PortfolioValuationHistoryResponse(BaseModel):
     range: str
     points: list[PortfolioValuationHistoryPoint]
+
+
+class PortfolioDashboardResponse(BaseModel):
+    portfolio: dict
+    summary: PortfolioSummaryResponse
+    history: PortfolioValuationHistoryResponse | None = None
+    history_unavailable: str | None = None

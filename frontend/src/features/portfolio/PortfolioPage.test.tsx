@@ -11,13 +11,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { apiClient } from "../../services/apiClient";
 import { invalidateServerState } from "../../hooks/serverState";
-import type { PortfolioItem } from "../../types";
+import type { PortfolioDashboard, PortfolioItem } from "../../types";
 import { PortfolioPage } from "./PortfolioPage";
 
 vi.mock("../../services/apiClient", () => ({
   apiClient: {
     portfolio: {
       addItem: vi.fn(),
+      dashboard: vi.fn(),
       deleteItem: vi.fn(),
       history: vi.fn(),
       list: vi.fn(),
@@ -54,6 +55,39 @@ const collection = {
   pagination: { count: 1, has_more: false, limit: 25, offset: 0 },
 };
 
+const dashboard: PortfolioDashboard = {
+  portfolio: collection,
+  summary: {
+    total_items: 1,
+    total_sets: 1,
+    total_quantity: 1,
+    total_cost_basis: "100.00",
+    estimated_current_value: "200.00",
+    unrealized_gain_loss: "100.00",
+    unrealized_gain_loss_percent: "100.00",
+  },
+  history: {
+    range: "1m",
+    points: [
+      {
+        timestamp: "2024-01-01T00:00:00Z",
+        cost_basis: "100.00",
+        market_value: "150.00",
+        gain_loss: "50.00",
+        currency: "USD",
+      },
+      {
+        timestamp: "2024-01-02T00:00:00Z",
+        cost_basis: "100.00",
+        market_value: "200.00",
+        gain_loss: "100.00",
+        currency: "USD",
+      },
+    ],
+  },
+  history_unavailable: null,
+};
+
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -68,40 +102,11 @@ describe("PortfolioPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     invalidateServerState([
-      "portfolio",
+      "portfolio-dashboard",
       JSON.stringify({ order: "purchase_date_desc", limit: 25, offset: 0 }),
+      "1m",
     ]);
-    invalidateServerState(["portfolio-history", "1m"]);
-    invalidateServerState(["portfolio-history", "1w"]);
-    vi.mocked(apiClient.portfolio.list).mockResolvedValue(collection);
-    vi.mocked(apiClient.portfolio.summary).mockResolvedValue({
-      total_items: 1,
-      total_sets: 1,
-      total_quantity: 1,
-      total_cost_basis: "100.00",
-      estimated_current_value: "200.00",
-      unrealized_gain_loss: "100.00",
-      unrealized_gain_loss_percent: "100.00",
-    });
-    vi.mocked(apiClient.portfolio.history).mockResolvedValue({
-      range: "1m",
-      points: [
-        {
-          timestamp: "2024-01-01T00:00:00Z",
-          cost_basis: "100.00",
-          market_value: "150.00",
-          gain_loss: "50.00",
-          currency: "USD",
-        },
-        {
-          timestamp: "2024-01-02T00:00:00Z",
-          cost_basis: "100.00",
-          market_value: "200.00",
-          gain_loss: "100.00",
-          currency: "USD",
-        },
-      ],
-    });
+    vi.mocked(apiClient.portfolio.dashboard).mockResolvedValue(dashboard);
     vi.mocked(apiClient.portfolio.addItem).mockResolvedValue(holding);
     vi.mocked(apiClient.portfolio.updateItem).mockResolvedValue(holding);
     vi.mocked(apiClient.portfolio.deleteItem).mockResolvedValue();
@@ -116,13 +121,14 @@ describe("PortfolioPage", () => {
     await user.selectOptions(screen.getByLabelText("Sort"), "value_desc");
 
     await waitFor(() => {
-      expect(apiClient.portfolio.list).toHaveBeenLastCalledWith(
+      expect(apiClient.portfolio.dashboard).toHaveBeenLastCalledWith(
         expect.objectContaining({
           performance: "gain",
           order: "value_desc",
           offset: 0,
           limit: 25,
         }),
+        "1m",
       );
     });
   });
@@ -182,16 +188,20 @@ describe("PortfolioPage", () => {
 
     await user.click(screen.getByRole("button", { name: "1W" }));
     await waitFor(() => {
-      expect(apiClient.portfolio.history).toHaveBeenCalledWith("1w");
+      expect(apiClient.portfolio.dashboard).toHaveBeenCalledWith(
+        expect.anything(),
+        "1w",
+      );
     });
   });
 
   it("shows a recoverable history error without hiding portfolio data", async () => {
-    vi.mocked(apiClient.portfolio.history).mockRejectedValueOnce(
-      new Error(
+    vi.mocked(apiClient.portfolio.dashboard).mockResolvedValueOnce({
+      ...dashboard,
+      history: null,
+      history_unavailable:
         "Portfolio history is unavailable until snapshots are recorded.",
-      ),
-    );
+    });
     renderPage();
 
     expect(await screen.findByText("History unavailable")).toBeInTheDocument();
@@ -207,9 +217,12 @@ describe("PortfolioPage", () => {
   });
 
   it("labels insights as partial when another holdings page is available", async () => {
-    vi.mocked(apiClient.portfolio.list).mockResolvedValue({
-      ...collection,
-      pagination: { ...collection.pagination, has_more: true },
+    vi.mocked(apiClient.portfolio.dashboard).mockResolvedValue({
+      ...dashboard,
+      portfolio: {
+        ...collection,
+        pagination: { ...collection.pagination, has_more: true },
+      },
     });
     renderPage();
 

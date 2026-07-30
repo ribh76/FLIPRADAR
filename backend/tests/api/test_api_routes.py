@@ -2153,6 +2153,43 @@ def test_portfolio_history_endpoint_returns_requested_range_and_points(
     assert response.json()["points"][-1]["market_value"] == "125.00"
 
 
+def test_portfolio_dashboard_endpoint_returns_one_combined_payload(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    async def fake_dashboard(db, user_id, **kwargs):
+        del db, user_id
+        assert kwargs["history_range"] == "1w"
+        return {
+            "portfolio": {
+                "data": [],
+                "pagination": {"limit": 25, "offset": 0, "count": 0, "has_more": False},
+            },
+            "summary": {
+                "total_items": 0,
+                "total_sets": 0,
+                "total_quantity": 0,
+                "total_cost_basis": "0.00",
+                "estimated_current_value": "0.00",
+                "unrealized_gain_loss": "0.00",
+                "unrealized_gain_loss_percent": None,
+                "holdings": [],
+            },
+            "history": None,
+            "history_unavailable": "Portfolio history is unavailable until at least two valuation snapshots have been recorded.",
+        }
+
+    monkeypatch.setattr(portfolio_service, "get_portfolio_dashboard", fake_dashboard)
+    response = client.get(
+        "/portfolio/dashboard",
+        headers=auth_headers(client, "dashboard-api-user"),
+        params={"range": "1w"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["portfolio"]["pagination"]["count"] == 0
+    assert response.json()["history"] is None
+
+
 def test_portfolio_summary_missing_snapshot_does_not_crash(client: TestClient):
     lego_set = create_lego_set(client, "42071")
     headers = auth_headers(client, "missing-market-user")

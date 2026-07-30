@@ -123,6 +123,13 @@ export type PortfolioHistory = {
   points: PortfolioHistoryPoint[];
 };
 
+export type PortfolioDashboard = {
+  portfolio: CollectionResponse<PortfolioItem>;
+  summary: PortfolioSummary;
+  history: PortfolioHistory | null;
+  history_unavailable: string | null;
+};
+
 export type SetDetail = {
   set_number: string;
   name: string;

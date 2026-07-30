@@ -6,6 +6,7 @@ import {
   useServerMutation,
   useServerQuery,
 } from "../../hooks/serverState";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import {
   Card,
   CardHeader,
@@ -27,9 +28,7 @@ import type {
 import { currency, percent, signedCurrency } from "../../utils/format";
 import { PortfolioInsights } from "./PortfolioInsights";
 
-const portfolioKey = ["portfolio"];
-const portfolioSummaryKey = ["portfolio-summary"];
-const portfolioHistoryKey = ["portfolio-history"];
+const portfolioDashboardKey = ["portfolio-dashboard"];
 const pageSize = 25;
 
 type ItemFormProps = {
@@ -157,32 +156,22 @@ export function PortfolioPage() {
   const [historyRange, setHistoryRange] = useState<
     "1d" | "1w" | "1m" | "3m" | "180d" | "1y" | "all"
   >("1m");
-  const loadPortfolio = useCallback(
-    () => apiClient.portfolio.list(filters),
-    [filters],
-  );
-  const loadSummary = useCallback(() => apiClient.portfolio.summary(), []);
-  const itemsQuery = useServerQuery(
-    [...portfolioKey, JSON.stringify(filters)],
-    loadPortfolio,
-  );
-  const summaryQuery = useServerQuery(portfolioSummaryKey, loadSummary);
-  const historyQuery = useServerQuery(
-    [...portfolioHistoryKey, historyRange],
+  const debouncedFilters = useDebouncedValue(filters);
+  const dashboardQuery = useServerQuery(
+    [...portfolioDashboardKey, JSON.stringify(debouncedFilters), historyRange],
     useCallback(
-      () => apiClient.portfolio.history(historyRange),
-      [historyRange],
+      () => apiClient.portfolio.dashboard(debouncedFilters, historyRange),
+      [debouncedFilters, historyRange],
     ),
   );
   const refreshPortfolio = useCallback(async () => {
-    invalidateServerState(portfolioSummaryKey);
-    invalidateServerState([...portfolioHistoryKey, historyRange]);
-    await Promise.all([
-      itemsQuery.refetch(),
-      summaryQuery.refetch(),
-      historyQuery.refetch(),
+    invalidateServerState([
+      ...portfolioDashboardKey,
+      JSON.stringify(debouncedFilters),
+      historyRange,
     ]);
-  }, [historyQuery, historyRange, itemsQuery, summaryQuery]);
+    await dashboardQuery.refetch();
+  }, [dashboardQuery, debouncedFilters, historyRange]);
   const addMutation = useServerMutation(apiClient.portfolio.addItem, {
     onSuccess: refreshPortfolio,
   });
@@ -194,11 +183,10 @@ export function PortfolioPage() {
   const deleteMutation = useServerMutation(apiClient.portfolio.deleteItem, {
     onSuccess: refreshPortfolio,
   });
-  const items = itemsQuery.data?.data ?? [];
-  const pagination = itemsQuery.data?.pagination;
+  const items = dashboardQuery.data?.portfolio.data ?? [];
+  const pagination = dashboardQuery.data?.portfolio.pagination;
   const error =
-    itemsQuery.error ||
-    summaryQuery.error ||
+    dashboardQuery.error ||
     addMutation.error ||
     updateMutation.error ||
     deleteMutation.error;
@@ -314,37 +302,37 @@ export function PortfolioPage() {
         <MetricCard
           label="Total Portfolio Value"
           tone="hold"
-          value={currency(summaryQuery.data?.estimated_current_value)}
+          value={currency(dashboardQuery.data?.summary.estimated_current_value)}
         />
         <MetricCard
           label="Total Cost Basis"
-          value={currency(summaryQuery.data?.total_cost_basis)}
+          value={currency(dashboardQuery.data?.summary.total_cost_basis)}
         />
         <MetricCard
           label="Unrealized Gain/Loss"
           tone="good"
-          value={`${signedCurrency(summaryQuery.data?.unrealized_gain_loss)} (${percent(summaryQuery.data?.unrealized_gain_loss_percent)})`}
+          value={`${signedCurrency(dashboardQuery.data?.summary.unrealized_gain_loss)} (${percent(dashboardQuery.data?.summary.unrealized_gain_loss_percent)})`}
         />
         <MetricCard
           label="Portfolio Items"
           tone="watch"
-          value={String(summaryQuery.data?.total_items ?? 0)}
+          value={String(dashboardQuery.data?.summary.total_items ?? 0)}
         />
         <MetricCard
           label="Unique Sets"
           tone="watch"
-          value={String(summaryQuery.data?.total_sets ?? 0)}
+          value={String(dashboardQuery.data?.summary.total_sets ?? 0)}
         />
       </div>
       <PortfolioInsights
-        history={historyQuery.data}
-        historyError={historyQuery.error}
+        history={dashboardQuery.data?.history ?? undefined}
+        historyError={dashboardQuery.data?.history_unavailable ?? ""}
         hasPartialHoldings={Boolean(pagination?.has_more)}
-        isHoldingsLoading={itemsQuery.isLoading}
-        isHistoryLoading={historyQuery.isLoading}
+        isHoldingsLoading={dashboardQuery.isLoading}
+        isHistoryLoading={dashboardQuery.isLoading}
         items={items}
         onRangeChange={setHistoryRange}
-        onRetryHistory={() => void historyQuery.refetch()}
+        onRetryHistory={() => void dashboardQuery.refetch()}
         range={historyRange}
       />
       <Card className="mb-5">
@@ -450,7 +438,7 @@ export function PortfolioPage() {
           columns={columns}
           emptyMessage="Add a LEGO set holding to begin tracking value."
           getRowKey={(item) => item.id}
-          isLoading={itemsQuery.isLoading}
+          isLoading={dashboardQuery.isLoading}
           minWidth="980px"
           rows={items}
         />

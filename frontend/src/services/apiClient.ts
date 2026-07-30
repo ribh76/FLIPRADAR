@@ -12,6 +12,7 @@ import type {
   PortfolioItemCreate,
   PortfolioItemUpdate,
   PortfolioFilters,
+  PortfolioDashboard,
   PortfolioHistory,
   PortfolioSummary,
   RefreshSession,
@@ -264,6 +265,13 @@ export const apiClient = {
     },
   },
   portfolio: {
+    dashboard(filters: PortfolioFilters, range: PortfolioHistory["range"]) {
+      return requestData(
+        api.get<PortfolioDashboard>("/portfolio/dashboard", {
+          params: { ...filters, range },
+        }),
+      );
+    },
     list(filters: PortfolioFilters = {}) {
       return requestData(
         api.get<CollectionResponse<PortfolioItem>>("/portfolio", {
