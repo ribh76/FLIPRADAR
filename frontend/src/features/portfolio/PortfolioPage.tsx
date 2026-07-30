@@ -25,9 +25,11 @@ import type {
   PortfolioItemCreate,
 } from "../../types";
 import { currency, percent, signedCurrency } from "../../utils/format";
+import { PortfolioInsights } from "./PortfolioInsights";
 
 const portfolioKey = ["portfolio"];
 const portfolioSummaryKey = ["portfolio-summary"];
+const portfolioHistoryKey = ["portfolio-history"];
 const pageSize = 25;
 
 type ItemFormProps = {
@@ -152,6 +154,9 @@ export function PortfolioPage() {
   const [deleteCandidate, setDeleteCandidate] = useState<PortfolioItem | null>(
     null,
   );
+  const [historyRange, setHistoryRange] = useState<
+    "1d" | "1w" | "1m" | "3m" | "180d" | "1y" | "all"
+  >("1m");
   const loadPortfolio = useCallback(
     () => apiClient.portfolio.list(filters),
     [filters],
@@ -162,10 +167,22 @@ export function PortfolioPage() {
     loadPortfolio,
   );
   const summaryQuery = useServerQuery(portfolioSummaryKey, loadSummary);
+  const historyQuery = useServerQuery(
+    [...portfolioHistoryKey, historyRange],
+    useCallback(
+      () => apiClient.portfolio.history(historyRange),
+      [historyRange],
+    ),
+  );
   const refreshPortfolio = useCallback(async () => {
     invalidateServerState(portfolioSummaryKey);
-    await Promise.all([itemsQuery.refetch(), summaryQuery.refetch()]);
-  }, [itemsQuery, summaryQuery]);
+    invalidateServerState([...portfolioHistoryKey, historyRange]);
+    await Promise.all([
+      itemsQuery.refetch(),
+      summaryQuery.refetch(),
+      historyQuery.refetch(),
+    ]);
+  }, [historyQuery, historyRange, itemsQuery, summaryQuery]);
   const addMutation = useServerMutation(apiClient.portfolio.addItem, {
     onSuccess: refreshPortfolio,
   });
@@ -290,7 +307,10 @@ export function PortfolioPage() {
           <FormAlert>{error}</FormAlert>
         </div>
       ) : null}
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5"
+        data-testid="portfolio-metrics"
+      >
         <MetricCard
           label="Total Portfolio Value"
           tone="hold"
@@ -306,11 +326,27 @@ export function PortfolioPage() {
           value={`${signedCurrency(summaryQuery.data?.unrealized_gain_loss)} (${percent(summaryQuery.data?.unrealized_gain_loss_percent)})`}
         />
         <MetricCard
-          label="Total Quantity"
+          label="Portfolio Items"
           tone="watch"
-          value={String(summaryQuery.data?.total_quantity ?? 0)}
+          value={String(summaryQuery.data?.total_items ?? 0)}
+        />
+        <MetricCard
+          label="Unique Sets"
+          tone="watch"
+          value={String(summaryQuery.data?.total_sets ?? 0)}
         />
       </div>
+      <PortfolioInsights
+        history={historyQuery.data}
+        historyError={historyQuery.error}
+        hasPartialHoldings={Boolean(pagination?.has_more)}
+        isHoldingsLoading={itemsQuery.isLoading}
+        isHistoryLoading={historyQuery.isLoading}
+        items={items}
+        onRangeChange={setHistoryRange}
+        onRetryHistory={() => void historyQuery.refetch()}
+        range={historyRange}
+      />
       <Card className="mb-5">
         <CardHeader className="mb-4">
           <CardTitle>Add set</CardTitle>

@@ -420,7 +420,7 @@ PART VI - PORTFOLIO MANAGEMENT
 ==================================================
 
 PHASE 21: PORTFOLIO CRUD
-Classification: MUST SHIP
+Classification: MUST SHIP (Complete)
 
 1. Finalize the portfolio-item model. -
 2. Link each item to the user and catalog set. -
@@ -437,7 +437,7 @@ Classification: MUST SHIP
 13. Add full backend and frontend tests.-  (passed) 
 
 PHASE 22: PORTFOLIO VALUATION
-Classification: MUST SHIP
+Classification: MUST SHIP (Complete)
 
 1. Calculate cost basis for each holding. -
 2. Retrieve estimated unit value by condition. -
@@ -455,7 +455,7 @@ Classification: MUST SHIP
 14. Add dashboard summary cards. -
 15. Add valuation tests. -
 
-PHASE 23: HISTORICAL PORTFOLIO SNAPSHOTS
+PHASE 23: HISTORICAL PORTFOLIO SNAPSHOTS (Complete)
 Classification: MUST SHIP
 
 1. Create a portfolio valuation snapshot model. -
@@ -471,8 +471,8 @@ Classification: MUST SHIP
 11. Support one-month, three-month, one-year, and all-time ranges. -
 12. Add fallback behavior for limited history. -
 13. Add retention and aggregation rules. -
-14. Add snapshot and history tests.
-15. Document when historical tracking begins. 
+14. Add snapshot and history tests. -
+15. Document when historical tracking begins.  -
 
 PHASE 24: PORTFOLIO DASHBOARD
 Classification: MUST SHIP

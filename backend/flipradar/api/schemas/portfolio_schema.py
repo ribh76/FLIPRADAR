@@ -50,12 +50,14 @@ class PortfolioItemResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     set_name: str | None = None
+    theme: str | None = None
     current_unit_value: Decimal | None = None
     current_total_value: Decimal | None = None
     cost_basis: Decimal
     unrealized_gain_loss: Decimal | None = None
     unrealized_gain_loss_percent: Decimal | None = None
     valuation_status: str
+    valuation_confidence: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

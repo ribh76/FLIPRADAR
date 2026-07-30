@@ -249,7 +249,7 @@ async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
 
 
 def _portfolio_item_response(item, value_map: dict[tuple[str, str], tuple]) -> dict:
-    unit_value, status, _confidence = value_map[(item.set_number, item.condition)]
+    unit_value, status, confidence = value_map[(item.set_number, item.condition)]
     valuation = portfolio_valuation.calculate_holding_valuation(
         quantity=item.quantity,
         purchase_price=item.purchase_price,
@@ -268,12 +268,14 @@ def _portfolio_item_response(item, value_map: dict[tuple[str, str], tuple]) -> d
         "created_at": item.created_at,
         "updated_at": item.updated_at,
         "set_name": getattr(item.lego_set, "name", None),
+        "theme": getattr(item.lego_set, "theme", None),
         "current_unit_value": unit_value,
         "current_total_value": valuation.market_value,
         "cost_basis": valuation.cost_basis,
         "unrealized_gain_loss": valuation.unrealized_gain_loss,
         "unrealized_gain_loss_percent": valuation.unrealized_gain_loss_percent,
         "valuation_status": status,
+        "valuation_confidence": confidence if status == "valued" else None,
     }
 
 

@@ -68,12 +68,14 @@ export type PortfolioItem = {
   created_at?: string;
   updated_at?: string;
   set_name: string | null;
+  theme: string | null;
   current_unit_value: string | number | null;
   current_total_value: string | number | null;
   cost_basis: string | number;
   unrealized_gain_loss: string | number | null;
   unrealized_gain_loss_percent: string | number | null;
   valuation_status: string;
+  valuation_confidence: string | null;
 };
 
 export type PortfolioItemCreate = {
@@ -106,6 +108,19 @@ export type PortfolioSummary = {
   estimated_current_value: string | number;
   unrealized_gain_loss: string | number;
   unrealized_gain_loss_percent: string | number | null;
+};
+
+export type PortfolioHistoryPoint = {
+  timestamp: string;
+  cost_basis: string | number;
+  market_value: string | number;
+  gain_loss: string | number;
+  currency: string;
+};
+
+export type PortfolioHistory = {
+  range: "1d" | "1w" | "1m" | "3m" | "180d" | "1y" | "all";
+  points: PortfolioHistoryPoint[];
 };
 
 export type SetDetail = {

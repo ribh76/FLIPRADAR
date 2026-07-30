@@ -12,6 +12,7 @@ import type {
   PortfolioItemCreate,
   PortfolioItemUpdate,
   PortfolioFilters,
+  PortfolioHistory,
   PortfolioSummary,
   RefreshSession,
   LegoSet,
@@ -272,6 +273,11 @@ export const apiClient = {
     },
     summary() {
       return requestData(api.get<PortfolioSummary>("/portfolio/summary"));
+    },
+    history(range: PortfolioHistory["range"]) {
+      return requestData(
+        api.get<PortfolioHistory>("/portfolio/history", { params: { range } }),
+      );
     },
     addItem(payload: PortfolioItemCreate) {
       return requestData(api.post<PortfolioItem>("/portfolio/items", payload));
