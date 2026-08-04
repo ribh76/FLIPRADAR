@@ -494,22 +494,22 @@ Classification: MUST SHIP
 15. Add responsive and integration tests.
 -- 
 PHASE 25: INDIVIDUAL HOLDING ANALYTICS
-Classification: MUST SHIP
+Classification: MUST SHIP (Complete) 
 
-1. Create a holding-detail endpoint.
-2. Display purchase data.
+1. Create a holding-detail endpoint. (done) 
+2. Display purchase data. (Done) 
 3. Display current estimated value.
-4. Display dollar and percentage gain or loss.
-5. Display confidence and freshness.
-6. Add a value-history chart.
-7. Display relevant marketplace snapshots.
+4. Display dollar and percentage gain or loss. (Done) 
+5. Display confidence and freshness. (Done) 
+6. Add a value-history chart. (Done) 
+7. Display relevant marketplace snapshots. (Done) 
 8. Compare condition pricing.
-9. Display the holding's share of total portfolio value.
-10. Display concentration-risk information.
-11. Allow manual valuation changes.
-12. Allow notes and purchase details to be edited.
-13. Add Find Deals and Analyze Holding shortcuts.
-14. Add backend and frontend tests.
+9. Display the holding's share of total portfolio value. (Done) 
+10. Display concentration-risk information. (Done) 
+11. Allow manual valuation changes. (Done) 
+12. Allow notes and purchase details to be edited. (Done) 
+13. Add Find Deals and Analyze Holding shortcuts. (done) 
+14. Add backend and frontend tests. (full pass) 
 
 ==================================================
 PART VII - DEAL DISCOVERY
