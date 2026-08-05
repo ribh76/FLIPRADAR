@@ -30,6 +30,7 @@ export type Deal = {
   title: string;
   url: string;
   condition: string;
+  is_sealed: boolean | null;
   asking_price: string | number;
   shipping_price: string | number;
   total_cost: string | number;
@@ -57,6 +58,27 @@ export type DealRefreshStatus = {
 
 export type DealsResponse = CollectionResponse<Deal> & {
   refresh: DealRefreshStatus;
+};
+
+export type DealFilters = {
+  min_budget?: number;
+  max_budget?: number;
+  theme?: string;
+  subtheme?: string;
+  min_release_year?: number;
+  max_release_year?: number;
+  min_age_years?: number;
+  max_age_years?: number;
+  condition?: string;
+  retirement_status?: string;
+  marketplace?: string;
+  min_discount?: number;
+  min_confidence?: number;
+  max_shipping?: number;
+  order?: string;
+  limit?: number;
+  offset?: number;
+  refresh?: boolean;
 };
 
 export type AuthSession = {

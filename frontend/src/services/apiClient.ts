@@ -8,6 +8,7 @@ import type {
   CatalogSearchResponse,
   CollectionResponse,
   CurrentUser,
+  DealFilters,
   DealsResponse,
   PortfolioItem,
   PortfolioItemCreate,
@@ -199,7 +200,7 @@ async function requestData<TData>(
 
 export const apiClient = {
   deals: {
-    list(options: { limit?: number; offset?: number; refresh?: boolean } = {}) {
+    list(options: DealFilters = {}) {
       return requestData(
         api.get<DealsResponse>("/deals", {
           params: { limit: 25, offset: 0, ...options },

@@ -1,27 +1,88 @@
-import { RefreshCw } from "lucide-react";
-import { useCallback, useState } from "react";
+import { RefreshCw, X } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
+  Card,
   EmptyState,
   ErrorState,
   LoadingState,
   PageState,
+  SelectField,
+  TextField,
 } from "../../components/ui";
 import { useServerQuery } from "../../hooks/serverState";
 import { apiClient, getApiError } from "../../services/apiClient";
-import type { DealsResponse } from "../../types";
+import type { DealFilters, DealsResponse } from "../../types";
 import { DealCard } from "./DealCard";
 
+const numberFilters = new Set([
+  "min_budget",
+  "max_budget",
+  "min_release_year",
+  "max_release_year",
+  "min_age_years",
+  "max_age_years",
+  "min_discount",
+  "min_confidence",
+  "max_shipping",
+]);
+
+const filterLabels: Record<string, string> = {
+  min_budget: "Min budget",
+  max_budget: "Max budget",
+  theme: "Theme",
+  subtheme: "Subtheme",
+  min_release_year: "Released after",
+  max_release_year: "Released before",
+  min_age_years: "Min age",
+  max_age_years: "Max age",
+  condition: "Condition",
+  retirement_status: "Retirement",
+  marketplace: "Marketplace",
+  min_discount: "Min discount",
+  min_confidence: "Min confidence",
+  max_shipping: "Max shipping",
+  order: "Sort",
+};
+
+function parseFilters(searchParams: URLSearchParams): DealFilters {
+  return Object.fromEntries(
+    [...searchParams.entries()].map(([key, value]) => [
+      key,
+      numberFilters.has(key) ? Number(value) : value,
+    ]),
+  ) as DealFilters;
+}
+
 export function DealsPage() {
-  const loadDeals = useCallback(() => apiClient.deals.list(), []);
-  const dealsQuery = useServerQuery<DealsResponse>(["deals", 25, 0], loadDeals);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
+  const filterKey = searchParams.toString();
+  const loadDeals = useCallback(() => apiClient.deals.list(filters), [filters]);
+  const dealsQuery = useServerQuery<DealsResponse>(
+    ["deals", filterKey],
+    loadDeals,
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState("");
+
+  function updateFilter(name: string, value: string) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (value) next.set(name, value);
+      else next.delete(name);
+      return next;
+    });
+  }
 
   async function refreshDeals() {
     setIsRefreshing(true);
     setRefreshError("");
     try {
-      const refreshed = await apiClient.deals.list({ refresh: true });
+      const refreshed = await apiClient.deals.list({
+        ...filters,
+        refresh: true,
+      });
       dealsQuery.setData(refreshed);
     } catch (error) {
       setRefreshError(getApiError(error));
@@ -32,16 +93,18 @@ export function DealsPage() {
 
   const refresh = dealsQuery.data?.refresh;
   const hasCards = Boolean(dealsQuery.data?.data.length);
+  const activeFilters = [...searchParams.entries()];
 
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-[var(--color-text-muted)]">
-            Bounded catalog discovery
+            Personalized catalog discovery
           </p>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-            Active, matched listings ranked by all-in discount and confidence.
+            Active, matched listings ranked by your price, quality, and catalog
+            preferences.
           </p>
         </div>
         <button
@@ -54,6 +117,173 @@ export function DealsPage() {
           {isRefreshing ? "Refreshing..." : "Refresh deals"}
         </button>
       </div>
+
+      <Card>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <TextField
+            label="Minimum budget"
+            min="0"
+            onChange={(event) => updateFilter("min_budget", event.target.value)}
+            step="0.01"
+            type="number"
+            value={searchParams.get("min_budget") ?? ""}
+          />
+          <TextField
+            label="Maximum budget"
+            min="0"
+            onChange={(event) => updateFilter("max_budget", event.target.value)}
+            step="0.01"
+            type="number"
+            value={searchParams.get("max_budget") ?? ""}
+          />
+          <TextField
+            label="Theme"
+            onChange={(event) => updateFilter("theme", event.target.value)}
+            value={searchParams.get("theme") ?? ""}
+          />
+          <TextField
+            label="Subtheme"
+            onChange={(event) => updateFilter("subtheme", event.target.value)}
+            value={searchParams.get("subtheme") ?? ""}
+          />
+          <TextField
+            label="Release year from"
+            min="1949"
+            max="2100"
+            onChange={(event) =>
+              updateFilter("min_release_year", event.target.value)
+            }
+            type="number"
+            value={searchParams.get("min_release_year") ?? ""}
+          />
+          <TextField
+            label="Release year to"
+            min="1949"
+            max="2100"
+            onChange={(event) =>
+              updateFilter("max_release_year", event.target.value)
+            }
+            type="number"
+            value={searchParams.get("max_release_year") ?? ""}
+          />
+          <TextField
+            label="Minimum age (years)"
+            min="0"
+            onChange={(event) =>
+              updateFilter("min_age_years", event.target.value)
+            }
+            type="number"
+            value={searchParams.get("min_age_years") ?? ""}
+          />
+          <TextField
+            label="Maximum age (years)"
+            min="0"
+            onChange={(event) =>
+              updateFilter("max_age_years", event.target.value)
+            }
+            type="number"
+            value={searchParams.get("max_age_years") ?? ""}
+          />
+          <SelectField
+            label="Condition"
+            onChange={(event) => updateFilter("condition", event.target.value)}
+            value={searchParams.get("condition") ?? ""}
+          >
+            <option value="">Any condition</option>
+            <option value="new">New</option>
+            <option value="sealed">Sealed</option>
+            <option value="used">Used</option>
+            <option value="unknown">Unknown</option>
+          </SelectField>
+          <SelectField
+            label="Retirement"
+            onChange={(event) =>
+              updateFilter("retirement_status", event.target.value)
+            }
+            value={searchParams.get("retirement_status") ?? ""}
+          >
+            <option value="">Any status</option>
+            <option value="retired">Retired</option>
+            <option value="active">Not retired</option>
+          </SelectField>
+          <SelectField
+            label="Marketplace"
+            onChange={(event) =>
+              updateFilter("marketplace", event.target.value)
+            }
+            value={searchParams.get("marketplace") ?? ""}
+          >
+            <option value="">All marketplaces</option>
+            <option value="ebay">eBay</option>
+            <option value="bricklink">BrickLink</option>
+          </SelectField>
+          <SelectField
+            label="Sort"
+            onChange={(event) => updateFilter("order", event.target.value)}
+            value={searchParams.get("order") ?? "score_desc"}
+          >
+            <option value="score_desc">Highest score</option>
+            <option value="discount_desc">Largest discount</option>
+            <option value="total_price_asc">Lowest total price</option>
+            <option value="total_price_desc">Highest total price</option>
+            <option value="confidence_desc">Highest confidence</option>
+          </SelectField>
+          <TextField
+            label="Minimum discount (%)"
+            min="0"
+            max="100"
+            onChange={(event) =>
+              updateFilter("min_discount", event.target.value)
+            }
+            type="number"
+            value={searchParams.get("min_discount") ?? ""}
+          />
+          <TextField
+            label="Minimum confidence"
+            min="0"
+            max="100"
+            onChange={(event) =>
+              updateFilter("min_confidence", event.target.value)
+            }
+            type="number"
+            value={searchParams.get("min_confidence") ?? ""}
+          />
+          <TextField
+            label="Maximum shipping"
+            min="0"
+            onChange={(event) =>
+              updateFilter("max_shipping", event.target.value)
+            }
+            step="0.01"
+            type="number"
+            value={searchParams.get("max_shipping") ?? ""}
+          />
+        </div>
+      </Card>
+
+      {activeFilters.length ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="metric-label">Active filters</span>
+          {activeFilters.map(([name, value]) => (
+            <button
+              className="secondary-button h-8 gap-1 px-2"
+              key={name}
+              onClick={() => updateFilter(name, "")}
+              type="button"
+            >
+              {filterLabels[name] ?? name}: {value}
+              <X aria-hidden="true" size={14} />
+            </button>
+          ))}
+          <button
+            className="text-sm font-bold text-[var(--color-accent)] hover:underline"
+            onClick={() => setSearchParams({})}
+            type="button"
+          >
+            Clear all
+          </button>
+        </div>
+      ) : null}
 
       {refresh?.throttled ? (
         <PageState title="Refresh is cooling down" tone="warning">
@@ -90,7 +320,7 @@ export function DealsPage() {
       ) : null}
       {!dealsQuery.isLoading && !dealsQuery.error && !hasCards ? (
         <EmptyState
-          message="No eligible, recently seen listings have a matching fair-value estimate yet."
+          message="No eligible listings match these filters."
           title="No deals right now"
         />
       ) : null}

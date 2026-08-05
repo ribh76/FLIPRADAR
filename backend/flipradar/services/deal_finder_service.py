@@ -33,6 +33,44 @@ class DealFinderResult:
 
 
 @dataclass(frozen=True)
+class DealFilters:
+    min_budget: Decimal | None = None
+    max_budget: Decimal | None = None
+    theme: str | None = None
+    subtheme: str | None = None
+    min_release_year: int | None = None
+    max_release_year: int | None = None
+    min_age_years: int | None = None
+    max_age_years: int | None = None
+    condition: str | None = None
+    retirement_status: str | None = None
+    marketplace: str | None = None
+    min_discount: Decimal | None = None
+    min_confidence: int | None = None
+    max_shipping: Decimal | None = None
+    order: str = "score_desc"
+
+    def validate(self) -> None:
+        _validate_range("budget", self.min_budget, self.max_budget)
+        _validate_range("release year", self.min_release_year, self.max_release_year)
+        _validate_range("age", self.min_age_years, self.max_age_years)
+        if self.condition not in {None, "new", "used", "unknown", "sealed"}:
+            raise ValueError("condition must be new, used, unknown, or sealed")
+        if self.retirement_status not in {None, "retired", "active"}:
+            raise ValueError("retirement_status must be retired or active")
+        if self.marketplace not in {None, "ebay", "bricklink"}:
+            raise ValueError("marketplace must be ebay or bricklink")
+        if self.order not in {
+            "score_desc",
+            "discount_desc",
+            "total_price_asc",
+            "total_price_desc",
+            "confidence_desc",
+        }:
+            raise ValueError("unsupported deal order")
+
+
+@dataclass(frozen=True)
 class _CachedDeals:
     created_at: datetime
     deals: list[dict]
@@ -47,8 +85,11 @@ async def find_deals(
     *,
     universe_size: int = DEFAULT_UNIVERSE_SIZE,
     refresh: bool = False,
+    filters: DealFilters | None = None,
 ) -> DealFinderResult:
     """Find and rank eligible listings in the default bounded catalog universe."""
+    filters = filters or DealFilters()
+    filters.validate()
     resolved_universe_size = min(max(universe_size, 1), MAX_UNIVERSE_SIZE)
     now = datetime.now(UTC)
     cached = _deal_cache.get(resolved_universe_size)
@@ -58,7 +99,7 @@ async def find_deals(
         and now - cached.created_at < timedelta(seconds=DEAL_CACHE_TTL_SECONDS)
     ):
         return DealFinderResult(
-            deals=cached.deals,
+            deals=_filter_and_sort_deals(cached.deals, filters),
             refresh={
                 "requested": False,
                 "cached": True,
@@ -132,6 +173,15 @@ async def find_deals(
                 "listing_id": listing.id,
                 "set_number": listing.lego_set.set_number,
                 "set_name": listing.lego_set.name,
+                "theme": listing.lego_set.theme,
+                "subtheme": listing.lego_set.subtheme,
+                "release_year": listing.lego_set.release_year,
+                "age_years": _set_age_years(listing.lego_set.release_year),
+                "retirement_status": (
+                    "retired"
+                    if listing.lego_set.retirement_year is not None
+                    else "active"
+                ),
                 "marketplace": {
                     "name": listing.marketplace.name,
                     "display_name": listing.marketplace.display_name,
@@ -142,6 +192,7 @@ async def find_deals(
                 "title": listing.title,
                 "url": listing.url,
                 "condition": listing.condition,
+                "is_sealed": listing.is_sealed,
                 "asking_price": listing.price,
                 "shipping_price": listing.shipping_price,
                 "total_cost": listing.total_price,
@@ -159,17 +210,10 @@ async def find_deals(
                 "explanation": scored["explanation"],
             }
         )
-    ranked_deals = sorted(
-        deals,
-        key=lambda deal: (
-            deal["score"],
-            deal["confidence_score"],
-            deal["discount_percent"],
-        ),
-        reverse=True,
+    _deal_cache[resolved_universe_size] = _CachedDeals(now, deals)
+    return DealFinderResult(
+        deals=_filter_and_sort_deals(deals, filters), refresh=refresh_status
     )
-    _deal_cache[resolved_universe_size] = _CachedDeals(now, ranked_deals)
-    return DealFinderResult(deals=ranked_deals, refresh=refresh_status)
 
 
 async def _refresh_universe(
@@ -244,3 +288,87 @@ def _valuation_confidence(sample_size: int) -> int:
 
 def _condition_score(condition: str) -> int:
     return {"new": 100, "used": 80, "unknown": 50}.get(condition, 50)
+
+
+def _validate_range(name: str, minimum, maximum) -> None:
+    if minimum is not None and maximum is not None and minimum > maximum:
+        raise ValueError(f"minimum {name} cannot exceed maximum {name}")
+
+
+def _set_age_years(release_year: int | None) -> int | None:
+    return datetime.now(UTC).year - release_year if release_year is not None else None
+
+
+def _filter_and_sort_deals(deals: list[dict], filters: DealFilters) -> list[dict]:
+    """Apply all personalized discovery filters before deterministic ordering."""
+
+    def matches(deal: dict) -> bool:
+        if filters.min_budget is not None and deal["total_cost"] < filters.min_budget:
+            return False
+        if filters.max_budget is not None and deal["total_cost"] > filters.max_budget:
+            return False
+        if filters.theme and (deal["theme"] or "").lower() != filters.theme.lower():
+            return False
+        if (
+            filters.subtheme
+            and (deal["subtheme"] or "").lower() != filters.subtheme.lower()
+        ):
+            return False
+        if filters.min_release_year is not None and (
+            deal["release_year"] is None
+            or deal["release_year"] < filters.min_release_year
+        ):
+            return False
+        if filters.max_release_year is not None and (
+            deal["release_year"] is None
+            or deal["release_year"] > filters.max_release_year
+        ):
+            return False
+        if filters.min_age_years is not None and (
+            deal["age_years"] is None or deal["age_years"] < filters.min_age_years
+        ):
+            return False
+        if filters.max_age_years is not None and (
+            deal["age_years"] is None or deal["age_years"] > filters.max_age_years
+        ):
+            return False
+        if filters.condition == "sealed" and not deal["is_sealed"]:
+            return False
+        if (
+            filters.condition
+            and filters.condition != "sealed"
+            and deal["condition"] != filters.condition
+        ):
+            return False
+        if (
+            filters.retirement_status
+            and deal["retirement_status"] != filters.retirement_status
+        ):
+            return False
+        if filters.marketplace and deal["marketplace"]["name"] != filters.marketplace:
+            return False
+        if filters.min_discount is not None and deal["discount"] < filters.min_discount:
+            return False
+        if (
+            filters.min_confidence is not None
+            and deal["confidence"] < filters.min_confidence
+        ):
+            return False
+        return not (
+            filters.max_shipping is not None
+            and deal["shipping_price"] > filters.max_shipping
+        )
+
+    order = {
+        "score_desc": ("score", True),
+        "discount_desc": ("discount", True),
+        "total_price_asc": ("total_cost", False),
+        "total_price_desc": ("total_cost", True),
+        "confidence_desc": ("confidence", True),
+    }
+    field, descending = order[filters.order]
+    return sorted(
+        (deal for deal in deals if matches(deal)),
+        key=lambda deal: (deal[field], deal["score"], deal["confidence"]),
+        reverse=descending,
+    )

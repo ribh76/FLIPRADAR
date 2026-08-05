@@ -29,10 +29,16 @@ class DealResponse(BaseModel):
     listing_id: UUID
     set_number: str
     set_name: str
+    theme: str | None
+    subtheme: str | None
+    release_year: int | None
+    age_years: int | None
+    retirement_status: str
     marketplace: DealMarketplaceDetails
     title: str
     url: str
     condition: str
+    is_sealed: bool | None
     asking_price: Decimal
     shipping_price: Decimal
     total_cost: Decimal

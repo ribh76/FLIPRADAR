@@ -449,6 +449,13 @@ def test_deals_endpoint_returns_ranked_metrics_and_marketplace_details(
     assert body["refresh"]["cached"] is False
 
 
+def test_deals_endpoint_rejects_invalid_filter_ranges(client: TestClient):
+    response = client.get("/deals", params={"min_budget": 200, "max_budget": 100})
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "minimum budget cannot exceed maximum budget"
+
+
 def test_duplicate_listing_returns_conflict(client: TestClient):
     lego_set = create_lego_set(client)
     payload = create_listing_payload(lego_set["set_number"])

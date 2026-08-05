@@ -46,7 +46,7 @@ export function DealCard({ deal }: { deal: Deal }) {
           {deal.marketplace.seller_rating !== null
             ? ` (${deal.marketplace.seller_rating}% seller rating)`
             : ""}
-          {` · ${deal.condition}`}
+          {` · ${deal.is_sealed ? "sealed" : deal.condition}`}
         </div>
         <a
           className="primary-button"

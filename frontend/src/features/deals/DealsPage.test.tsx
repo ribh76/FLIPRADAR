@@ -30,6 +30,7 @@ const deals: DealsResponse = {
       title: "LEGO 75313 AT-AT sealed",
       url: "https://www.ebay.com/itm/123",
       condition: "new",
+      is_sealed: true,
       asking_price: "500.00",
       shipping_price: "20.00",
       total_cost: "520.00",
@@ -60,7 +61,8 @@ const deals: DealsResponse = {
 describe("DealsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    invalidateServerState(["deals", 25, 0]);
+    invalidateServerState(["deals", ""]);
+    invalidateServerState(["deals", "theme=Star+Wars&min_discount=20"]);
     vi.mocked(apiClient.deals.list).mockResolvedValue(deals);
   });
 
@@ -103,6 +105,32 @@ describe("DealsPage", () => {
     expect(screen.getByText("AT-AT")).toBeInTheDocument();
     await waitFor(() => {
       expect(apiClient.deals.list).toHaveBeenLastCalledWith({ refresh: true });
+    });
+  });
+
+  it("loads URL-backed filters, renders chips, and clears them", async () => {
+    const user = userEvent.setup();
+    render(<DealsPage />, {
+      wrapper: ({ children }) => (
+        <MemoryRouter
+          initialEntries={["/deals?theme=Star+Wars&min_discount=20"]}
+        >
+          {children}
+        </MemoryRouter>
+      ),
+    });
+
+    await screen.findByText("AT-AT");
+    expect(apiClient.deals.list).toHaveBeenCalledWith({
+      min_discount: 20,
+      theme: "Star Wars",
+    });
+    expect(
+      screen.getByRole("button", { name: /theme: star wars/i }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /clear all/i }));
+    await waitFor(() => {
+      expect(screen.queryByText("Active filters")).not.toBeInTheDocument();
     });
   });
 });
