@@ -61,6 +61,14 @@ export function useServerQuery<TData>(
     }
   }, [cacheKey, data, enabled, queryFn]);
 
+  const setCachedData = useCallback(
+    (value: TData) => {
+      queryCache.set(cacheKey, value);
+      setData(value);
+    },
+    [cacheKey],
+  );
+
   useEffect(() => {
     if (!enabled) {
       setIsLoading(false);
@@ -80,7 +88,7 @@ export function useServerQuery<TData>(
     isFetching,
     isLoading,
     refetch,
-    setData,
+    setData: setCachedData,
   };
 }
 

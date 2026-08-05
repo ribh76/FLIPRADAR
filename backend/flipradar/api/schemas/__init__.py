@@ -30,6 +30,7 @@ from flipradar.api.schemas.common_schema import (
     PortfolioItemCollectionResponse,
     PriceSnapshotCollectionResponse,
 )
+from flipradar.api.schemas.deal_schema import DealCollectionResponse, DealResponse
 from flipradar.api.schemas.lego_set_schema import (
     CatalogSearchResponse,
     LegoSetCreate,
@@ -42,8 +43,8 @@ from flipradar.api.schemas.listing_schema import (
     MarketplaceResponse,
 )
 from flipradar.api.schemas.portfolio_schema import (
-    PortfolioHoldingDetailResponse,
     PortfolioDashboardResponse,
+    PortfolioHoldingDetailResponse,
     PortfolioHoldingSummary,
     PortfolioItemCreate,
     PortfolioItemResponse,
@@ -81,6 +82,8 @@ __all__ = [
     "CatalogSearchResponse",
     "CollectionResponse",
     "ConfidenceBand",
+    "DealCollectionResponse",
+    "DealResponse",
     "EmailChangeConfirmRequest",
     "EmailChangeRequest",
     "EmailVerificationRequest",

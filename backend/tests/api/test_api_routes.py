@@ -409,6 +409,46 @@ def test_create_listing_endpoint(client: TestClient):
     assert response.json()["external_listing_id"] == payload["external_listing_id"]
 
 
+def test_deals_endpoint_returns_ranked_metrics_and_marketplace_details(
+    client: TestClient,
+):
+    lego_set = create_lego_set(client, "75313")
+    listing = create_listing_payload(lego_set["set_number"])
+    listing.update(
+        {
+            "detected_set_number": lego_set["set_number"],
+            "price": "500.00",
+            "shipping_price": "20.00",
+            "total_price": "520.00",
+        }
+    )
+    assert client.post("/listings", json=listing).status_code == 201
+    snapshot = {
+        "set_number": lego_set["set_number"],
+        "marketplace_name": "ebay",
+        "condition": "new",
+        "currency": "USD",
+        "metric_type": "fair_market_value",
+        "value": "725.00",
+        "sample_size": 12,
+    }
+    assert client.post("/snapshots", json=snapshot).status_code == 201
+
+    response = client.get("/deals")
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["pagination"]["count"] == 1
+    deal = body["data"][0]
+    assert deal["value"] == "725.00"
+    assert deal["discount"] == "28.3"
+    assert deal["score"] > 0
+    assert deal["confidence"] > 0
+    assert deal["marketplace"]["name"] == "ebay"
+    assert deal["marketplace"]["seller_name"] == "api-test-seller"
+    assert body["refresh"]["cached"] is False
+
+
 def test_duplicate_listing_returns_conflict(client: TestClient):
     lego_set = create_lego_set(client)
     payload = create_listing_payload(lego_set["set_number"])

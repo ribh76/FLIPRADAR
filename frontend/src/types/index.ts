@@ -14,6 +14,51 @@ export type CollectionResponse<T> = {
   pagination: PaginationMeta;
 };
 
+export type DealMarketplaceDetails = {
+  name: string;
+  display_name: string;
+  base_url: string | null;
+  seller_name: string | null;
+  seller_rating: string | number | null;
+};
+
+export type Deal = {
+  listing_id: string;
+  set_number: string;
+  set_name: string;
+  marketplace: DealMarketplaceDetails;
+  title: string;
+  url: string;
+  condition: string;
+  asking_price: string | number;
+  shipping_price: string | number;
+  total_cost: string | number;
+  currency: string;
+  fair_value: string | number;
+  value: string | number;
+  valuation_sample_size: number;
+  score: number;
+  deal_band: string;
+  confidence_score: number;
+  confidence: number;
+  discount_percent: string | number;
+  discount: string | number;
+  last_seen_at: string;
+  explanation: string;
+};
+
+export type DealRefreshStatus = {
+  requested: boolean;
+  cached: boolean;
+  throttled: boolean;
+  retry_after_seconds: number | null;
+  provider_errors: string[];
+};
+
+export type DealsResponse = CollectionResponse<Deal> & {
+  refresh: DealRefreshStatus;
+};
+
 export type AuthSession = {
   access_token: string;
   refresh_token: string;

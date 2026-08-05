@@ -12,6 +12,7 @@ from flipradar.api.middleware import (
 )
 from flipradar.api.routes import (
     auth_routes,
+    deal_routes,
     health_routes,
     lego_routes,
     listing_routes,
@@ -69,6 +70,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             },
             {"name": "Sets", "description": "LEGO set metadata and set detail lookup."},
             {
+                "name": "Deals",
+                "description": "Ranked eligible marketplace deal discovery.",
+            },
+            {
                 "name": "Marketplace/Internal",
                 "description": (
                     "Internal or development data refresh and snapshot helpers."
@@ -98,6 +103,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health_routes.router)
     app.include_router(auth_routes.router)
     app.include_router(lego_routes.router)
+    app.include_router(deal_routes.router)
     app.include_router(listing_routes.router)
     app.include_router(price_snapshot_routes.router)
     app.include_router(recommendation_routes.router)

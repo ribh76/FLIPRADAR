@@ -8,6 +8,7 @@ import type {
   CatalogSearchResponse,
   CollectionResponse,
   CurrentUser,
+  DealsResponse,
   PortfolioItem,
   PortfolioItemCreate,
   PortfolioItemUpdate,
@@ -197,6 +198,15 @@ async function requestData<TData>(
 }
 
 export const apiClient = {
+  deals: {
+    list(options: { limit?: number; offset?: number; refresh?: boolean } = {}) {
+      return requestData(
+        api.get<DealsResponse>("/deals", {
+          params: { limit: 25, offset: 0, ...options },
+        }),
+      );
+    },
+  },
   analyze(payload: AnalyzeRequest) {
     return requestData(api.post<AnalyzeResponse>("/analyze", payload));
   },

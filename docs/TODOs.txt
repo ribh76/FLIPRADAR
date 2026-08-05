@@ -515,8 +515,8 @@ Classification: MUST SHIP (Complete)
 PART VII - DEAL DISCOVERY
 ==================================================
 
-PHASE 26: DEAL SCORING ENGINE
-Classification: MUST SHIP
+PHASE 26: DEAL SCORING ENGINE (Complete) 
+Classification: MUST SHIP 
 
 1. Define scoring components and weights.
 2. Calculate total cost including shipping.
@@ -537,15 +537,15 @@ Classification: MUST SHIP
 PHASE 27: BASIC DEAL FINDER
 Classification: MUST SHIP
 
-1. Create a Deal Finder service.
-2. Select a manageable default set universe.
-3. Retrieve current listings.
-4. Normalize and match listings.
-5. Retrieve fair-value estimates.
-6. Score eligible listings.
-7. Exclude expired, duplicate, mismatched, and very low-confidence listings.
-8. Rank results.
-9. Create a paginated /deals endpoint.
+1. Create a Deal Finder service. -
+2. Select a manageable default set universe. -
+3. Retrieve current listings. 
+4. Normalize and match listings. -
+5. Retrieve fair-value estimates. -
+6. Score eligible listings. -
+7. Exclude expired, duplicate, mismatched, and very low-confidence listings. -
+8. Rank results.- 
+9. Create a paginated /deals endpoint. -
 10. Return value, discount, score, confidence, and marketplace details.
 11. Build the Deal Finder frontend page.
 12. Add listing cards and direct external links.

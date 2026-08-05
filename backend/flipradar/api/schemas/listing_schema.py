@@ -34,6 +34,7 @@ class ListingCreate(BaseModel):
     set_number: SetNumber = Field(..., min_length=1, max_length=32)
     marketplace_name: MarketplaceValue
     external_listing_id: str = Field(..., min_length=1, max_length=160)
+    detected_set_number: SetNumber | None = Field(default=None, max_length=32)
     title: str = Field(..., min_length=1, max_length=500)
     url: HttpUrl
     price: Money = Field(..., ge=0, decimal_places=2)
@@ -70,6 +71,7 @@ class ListingResponse(BaseModel):
     lego_set_id: UUID
     marketplace_id: UUID
     external_listing_id: str
+    detected_set_number: str | None
     title: str
     url: str
     price: Decimal

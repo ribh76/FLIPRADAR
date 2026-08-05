@@ -657,6 +657,38 @@ async def latest_listing_for_set(
     return listings[0] if listings else None
 
 
+async def list_active_listings_for_set_numbers(
+    db: AsyncSession,
+    set_numbers: set[str],
+    *,
+    seen_since: datetime,
+) -> list[MarketplaceListing]:
+    """Return the recent active listings needed by deal discovery in one query."""
+    if not set_numbers:
+        return []
+    normalized_set_numbers = {
+        normalize_set_number(set_number) for set_number in set_numbers
+    }
+    result = await db.execute(
+        select(MarketplaceListing)
+        .options(
+            selectinload(MarketplaceListing.lego_set),
+            selectinload(MarketplaceListing.marketplace),
+        )
+        .join(LegoSet)
+        .where(
+            LegoSet.set_number.in_(normalized_set_numbers),
+            MarketplaceListing.listing_status == "active",
+            MarketplaceListing.last_seen_at >= seen_since,
+        )
+        .order_by(
+            MarketplaceListing.last_seen_at.desc(),
+            MarketplaceListing.created_at.desc(),
+        )
+    )
+    return list(result.scalars())
+
+
 async def bulk_create_marketplace_listings(
     db: AsyncSession,
     *,

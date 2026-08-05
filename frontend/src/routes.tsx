@@ -10,6 +10,7 @@ import { LoginPage } from "./features/auth/LoginPage";
 import { ResetPasswordPage } from "./features/auth/ResetPasswordPage";
 import { VerifyEmailPage } from "./features/auth/VerifyEmailPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { DealsPage } from "./features/deals/DealsPage";
 import { PortfolioPage } from "./features/portfolio/PortfolioPage";
 import { HoldingDetailPage } from "./features/portfolio/HoldingDetailPage";
 import { SetDetailPage } from "./features/sets/SetDetailPage";
@@ -41,6 +42,7 @@ export const appRoutes: RouteObject[] = [
         ),
         children: [
           { path: "/dashboard", element: <DashboardPage /> },
+          { path: "/deals", element: <DealsPage /> },
           { path: "/analyze", element: <AnalyzePage /> },
           { path: "/portfolio", element: <PortfolioPage /> },
           { path: "/portfolio/items/:itemId", element: <HoldingDetailPage /> },

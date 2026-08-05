@@ -1,6 +1,7 @@
 import {
   Boxes,
   Calculator,
+  Tags,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -23,6 +24,12 @@ import type { BreadcrumbItem } from "./ui";
 import { Logo } from "./Logo";
 
 const navItems = [
+  {
+    description: "Active marketplace listings ranked as flip opportunities.",
+    icon: Tags,
+    label: "Deals",
+    to: "/deals",
+  },
   {
     description: "Workspace overview and shortcuts.",
     icon: LayoutDashboard,
