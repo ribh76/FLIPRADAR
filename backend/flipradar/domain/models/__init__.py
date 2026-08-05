@@ -16,6 +16,7 @@ from flipradar.domain.models.refresh_token import (
     RefreshTokenBlacklist,
     RefreshTokenSession,
 )
+from flipradar.domain.models.saved_search import SavedSearch
 from flipradar.domain.models.user import User
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "PortfolioValuationDailyRollup",
     "PriceSnapshot",
     "Recommendation",
+    "SavedSearch",
     "RefreshTokenBlacklist",
     "RefreshTokenSession",
     "User",

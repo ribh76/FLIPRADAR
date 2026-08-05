@@ -12,7 +12,7 @@ import {
 } from "../../components/ui";
 import { useServerQuery } from "../../hooks/serverState";
 import { apiClient, getApiError } from "../../services/apiClient";
-import type { DealFilters, DealsResponse } from "../../types";
+import type { DealFilters, DealsResponse, SavedSearch } from "../../types";
 import { DealCard } from "./DealCard";
 
 const numberFilters = new Set([
@@ -65,6 +65,12 @@ export function DealsPage() {
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState("");
+  const [savedSearchName, setSavedSearchName] = useState("");
+  const [selectedSearchId, setSelectedSearchId] = useState("");
+  const savedSearchQuery = useServerQuery<SavedSearch[]>(
+    ["saved-searches"],
+    useCallback(() => apiClient.savedSearches.list(), []),
+  );
 
   function updateFilter(name: string, value: string) {
     setSearchParams((current) => {
@@ -73,6 +79,68 @@ export function DealsPage() {
       else next.delete(name);
       return next;
     });
+  }
+
+  async function saveCurrentSearch() {
+    if (!savedSearchName.trim()) return;
+    const saved = await apiClient.savedSearches.create({
+      name: savedSearchName,
+      filter_config: filters,
+    });
+    savedSearchQuery.setData([saved, ...(savedSearchQuery.data ?? [])]);
+    setSelectedSearchId(saved.id);
+    setSavedSearchName("");
+  }
+
+  async function selectSavedSearch(id: string) {
+    setSelectedSearchId(id);
+    const saved = savedSearchQuery.data?.find((search) => search.id === id);
+    if (!saved) return;
+    setSearchParams(
+      Object.fromEntries(
+        Object.entries(saved.filter_config).map(([key, value]) => [
+          key,
+          String(value),
+        ]),
+      ),
+    );
+    const run = await apiClient.savedSearches.recordRun(id);
+    savedSearchQuery.setData(
+      (savedSearchQuery.data ?? []).map((search) =>
+        search.id === id ? run : search,
+      ),
+    );
+  }
+
+  async function updateSelectedSearch() {
+    if (!selectedSearchId || !savedSearchName.trim()) return;
+    const saved = await apiClient.savedSearches.update(selectedSearchId, {
+      name: savedSearchName,
+      filter_config: filters,
+    });
+    savedSearchQuery.setData(
+      (savedSearchQuery.data ?? []).map((search) =>
+        search.id === saved.id ? saved : search,
+      ),
+    );
+  }
+
+  async function duplicateSelectedSearch() {
+    if (!selectedSearchId) return;
+    const saved = await apiClient.savedSearches.duplicate(selectedSearchId);
+    savedSearchQuery.setData([saved, ...(savedSearchQuery.data ?? [])]);
+    setSelectedSearchId(saved.id);
+  }
+
+  async function deleteSelectedSearch() {
+    if (!selectedSearchId) return;
+    await apiClient.savedSearches.remove(selectedSearchId);
+    savedSearchQuery.setData(
+      (savedSearchQuery.data ?? []).filter(
+        (search) => search.id !== selectedSearchId,
+      ),
+    );
+    setSelectedSearchId("");
   }
 
   async function refreshDeals() {
@@ -119,6 +187,62 @@ export function DealsPage() {
       </div>
 
       <Card>
+        <div className="mb-5 grid gap-3 border-b border-[var(--color-border-soft)] pb-5 md:grid-cols-[1fr_1fr_auto_auto_auto]">
+          <SelectField
+            label="Saved searches"
+            onChange={(event) => void selectSavedSearch(event.target.value)}
+            value={selectedSearchId}
+          >
+            <option value="">Select a saved search</option>
+            {savedSearchQuery.data?.map((search) => (
+              <option key={search.id} value={search.id}>
+                {search.name} ·{" "}
+                {search.last_run_at
+                  ? new Date(search.last_run_at).toLocaleDateString()
+                  : "never run"}{" "}
+                · {search.result_count} results
+              </option>
+            ))}
+          </SelectField>
+          <TextField
+            label="Search name"
+            onChange={(event) => setSavedSearchName(event.target.value)}
+            placeholder="e.g. Retired UCS under $500"
+            value={savedSearchName}
+          />
+          <button
+            className="secondary-button self-end"
+            onClick={() => void saveCurrentSearch()}
+            type="button"
+          >
+            Save current
+          </button>
+          <button
+            className="secondary-button self-end"
+            disabled={!selectedSearchId}
+            onClick={() => void updateSelectedSearch()}
+            type="button"
+          >
+            Update
+          </button>
+          <button
+            className="secondary-button self-end"
+            disabled={!selectedSearchId}
+            onClick={() => void duplicateSelectedSearch()}
+            type="button"
+          >
+            Duplicate
+          </button>
+          {selectedSearchId ? (
+            <button
+              className="secondary-button self-end"
+              onClick={() => void deleteSelectedSearch()}
+              type="button"
+            >
+              Delete
+            </button>
+          ) : null}
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <TextField
             label="Minimum budget"

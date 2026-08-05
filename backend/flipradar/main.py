@@ -20,6 +20,7 @@ from flipradar.api.routes import (
     portfolio_routes,
     price_snapshot_routes,
     recommendation_routes,
+    saved_search_routes,
     user_routes,
 )
 from flipradar.core.logging import setup_logging
@@ -104,6 +105,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_routes.router)
     app.include_router(lego_routes.router)
     app.include_router(deal_routes.router)
+    app.include_router(saved_search_routes.router)
     app.include_router(listing_routes.router)
     app.include_router(price_snapshot_routes.router)
     app.include_router(recommendation_routes.router)

@@ -81,6 +81,17 @@ export type DealFilters = {
   refresh?: boolean;
 };
 
+export type SavedSearch = {
+  id: string;
+  name: string;
+  filter_config: DealFilters;
+  filter_version: number;
+  last_run_at: string | null;
+  result_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AuthSession = {
   access_token: string;
   refresh_token: string;

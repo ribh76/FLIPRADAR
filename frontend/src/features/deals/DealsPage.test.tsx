@@ -9,7 +9,17 @@ import type { DealsResponse } from "../../types";
 import { DealsPage } from "./DealsPage";
 
 vi.mock("../../services/apiClient", () => ({
-  apiClient: { deals: { list: vi.fn() } },
+  apiClient: {
+    deals: { list: vi.fn() },
+    savedSearches: {
+      create: vi.fn(),
+      duplicate: vi.fn(),
+      list: vi.fn(),
+      recordRun: vi.fn(),
+      remove: vi.fn(),
+      update: vi.fn(),
+    },
+  },
   getApiError: (error: unknown) =>
     error instanceof Error ? error.message : "Request failed",
 }));
@@ -64,6 +74,7 @@ describe("DealsPage", () => {
     invalidateServerState(["deals", ""]);
     invalidateServerState(["deals", "theme=Star+Wars&min_discount=20"]);
     vi.mocked(apiClient.deals.list).mockResolvedValue(deals);
+    vi.mocked(apiClient.savedSearches.list).mockResolvedValue([]);
   });
 
   afterEach(cleanup);
@@ -131,6 +142,38 @@ describe("DealsPage", () => {
     await user.click(screen.getByRole("button", { name: /clear all/i }));
     await waitFor(() => {
       expect(screen.queryByText("Active filters")).not.toBeInTheDocument();
+    });
+  });
+
+  it("saves the current URL filter configuration", async () => {
+    const user = userEvent.setup();
+    vi.mocked(apiClient.savedSearches.create).mockResolvedValue({
+      id: "saved-1",
+      name: "UCS deals",
+      filter_config: { min_discount: 20 },
+      filter_version: 1,
+      last_run_at: null,
+      result_count: 0,
+      created_at: "2026-08-05T00:00:00Z",
+      updated_at: "2026-08-05T00:00:00Z",
+    });
+    render(<DealsPage />, {
+      wrapper: ({ children }) => (
+        <MemoryRouter initialEntries={["/deals?min_discount=20"]}>
+          {children}
+        </MemoryRouter>
+      ),
+    });
+
+    await screen.findByText("AT-AT");
+    await user.type(screen.getByLabelText("Search name"), "UCS deals");
+    await user.click(screen.getByRole("button", { name: "Save current" }));
+
+    await waitFor(() => {
+      expect(apiClient.savedSearches.create).toHaveBeenCalledWith({
+        name: "UCS deals",
+        filter_config: { min_discount: 20 },
+      });
     });
   });
 });

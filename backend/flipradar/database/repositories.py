@@ -29,6 +29,7 @@ from flipradar.domain.models import (
     Recommendation,
     RefreshTokenBlacklist,
     RefreshTokenSession,
+    SavedSearch,
     User,
 )
 
@@ -1217,6 +1218,64 @@ async def get_latest_recommendation_for_set(
         .limit(1)
     )
     return result.scalar_one_or_none()
+
+
+# Saved search repository
+async def list_saved_searches_for_user(
+    db: AsyncSession, user_id: UUID
+) -> list[SavedSearch]:
+    result = await db.execute(
+        select(SavedSearch)
+        .where(SavedSearch.user_id == user_id)
+        .order_by(SavedSearch.updated_at.desc())
+    )
+    return list(result.scalars())
+
+
+async def get_saved_search_for_user(
+    db: AsyncSession, search_id: UUID, user_id: UUID
+) -> SavedSearch | None:
+    result = await db.execute(
+        select(SavedSearch).where(
+            SavedSearch.id == search_id, SavedSearch.user_id == user_id
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def count_saved_searches_for_user(db: AsyncSession, user_id: UUID) -> int:
+    return int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(SavedSearch)
+                .where(SavedSearch.user_id == user_id)
+            )
+        ).scalar_one()
+    )
+
+
+async def create_saved_search(db: AsyncSession, data: dict[str, Any]) -> SavedSearch:
+    search = SavedSearch(**data)
+    db.add(search)
+    await db.flush()
+    await db.refresh(search)
+    return search
+
+
+async def update_saved_search(
+    db: AsyncSession, search: SavedSearch, data: dict[str, Any]
+) -> SavedSearch:
+    for key, value in data.items():
+        setattr(search, key, value)
+    await db.flush()
+    await db.refresh(search)
+    return search
+
+
+async def delete_saved_search(db: AsyncSession, search: SavedSearch) -> None:
+    await db.delete(search)
+    await db.flush()
 
 
 # Watchlist repository

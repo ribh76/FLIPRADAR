@@ -89,3 +89,9 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    saved_searches = relationship(
+        "SavedSearch",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

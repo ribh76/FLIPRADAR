@@ -64,6 +64,11 @@ from flipradar.api.schemas.recommendation_schema import (
     RecommendationResponse,
     UserGoal,
 )
+from flipradar.api.schemas.saved_search_schema import (
+    SavedSearchCreate,
+    SavedSearchResponse,
+    SavedSearchUpdate,
+)
 from flipradar.api.schemas.set_detail_schema import (
     LatestSnapshotSummary,
     SetDetailResponse,
@@ -122,6 +127,9 @@ __all__ = [
     "ResendVerificationResponse",
     "SetDetailResponse",
     "SetMetadataSummary",
+    "SavedSearchCreate",
+    "SavedSearchResponse",
+    "SavedSearchUpdate",
     "TokenResponse",
     "UserCreate",
     "UserGoal",

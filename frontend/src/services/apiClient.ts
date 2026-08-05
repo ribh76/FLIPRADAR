@@ -19,6 +19,7 @@ import type {
   PortfolioHistory,
   PortfolioSummary,
   RefreshSession,
+  SavedSearch,
   LegoSet,
   SetDetail,
 } from "../types";
@@ -205,6 +206,35 @@ export const apiClient = {
         api.get<DealsResponse>("/deals", {
           params: { limit: 25, offset: 0, ...options },
         }),
+      );
+    },
+  },
+  savedSearches: {
+    list() {
+      return requestData(api.get<SavedSearch[]>("/saved-searches"));
+    },
+    create(payload: { name: string; filter_config: DealFilters }) {
+      return requestData(api.post<SavedSearch>("/saved-searches", payload));
+    },
+    update(
+      id: string,
+      payload: { name?: string; filter_config?: DealFilters },
+    ) {
+      return requestData(
+        api.patch<SavedSearch>(`/saved-searches/${id}`, payload),
+      );
+    },
+    duplicate(id: string) {
+      return requestData(
+        api.post<SavedSearch>(`/saved-searches/${id}/duplicate`),
+      );
+    },
+    remove(id: string) {
+      return requestData(api.delete<void>(`/saved-searches/${id}`));
+    },
+    recordRun(id: string) {
+      return requestData(
+        api.post<SavedSearch>(`/saved-searches/${id}/run`),
       );
     },
   },

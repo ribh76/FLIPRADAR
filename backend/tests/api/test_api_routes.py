@@ -730,6 +730,57 @@ def bearer_headers(access_token: str) -> dict:
     return {"Authorization": f"Bearer {access_token}"}
 
 
+def test_saved_search_crud_limit_validation_and_ownership(client: TestClient):
+    owner_headers = auth_headers(client, "saved-search-owner")
+    other_headers = auth_headers(client, "saved-search-other")
+    payload = {
+        "name": "Retired Star Wars",
+        "filter_config": {"theme": "Star Wars", "retirement_status": "retired"},
+    }
+    created = client.post("/saved-searches", headers=owner_headers, json=payload)
+    assert created.status_code == 201, created.text
+    search = created.json()
+
+    listed = client.get("/saved-searches", headers=owner_headers)
+    assert listed.status_code == 200
+    assert listed.json()[0]["name"] == payload["name"]
+    assert (
+        client.patch(
+            f"/saved-searches/{search['id']}",
+            headers=owner_headers,
+            json={"name": "Retired UCS", "filter_config": {"min_discount": 20}},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            f"/saved-searches/{search['id']}/duplicate", headers=owner_headers
+        ).status_code
+        == 201
+    )
+    assert (
+        client.post(
+            f"/saved-searches/{search['id']}/run",
+            headers=owner_headers,
+        ).status_code
+        == 200
+    )
+    assert (
+        client.patch(
+            f"/saved-searches/{search['id']}",
+            headers=other_headers,
+            json={"name": "not allowed"},
+        ).status_code
+        == 404
+    )
+    assert (
+        client.delete(
+            f"/saved-searches/{search['id']}", headers=owner_headers
+        ).status_code
+        == 204
+    )
+
+
 def verification_token_from_url(verification_url: str) -> str:
     parsed = urlparse(verification_url)
     tokens = parse_qs(parsed.query).get("token")
