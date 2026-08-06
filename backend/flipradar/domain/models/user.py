@@ -95,3 +95,9 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    watchlist_items = relationship(
+        "WatchlistItem",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

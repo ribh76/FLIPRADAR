@@ -615,40 +615,40 @@ Classification: MUST SHIP
 PHASE 31: LISTING ANALYSIS (Complete) 
 Classification: MUST SHIP
 
-1. Match the listing to a set.
-2. Calculate product-match confidence.
-3. Parse condition and completeness.
-4. Calculate total cost.
-5. Retrieve fair-value estimates.
-6. Calculate discount or premium.
-7. Evaluate seller and marketplace signals.
-8. Generate risk flags.
-9. Run the deal-scoring engine.
-10. Return Buy, Watch, Pass, or Insufficient Data.
-11. Return decision confidence.
-12. Return itemized reasons.
-13. Return freshness and sample-size details.
-14. Store the evaluation.
-15. Add complete tests. 
+1. Match the listing to a set. - (Complete) 
+2. Calculate product-match confidence. - (Complete) 
+3. Parse condition and completeness. - (Complete) 
+4. Calculate total cost. - (Complete) 
+5. Retrieve fair-value estimates. - (Complete) 
+6. Calculate discount or premium. - (Complete) 
+7. Evaluate seller and marketplace signals. - (Complete) 
+8. Generate risk flags. - (Complete) 
+9. Run the deal-scoring engine. - (Complete) 
+10. Return Buy, Watch, Pass, or Insufficient Data. - (Complete) 
+11. Return decision confidence. - (Complete) 
+12. Return itemized reasons. - (Complete) 
+13. Return freshness and sample-size details. - (Complete) 
+14. Store the evaluation. - (Complete) 
+15. Add complete tests.  - (Complete) 
 
 PHASE 32: LISTING EVALUATOR INTERFACE
 Classification: MUST SHIP
 
-1. Create a dedicated Listing Evaluator page.
-2. Add a listing URL input.
-3. Detect and display the marketplace.
-4. Show retrieval progress.
-5. Display normalized listing details.
-6. Display fair-value range.
-7. Display discount or premium.
-8. Display Buy, Watch, Pass, or Insufficient Data.
-9. Display confidence and freshness.
-10. Display risk flags.
-11. Display score breakdown.
-12. Add Save to Watchlist.
-13. Add Add Purchase to Portfolio.
-14. Add manual-entry fallback.
-15. Add responsive and accessibility tests.
+1. Create a dedicated Listing Evaluator page. - (Complete) 
+2. Add a listing URL input. - (Complete) 
+3. Detect and display the marketplace. - (Complete) 
+4. Show retrieval progress. - (Complete) 
+5. Display normalized listing details. - (Complete) 
+6. Display fair-value range. - (Complete) 
+7. Display discount or premium. - (Complete) 
+8. Display Buy, Watch, Pass, or Insufficient Data. - (Complete) 
+9. Display confidence and freshness. - (Complete) 
+10. Display risk flags. - (Complete) 
+11. Display score breakdown. - (Complete) 
+12. Add Save to Watchlist. - (Complete) 
+13. Add Add Purchase to Portfolio. - (Complete) 
+14. Add manual-entry fallback. - (Complete) 
+15. Add responsive and accessibility tests.  - (Complete) 
 
 ==================================================
 PART IX - WATCHLIST
@@ -664,6 +664,7 @@ Classification: MUST SHIP
 5. Add create, read, edit, and delete operations.
 6. Prevent accidental duplicates.
 7. Add ownership checks.
+--
 8. Add Save to Watchlist across the application.
 9. Build the watchlist page.
 10. Display current price, target, valuation, discount, and last checked time.

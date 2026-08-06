@@ -22,6 +22,7 @@ from flipradar.api.routes import (
     recommendation_routes,
     saved_search_routes,
     user_routes,
+    watchlist_routes,
 )
 from flipradar.core.logging import setup_logging
 from flipradar.core.settings import Settings, get_settings
@@ -75,6 +76,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "description": "Ranked eligible marketplace deal discovery.",
             },
             {
+                "name": "Watchlist",
+                "description": "Authenticated set and listing watchlist tracking.",
+            },
+            {
                 "name": "Marketplace/Internal",
                 "description": (
                     "Internal or development data refresh and snapshot helpers."
@@ -106,6 +111,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(lego_routes.router)
     app.include_router(deal_routes.router)
     app.include_router(saved_search_routes.router)
+    app.include_router(watchlist_routes.router)
     app.include_router(listing_routes.router)
     app.include_router(price_snapshot_routes.router)
     app.include_router(recommendation_routes.router)

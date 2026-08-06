@@ -925,6 +925,93 @@ def test_saved_search_crud_limit_validation_and_ownership(client: TestClient):
     )
 
 
+def test_watchlist_crud_supports_set_and_listing_entries_with_ownership(
+    client: TestClient,
+):
+    owner_headers = auth_headers(client, "watchlist-owner")
+    other_headers = auth_headers(client, "watchlist-other")
+    lego_set = create_lego_set(client)
+
+    set_entry = client.post(
+        "/watchlist",
+        headers=owner_headers,
+        json={
+            "set_number": lego_set["set_number"],
+            "target_price": "125.00",
+            "notes": "Wait for a sale",
+        },
+    )
+    assert set_entry.status_code == 201, set_entry.text
+    set_item = set_entry.json()
+    assert set_item["entry_type"] == "set"
+    assert set_item["set_number"] == lego_set["set_number"]
+    assert set_item["listing_id"] is None
+    assert set_item["last_known_listing_price"] is None
+    assert set_item["last_known_listing_status"] is None
+
+    duplicate = client.post(
+        "/watchlist",
+        headers=owner_headers,
+        json={"set_number": lego_set["set_number"]},
+    )
+    assert duplicate.status_code == 409
+    assert (
+        client.post(
+            "/watchlist",
+            headers=other_headers,
+            json={"set_number": lego_set["set_number"]},
+        ).status_code
+        == 201
+    )
+    assert (
+        client.get(f"/watchlist/{set_item['id']}", headers=other_headers).status_code
+        == 404
+    )
+
+    updated = client.patch(
+        f"/watchlist/{set_item['id']}",
+        headers=owner_headers,
+        json={"target_price": "110.00", "notes": "Only complete sets"},
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["target_price"] == "110.00"
+    assert updated.json()["notes"] == "Only complete sets"
+
+    listing = client.post(
+        "/listings", json=create_listing_payload(lego_set["set_number"])
+    )
+    assert listing.status_code == 201, listing.text
+    listing_entry = client.post(
+        "/watchlist",
+        headers=owner_headers,
+        json={"listing_id": listing.json()["id"]},
+    )
+    assert listing_entry.status_code == 201, listing_entry.text
+    listing_item = listing_entry.json()
+    assert listing_item["entry_type"] == "listing"
+    assert listing_item["last_known_listing_price"] == "162.49"
+    assert listing_item["last_known_listing_status"] == "active"
+    assert (
+        client.post(
+            "/watchlist",
+            headers=owner_headers,
+            json={"listing_id": listing.json()["id"]},
+        ).status_code
+        == 409
+    )
+
+    listed = client.get("/watchlist", headers=owner_headers)
+    assert listed.status_code == 200, listed.text
+    assert {item["id"] for item in listed.json()} == {
+        set_item["id"],
+        listing_item["id"],
+    }
+    assert (
+        client.delete(f"/watchlist/{set_item['id']}", headers=owner_headers).status_code
+        == 204
+    )
+
+
 def verification_token_from_url(verification_url: str) -> str:
     parsed = urlparse(verification_url)
     tokens = parse_qs(parsed.query).get("token")

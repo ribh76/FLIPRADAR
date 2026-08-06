@@ -77,6 +77,11 @@ from flipradar.api.schemas.set_detail_schema import (
     SetDetailResponse,
     SetMetadataSummary,
 )
+from flipradar.api.schemas.watchlist_schema import (
+    WatchlistItemCreate,
+    WatchlistItemResponse,
+    WatchlistItemUpdate,
+)
 
 __all__ = [
     "AnalyzeRequest",
@@ -141,4 +146,7 @@ __all__ = [
     "UserGoal",
     "UserLogin",
     "UserResponse",
+    "WatchlistItemCreate",
+    "WatchlistItemResponse",
+    "WatchlistItemUpdate",
 ]

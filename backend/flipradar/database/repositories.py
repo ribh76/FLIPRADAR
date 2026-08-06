@@ -32,6 +32,7 @@ from flipradar.domain.models import (
     RefreshTokenSession,
     SavedSearch,
     User,
+    WatchlistItem,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,10 +51,6 @@ class DuplicateRecordError(RepositoryError):
 
 class ConflictRecordError(RepositoryError):
     """Raised when a write conflicts with current database state."""
-
-
-class WatchlistRepositoryUnavailableError(RepositoryError):
-    """Raised until a watchlist persistence model is added."""
 
 
 class LegoSetCatalogRepository:
@@ -1318,8 +1315,66 @@ async def delete_saved_search(db: AsyncSession, search: SavedSearch) -> None:
 # Watchlist repository
 async def list_watchlist_items_for_user(
     db: AsyncSession, user_id: UUID, *, pagination: Pagination | None = None
-) -> list[Any]:
-    del db, user_id, pagination
-    raise WatchlistRepositoryUnavailableError(
-        "Watchlist persistence model is not defined."
+) -> list[WatchlistItem]:
+    statement = (
+        select(WatchlistItem)
+        .options(
+            selectinload(WatchlistItem.lego_set),
+            selectinload(WatchlistItem.listing).selectinload(
+                MarketplaceListing.lego_set
+            ),
+        )
+        .where(WatchlistItem.user_id == user_id)
+        .order_by(WatchlistItem.saved_at.desc(), WatchlistItem.created_at.desc())
     )
+    result = await db.execute(
+        _apply_pagination(statement, pagination) if pagination else statement
+    )
+    return list(result.scalars())
+
+
+async def get_watchlist_item_for_user(
+    db: AsyncSession, item_id: UUID, user_id: UUID
+) -> WatchlistItem | None:
+    result = await db.execute(
+        select(WatchlistItem)
+        .options(
+            selectinload(WatchlistItem.lego_set),
+            selectinload(WatchlistItem.listing).selectinload(
+                MarketplaceListing.lego_set
+            ),
+        )
+        .where(WatchlistItem.id == item_id, WatchlistItem.user_id == user_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_watchlist_item(
+    db: AsyncSession, item_data: dict[str, Any]
+) -> WatchlistItem:
+    item = WatchlistItem(**item_data)
+    db.add(item)
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        raise DuplicateRecordError("Watchlist item already exists") from exc
+    return await get_watchlist_item_for_user(db, item.id, item.user_id) or item
+
+
+async def update_watchlist_item(
+    db: AsyncSession,
+    item: WatchlistItem,
+    item_data: dict[str, Any],
+) -> WatchlistItem:
+    for field_name, value in item_data.items():
+        setattr(item, field_name, value)
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        raise DuplicateRecordError("Watchlist item already exists") from exc
+    return await get_watchlist_item_for_user(db, item.id, item.user_id) or item
+
+
+async def delete_watchlist_item(db: AsyncSession, item: WatchlistItem) -> None:
+    await db.delete(item)
+    await db.flush()

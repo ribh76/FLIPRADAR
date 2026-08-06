@@ -132,3 +132,6 @@ class MarketplaceListing(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    watchlist_items = relationship(
+        "WatchlistItem", back_populates="listing", passive_deletes=True
+    )

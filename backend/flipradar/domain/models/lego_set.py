@@ -112,3 +112,6 @@ class LegoSet(Base):
     portfolio_items = relationship(
         "PortfolioItem", back_populates="lego_set", passive_deletes=True
     )
+    watchlist_items = relationship(
+        "WatchlistItem", back_populates="lego_set", passive_deletes=True
+    )
