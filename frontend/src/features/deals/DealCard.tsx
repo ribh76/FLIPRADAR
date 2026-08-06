@@ -1,9 +1,12 @@
 import { ExternalLink } from "lucide-react";
+import { useState } from "react";
 import { Badge, Card, MetricCard } from "../../components/ui";
+import { apiClient, getApiError } from "../../services/apiClient";
 import type { Deal } from "../../types";
 import { currency, percent } from "../../utils/format";
 
 export function DealCard({ deal }: { deal: Deal }) {
+  const [message, setMessage] = useState("");
   return (
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -56,7 +59,22 @@ export function DealCard({ deal }: { deal: Deal }) {
         >
           View listing <ExternalLink aria-hidden="true" size={16} />
         </a>
+        <button
+          className="secondary-button"
+          onClick={() =>
+            void apiClient.watchlist
+              .addListing(deal.listing_id)
+              .then(() => setMessage("Saved to watchlist."))
+              .catch((error: unknown) => setMessage(getApiError(error)))
+          }
+          type="button"
+        >
+          Save to watchlist
+        </button>
       </div>
+      {message ? (
+        <p className="mt-3 text-sm text-[var(--color-text-muted)]">{message}</p>
+      ) : null}
       <p className="mt-4 text-sm leading-6 text-[var(--color-text-muted)]">
         {deal.explanation}
       </p>

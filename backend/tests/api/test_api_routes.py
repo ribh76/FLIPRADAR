@@ -991,6 +991,9 @@ def test_watchlist_crud_supports_set_and_listing_entries_with_ownership(
     assert listing_item["entry_type"] == "listing"
     assert listing_item["last_known_listing_price"] == "162.49"
     assert listing_item["last_known_listing_status"] == "active"
+    assert listing_item["current_price"] == "162.49"
+    assert "valuation" in listing_item
+    assert listing_item["last_checked_at"] is not None
     assert (
         client.post(
             "/watchlist",
@@ -1006,6 +1009,36 @@ def test_watchlist_crud_supports_set_and_listing_entries_with_ownership(
         set_item["id"],
         listing_item["id"],
     }
+    moved = client.post(
+        f"/watchlist/{listing_item['id']}/move-to-portfolio", headers=owner_headers
+    )
+    assert moved.status_code == 200, moved.text
+    assert moved.json()["set_number"] == lego_set["set_number"]
+    assert {
+        item["id"] for item in client.get("/watchlist", headers=owner_headers).json()
+    } == {set_item["id"]}
+    ended_listing = client.post(
+        "/listings",
+        json={
+            **create_listing_payload(lego_set["set_number"]),
+            "external_listing_id": f"ended-{uuid4().hex}",
+            "listing_status": "ended",
+        },
+    )
+    assert ended_listing.status_code == 201, ended_listing.text
+    ended_item = client.post(
+        "/watchlist",
+        headers=owner_headers,
+        json={"listing_id": ended_listing.json()["id"]},
+    )
+    assert ended_item.status_code == 201, ended_item.text
+    assert (
+        client.post(
+            f"/watchlist/{ended_item.json()['id']}/move-to-portfolio",
+            headers=owner_headers,
+        ).status_code
+        == 409
+    )
     assert (
         client.delete(f"/watchlist/{set_item['id']}", headers=owner_headers).status_code
         == 204

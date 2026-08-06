@@ -1,5 +1,7 @@
 import { ExternalLink, PackageOpen } from "lucide-react";
+import { useState } from "react";
 import { Card, MetricCard } from "../../components/ui";
+import { apiClient, getApiError } from "../../services/apiClient";
 import type { LegoSet } from "../../types";
 import { currency, numberValue } from "../../utils/format";
 
@@ -20,6 +22,7 @@ function updatedAt(value: string): string {
 }
 
 export function SetCatalogCard({ set, onViewDetail }: SetCatalogCardProps) {
+  const [watchlistMessage, setWatchlistMessage] = useState("");
   const imageUrl = set.image_urls?.[0];
   const retirementStatus = set.retirement_year
     ? `Retired ${set.retirement_year}`
@@ -101,10 +104,26 @@ export function SetCatalogCard({ set, onViewDetail }: SetCatalogCardProps) {
             <button className="secondary-button" disabled type="button">
               Add to portfolio
             </button>
-            <button className="secondary-button" disabled type="button">
+            <button
+              className="secondary-button"
+              onClick={() =>
+                void apiClient.watchlist
+                  .addSet(set.set_number)
+                  .then(() => setWatchlistMessage("Saved to watchlist."))
+                  .catch((error: unknown) =>
+                    setWatchlistMessage(getApiError(error)),
+                  )
+              }
+              type="button"
+            >
               Add to watchlist
             </button>
           </div>
+          {watchlistMessage ? (
+            <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+              {watchlistMessage}
+            </p>
+          ) : null}
         </div>
       </div>
     </Card>

@@ -25,6 +25,7 @@ import type {
   ListingAnalysis,
   ManualListingEntry,
   SetDetail,
+  WatchlistItem,
 } from "../types";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
@@ -236,9 +237,7 @@ export const apiClient = {
       return requestData(api.delete<void>(`/saved-searches/${id}`));
     },
     recordRun(id: string) {
-      return requestData(
-        api.post<SavedSearch>(`/saved-searches/${id}/run`),
-      );
+      return requestData(api.post<SavedSearch>(`/saved-searches/${id}/run`));
     },
   },
   analyze(payload: AnalyzeRequest) {
@@ -250,10 +249,12 @@ export const apiClient = {
       url: string;
       manual_listing?: ManualListingEntry;
     }) {
-      return requestData(api.post<Listing>('/listing-evaluations', payload));
+      return requestData(api.post<Listing>("/listing-evaluations", payload));
     },
     analyze(listingId: string) {
-      return requestData(api.post<ListingAnalysis>(`/listings/${listingId}/analysis`));
+      return requestData(
+        api.post<ListingAnalysis>(`/listings/${listingId}/analysis`),
+      );
     },
   },
   auth: {
@@ -359,6 +360,32 @@ export const apiClient = {
     },
     deleteItem(itemId: string) {
       return requestData(api.delete<void>(`/portfolio/items/${itemId}`));
+    },
+  },
+  watchlist: {
+    list() {
+      return requestData(api.get<WatchlistItem[]>("/watchlist"));
+    },
+    addSet(setNumber: string) {
+      return requestData(
+        api.post<WatchlistItem>("/watchlist", { set_number: setNumber }),
+      );
+    },
+    addListing(listingId: string) {
+      return requestData(
+        api.post<WatchlistItem>("/watchlist", { listing_id: listingId }),
+      );
+    },
+    refresh() {
+      return requestData(api.post<WatchlistItem[]>("/watchlist/refresh"));
+    },
+    moveToPortfolio(itemId: string) {
+      return requestData(
+        api.post<PortfolioItem>(`/watchlist/${itemId}/move-to-portfolio`, {}),
+      );
+    },
+    remove(itemId: string) {
+      return requestData(api.delete<void>(`/watchlist/${itemId}`));
     },
   },
   sets: {

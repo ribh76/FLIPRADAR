@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.auth import AuthenticatedUser
@@ -9,6 +9,7 @@ from flipradar.api.schemas import (
     WatchlistItemCreate,
     WatchlistItemResponse,
     WatchlistItemUpdate,
+    WatchlistMoveToPortfolio,
 )
 from flipradar.services import watchlist_service
 from flipradar.services.errors import ServiceError
@@ -43,6 +44,29 @@ async def create_watchlist_item(
     try:
         return await watchlist_service.create_watchlist_item(
             db, current_user.id, payload
+        )
+    except ServiceError as exc:
+        _raise(exc)
+
+
+@router.post("/refresh", response_model=list[WatchlistItemResponse])
+async def refresh_watchlist_items(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+):
+    return await watchlist_service.refresh_watchlist_items(db, current_user.id)
+
+
+@router.post("/{item_id}/move-to-portfolio")
+async def move_watchlist_item_to_portfolio(
+    item_id: UUID,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+    payload: WatchlistMoveToPortfolio = Body(default_factory=WatchlistMoveToPortfolio),
+):
+    try:
+        return await watchlist_service.move_watchlist_item_to_portfolio(
+            db, current_user.id, item_id, payload
         )
     except ServiceError as exc:
         _raise(exc)

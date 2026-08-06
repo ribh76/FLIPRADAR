@@ -109,7 +109,7 @@ describe("SetsPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps portfolio and watchlist action placeholders disabled", async () => {
+  it("enables the watchlist action for catalog sets", async () => {
     vi.mocked(apiClient.sets.search).mockResolvedValue({
       query: "42071",
       provider: null,
@@ -126,6 +126,6 @@ describe("SetsPage", () => {
     ).toBeDisabled();
     expect(
       screen.getByRole("button", { name: "Add to watchlist" }),
-    ).toBeDisabled();
+    ).toBeEnabled();
   });
 });

@@ -39,7 +39,16 @@ class WatchlistItemResponse(BaseModel):
     saved_at: datetime
     last_known_listing_price: Decimal | None
     last_known_listing_status: ListingStatus | None
+    current_price: Decimal | None
+    valuation: Decimal | None
+    discount_percent: Decimal | None
+    last_checked_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class WatchlistMoveToPortfolio(BaseModel):
+    quantity: int = Field(default=1, gt=0)
+    purchase_price: OptionalMoney = Field(default=None, ge=0, decimal_places=2)

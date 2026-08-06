@@ -1,5 +1,6 @@
 import {
   Boxes,
+  Bookmark,
   Calculator,
   Tags,
   LayoutDashboard,
@@ -37,7 +38,8 @@ const navItems = [
     to: "/dashboard",
   },
   {
-    description: "URL-backed, explainable analysis for one marketplace listing.",
+    description:
+      "URL-backed, explainable analysis for one marketplace listing.",
     icon: Calculator,
     label: "Listing evaluator",
     to: "/listing-evaluator",
@@ -47,6 +49,12 @@ const navItems = [
     icon: Boxes,
     label: "Portfolio",
     to: "/portfolio",
+  },
+  {
+    description: "Sets and listings you want to monitor.",
+    icon: Bookmark,
+    label: "Watchlist",
+    to: "/watchlist",
   },
   {
     description: "Set metadata and valuation lookup.",

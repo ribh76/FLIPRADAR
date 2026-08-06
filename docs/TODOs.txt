@@ -1295,9 +1295,9 @@ MILESTONE E: PORTFOLIO ANALYSIS
 Complete Phases 37-40.
 
 MILESTONE F: PUBLIC V1
-Complete every MUST SHIP phase through Phase 50.
+Complete Phases 41-50.
 
-MILESTONE G: V2
+MILESTONE G: V2 (Complete all SHIP LATER phases accross TODOS)
 Prioritize based on public feedback:
 1. Saved searches
 2. Watchlist intelligence

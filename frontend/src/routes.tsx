@@ -17,6 +17,7 @@ import { HoldingDetailPage } from "./features/portfolio/HoldingDetailPage";
 import { SetDetailPage } from "./features/sets/SetDetailPage";
 import { SetsPage } from "./features/sets/SetsPage";
 import { ShowcasePage } from "./features/showcase/ShowcasePage";
+import { WatchlistPage } from "./features/watchlist/WatchlistPage";
 import { AuthenticatedLayout } from "./layouts/AuthenticatedLayout";
 import { ErrorLayout } from "./layouts/ErrorLayout";
 import { PublicLayout } from "./layouts/PublicLayout";
@@ -47,6 +48,7 @@ export const appRoutes: RouteObject[] = [
           { path: "/analyze", element: <AnalyzePage /> },
           { path: "/listing-evaluator", element: <ListingEvaluatorPage /> },
           { path: "/portfolio", element: <PortfolioPage /> },
+          { path: "/watchlist", element: <WatchlistPage /> },
           { path: "/portfolio/items/:itemId", element: <HoldingDetailPage /> },
           { path: "/sets", element: <SetsPage /> },
           { path: "/sets/:setNumber", element: <SetDetailPage /> },

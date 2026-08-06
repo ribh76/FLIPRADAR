@@ -188,6 +188,23 @@ export type Listing = {
   is_verified: boolean;
 };
 
+export type WatchlistItem = {
+  id: string;
+  user_id: string;
+  entry_type: "set" | "listing";
+  set_number: string;
+  listing_id: string | null;
+  target_price: string | number | null;
+  notes: string | null;
+  saved_at: string;
+  last_known_listing_price: string | number | null;
+  last_known_listing_status: "active" | "sold" | "ended" | "removed" | null;
+  current_price: string | number | null;
+  valuation: string | number | null;
+  discount_percent: string | number | null;
+  last_checked_at: string | null;
+};
+
 export type ListingAnalysis = {
   id: string;
   listing_id: string;
