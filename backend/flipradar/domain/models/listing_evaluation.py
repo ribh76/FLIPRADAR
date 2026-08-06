@@ -42,6 +42,8 @@ class ListingEvaluation(Base):
         nullable=False,
     )
     fair_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    fair_value_low: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    fair_value_high: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     total_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     discount_percent: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
     premium_percent: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))

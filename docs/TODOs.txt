@@ -594,25 +594,25 @@ Classification: SHIP LATER
 PART VIII - LISTING EVALUATION
 ==================================================
 
-PHASE 30: LISTING URL INGESTION
+PHASE 30: LISTING URL INGESTION (Complete) 
 Classification: MUST SHIP
 
-1. Create a listing-evaluation request endpoint.
-2. Validate URL format.
-3. Allow only supported eBay and BrickLink domains.
-4. Reject local, private-network, malformed, and unsupported URLs.
-5. Normalize mobile, tracking, shortened, and regional URLs.
-6. Extract provider-specific listing IDs.
-7. Query the official provider API.
-8. Avoid arbitrary scraping as the primary method.
-9. Add manual listing entry when retrieval fails.
-10. Store whether data is verified or manually entered.
-11. Deduplicate recently evaluated listings.
-12. Handle removed and ended listings.
-13. Add strict timeouts.
-14. Add malicious-URL and provider-response tests.
+1. Create a listing-evaluation request endpoint. - (Complete) 
+2. Validate URL format. - (Complete) 
+3. Allow only supported eBay and BrickLink domains. - (Complete) 
+4. Reject local, private-network, malformed, and unsupported URLs. - (Complete) 
+5. Normalize mobile, tracking, shortened, and regional URLs. - (Complete) 
+6. Extract provider-specific listing IDs. - (Complete) 
+7. Query the official provider API. - (Complete) 
+8. Avoid arbitrary scraping as the primary method. - (Complete) 
+9. Add manual listing entry when retrieval fails. - (Complete) 
+10. Store whether data is verified or manually entered. - (Complete) 
+11. Deduplicate recently evaluated listings. - (Complete) 
+12. Handle removed and ended listings. - (Complete) 
+13. Add strict timeouts. - (Complete) 
+14. Add malicious-URL and provider-response tests. - (Complete) 
 
-PHASE 31: LISTING ANALYSIS
+PHASE 31: LISTING ANALYSIS (Complete) 
 Classification: MUST SHIP
 
 1. Match the listing to a set.
@@ -629,7 +629,7 @@ Classification: MUST SHIP
 12. Return itemized reasons.
 13. Return freshness and sample-size details.
 14. Store the evaluation.
-15. Add complete tests.
+15. Add complete tests. 
 
 PHASE 32: LISTING EVALUATOR INTERFACE
 Classification: MUST SHIP

@@ -168,6 +168,55 @@ export type PortfolioItemCreate = {
 
 export type PortfolioItemUpdate = Partial<PortfolioItemCreate>;
 
+export type Listing = {
+  id: string;
+  lego_set_id: string;
+  marketplace_id: string;
+  external_listing_id: string;
+  title: string;
+  url: string;
+  price: string | number;
+  shipping_price: string | number;
+  total_price: string | number;
+  currency: string;
+  condition: Condition;
+  listing_status: string;
+  seller_name: string | null;
+  seller_rating: string | number | null;
+  is_complete: boolean | null;
+  is_sealed: boolean | null;
+  is_verified: boolean;
+};
+
+export type ListingAnalysis = {
+  id: string;
+  listing_id: string;
+  fair_value: string | number | null;
+  fair_value_low: string | number | null;
+  fair_value_high: string | number | null;
+  total_cost: string | number;
+  discount_percent: string | number | null;
+  premium_percent: string | number | null;
+  product_match_confidence: string | number;
+  decision: "buy" | "watch" | "pass" | "insufficient_data";
+  decision_confidence: string | number;
+  reasons: string[];
+  risk_flags: string[];
+  score_breakdown: Record<string, unknown>;
+  valuation_sample_size: number;
+  valuation_retrieved_at: string | null;
+  created_at: string;
+};
+
+export type ManualListingEntry = {
+  title: string;
+  price: number;
+  shipping_price: number;
+  currency: string;
+  condition: Condition;
+  listing_status?: string;
+};
+
 export type PortfolioFilters = {
   condition?: Condition | "";
   theme?: string;

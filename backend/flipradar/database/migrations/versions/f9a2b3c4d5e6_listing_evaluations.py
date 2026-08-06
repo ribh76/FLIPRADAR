@@ -22,6 +22,8 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("listing_id", sa.Uuid(), nullable=False),
         sa.Column("fair_value", sa.Numeric(12, 2)),
+        sa.Column("fair_value_low", sa.Numeric(12, 2)),
+        sa.Column("fair_value_high", sa.Numeric(12, 2)),
         sa.Column("total_cost", sa.Numeric(12, 2), nullable=False),
         sa.Column("discount_percent", sa.Numeric(6, 2)),
         sa.Column("premium_percent", sa.Numeric(6, 2)),

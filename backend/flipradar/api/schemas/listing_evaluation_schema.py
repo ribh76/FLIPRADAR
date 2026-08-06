@@ -9,6 +9,8 @@ class ListingAnalysisResponse(BaseModel):
     id: UUID
     listing_id: UUID
     fair_value: Decimal | None
+    fair_value_low: Decimal | None
+    fair_value_high: Decimal | None
     total_cost: Decimal
     discount_percent: Decimal | None
     premium_percent: Decimal | None

@@ -514,8 +514,16 @@ def test_listing_analysis_persists_scored_decision_and_risks(
         sample_size = 12
         retrieval_time = datetime.now(UTC)
 
+    class LowSnapshot(Snapshot):
+        metric_type = "low"
+        value = Decimal("680.00")
+
+    class HighSnapshot(Snapshot):
+        metric_type = "high"
+        value = Decimal("760.00")
+
     async def snapshots(*args, **kwargs):
-        return {lego_set["set_number"]: [Snapshot()]}
+        return {lego_set["set_number"]: [Snapshot(), LowSnapshot(), HighSnapshot()]}
 
     monkeypatch.setattr(repositories, "get_latest_snapshots_for_set_numbers", snapshots)
     response = client.post(f"/listings/{listing['id']}/analysis")
@@ -525,6 +533,8 @@ def test_listing_analysis_persists_scored_decision_and_risks(
     assert body["decision"] == "buy"
     assert body["total_cost"] == "520.00"
     assert body["discount_percent"] == "28.30"
+    assert body["fair_value_low"] == "680.00"
+    assert body["fair_value_high"] == "760.00"
     assert body["product_match_confidence"] == "100.00"
     assert body["valuation_sample_size"] == 12
     assert body["reasons"]

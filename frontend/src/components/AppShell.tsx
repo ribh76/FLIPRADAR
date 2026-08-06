@@ -37,10 +37,10 @@ const navItems = [
     to: "/dashboard",
   },
   {
-    description: "Decision support for LEGO set listings.",
+    description: "URL-backed, explainable analysis for one marketplace listing.",
     icon: Calculator,
-    label: "Analyze",
-    to: "/analyze",
+    label: "Listing evaluator",
+    to: "/listing-evaluator",
   },
   {
     description: "Collection value, basis, and holdings.",

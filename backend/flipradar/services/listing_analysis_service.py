@@ -38,7 +38,9 @@ async def analyze_listing(db: AsyncSession, listing_id: UUID):
         ),
     }
     listing = await repositories.update_listing(db, listing, updates)
-    fair_value, sample_size, retrieved_at = await _fair_value(listing, db)
+    fair_value, fair_value_low, fair_value_high, sample_size, retrieved_at = (
+        await _fair_value(listing, db)
+    )
     risk_flags = _risk_flags(listing, retrieved_at)
     scored = score_deal(
         asking_price=listing.price,
@@ -69,6 +71,8 @@ async def analyze_listing(db: AsyncSession, listing_id: UUID):
         listing_id=listing.id,
         evaluation_data={
             "fair_value": fair_value,
+            "fair_value_low": fair_value_low,
+            "fair_value_high": fair_value_high,
             "total_cost": scored["total_cost"],
             "discount_percent": scored["discount_percent"],
             "premium_percent": scored["premium_percent"],
@@ -96,14 +100,30 @@ async def _fair_value(listing, db: AsyncSession):
     candidates = [
         snapshot
         for snapshot in snapshots
-        if snapshot.metric_type == "fair_market_value"
-        and snapshot.currency == listing.currency
-        and snapshot.condition == condition
+        if snapshot.currency == listing.currency and snapshot.condition == condition
     ]
-    if not candidates:
-        return None, 0, None
-    snapshot = max(candidates, key=lambda item: item.retrieval_time)
-    return snapshot.value, snapshot.sample_size, snapshot.retrieval_time
+    fair_candidates = [
+        item for item in candidates if item.metric_type == "fair_market_value"
+    ]
+    if not fair_candidates:
+        return None, None, None, 0, None
+    snapshot = max(fair_candidates, key=lambda item: item.retrieval_time)
+
+    def latest(metric: str):
+        return max(
+            (item for item in candidates if item.metric_type == metric),
+            key=lambda item: item.retrieval_time,
+            default=None,
+        )
+
+    low, high = latest("low"), latest("high")
+    return (
+        snapshot.value,
+        low.value if low else None,
+        high.value if high else None,
+        snapshot.sample_size,
+        snapshot.retrieval_time,
+    )
 
 
 def _parse_completeness(title: str) -> tuple[bool | None, bool | None]:

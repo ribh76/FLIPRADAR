@@ -21,6 +21,9 @@ import type {
   RefreshSession,
   SavedSearch,
   LegoSet,
+  Listing,
+  ListingAnalysis,
+  ManualListingEntry,
   SetDetail,
 } from "../types";
 
@@ -240,6 +243,18 @@ export const apiClient = {
   },
   analyze(payload: AnalyzeRequest) {
     return requestData(api.post<AnalyzeResponse>("/analyze", payload));
+  },
+  listings: {
+    evaluate(payload: {
+      set_number: string;
+      url: string;
+      manual_listing?: ManualListingEntry;
+    }) {
+      return requestData(api.post<Listing>('/listing-evaluations', payload));
+    },
+    analyze(listingId: string) {
+      return requestData(api.post<ListingAnalysis>(`/listings/${listingId}/analysis`));
+    },
   },
   auth: {
     login(payload: LoginRequest) {

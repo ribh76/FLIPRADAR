@@ -11,6 +11,7 @@ import { ResetPasswordPage } from "./features/auth/ResetPasswordPage";
 import { VerifyEmailPage } from "./features/auth/VerifyEmailPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { DealsPage } from "./features/deals/DealsPage";
+import { ListingEvaluatorPage } from "./features/listings/ListingEvaluatorPage";
 import { PortfolioPage } from "./features/portfolio/PortfolioPage";
 import { HoldingDetailPage } from "./features/portfolio/HoldingDetailPage";
 import { SetDetailPage } from "./features/sets/SetDetailPage";
@@ -44,6 +45,7 @@ export const appRoutes: RouteObject[] = [
           { path: "/dashboard", element: <DashboardPage /> },
           { path: "/deals", element: <DealsPage /> },
           { path: "/analyze", element: <AnalyzePage /> },
+          { path: "/listing-evaluator", element: <ListingEvaluatorPage /> },
           { path: "/portfolio", element: <PortfolioPage /> },
           { path: "/portfolio/items/:itemId", element: <HoldingDetailPage /> },
           { path: "/sets", element: <SetsPage /> },
