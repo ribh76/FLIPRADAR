@@ -126,3 +126,9 @@ class MarketplaceListing(Base):
 
     lego_set = relationship("LegoSet", back_populates="listings")
     marketplace = relationship("Marketplace", back_populates="listings")
+    evaluations = relationship(
+        "ListingEvaluation",
+        back_populates="listing",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

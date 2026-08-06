@@ -48,6 +48,7 @@ async def create_database_tables(engine: AsyncEngine | None = None) -> None:
         LegoSet,
         Marketplace,
         MarketplaceListing,
+        ListingEvaluation,
         PortfolioItem,
         PriceSnapshot,
         Recommendation,

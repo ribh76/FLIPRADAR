@@ -36,6 +36,7 @@ from flipradar.api.schemas.lego_set_schema import (
     LegoSetCreate,
     LegoSetResponse,
 )
+from flipradar.api.schemas.listing_evaluation_schema import ListingAnalysisResponse
 from flipradar.api.schemas.listing_schema import (
     ListingCreate,
     ListingEvaluationRequest,
@@ -102,6 +103,7 @@ __all__ = [
     "ListingCreate",
     "ListingEvaluationRequest",
     "ListingCollectionResponse",
+    "ListingAnalysisResponse",
     "ListingResponse",
     "ManualListingEntry",
     "LogoutRequest",

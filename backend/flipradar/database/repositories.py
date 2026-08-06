@@ -19,6 +19,7 @@ from flipradar.api.schemas.validation import MarketplaceName, normalize_set_numb
 from flipradar.domain.models import (
     AccountToken,
     LegoSet,
+    ListingEvaluation,
     Marketplace,
     MarketplaceListing,
     PortfolioItem,
@@ -624,6 +625,30 @@ async def update_listing(
     await db.flush()
     await db.refresh(listing)
     return listing
+
+
+async def get_listing_for_evaluation(
+    db: AsyncSession, listing_id: UUID
+) -> MarketplaceListing | None:
+    result = await db.execute(
+        select(MarketplaceListing)
+        .options(
+            selectinload(MarketplaceListing.lego_set),
+            selectinload(MarketplaceListing.marketplace),
+        )
+        .where(MarketplaceListing.id == listing_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_listing_evaluation(
+    db: AsyncSession, *, listing_id: UUID, evaluation_data: dict[str, Any]
+) -> ListingEvaluation:
+    evaluation = ListingEvaluation(listing_id=listing_id, **evaluation_data)
+    db.add(evaluation)
+    await db.flush()
+    await db.refresh(evaluation)
+    return evaluation
 
 
 async def list_listings_for_set(

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
+    ListingAnalysisResponse,
     ListingCollectionResponse,
     ListingCreate,
     ListingEvaluationRequest,
@@ -75,6 +76,35 @@ async def evaluate_listing_url(
         "request finished route=evaluate_listing_url set_number=%s", payload.set_number
     )
     return listing
+
+
+@router.post(
+    "/listings/{listing_id}/analysis",
+    response_model=ListingAnalysisResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Analyze one marketplace listing",
+)
+async def analyze_marketplace_listing(
+    listing_id: str, db: AsyncSession = Depends(get_db_session)
+):
+    from uuid import UUID
+
+    from flipradar.services import listing_analysis_service
+
+    try:
+        evaluation = await listing_analysis_service.analyze_listing(
+            db, UUID(listing_id)
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid listing ID",
+        ) from exc
+    if evaluation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found"
+        )
+    return evaluation
 
 
 # Lists marketplace listings for a set. It accepts a set number path parameter and returns matching listings.

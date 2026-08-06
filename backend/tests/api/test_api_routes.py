@@ -14,23 +14,23 @@ from sqlalchemy.pool import StaticPool
 
 import flipradar.domain.models  # noqa: F401
 from flipradar.core.settings import get_settings
-from flipradar.database import Base, get_db_session
+from flipradar.database import Base, get_db_session, repositories
 from flipradar.domain.engines import price_estimator
 from flipradar.domain.models import User
 from flipradar.integrations import bricklink_mock_client
+from flipradar.integrations.listing_provider_client import (
+    ProviderListing,
+    ProviderRetrievalError,
+)
 from flipradar.main import create_app
 from flipradar.services import (
     auth_service,
+    listing_evaluation_service,
     marketplace_service,
     portfolio_service,
     recommendation_service,
 )
 from flipradar.services.errors import ServiceProviderError, ServiceProviderTimeoutError
-from flipradar.integrations.listing_provider_client import (
-    ProviderListing,
-    ProviderRetrievalError,
-)
-from flipradar.services import listing_evaluation_service
 
 logger = logging.getLogger(__name__)
 VALID_PASSWORD = "Str0ng!Pass"
@@ -487,6 +487,60 @@ def test_listing_evaluation_rejects_private_and_unsupported_urls(client: TestCli
             json={"set_number": lego_set["set_number"], "url": url},
         )
         assert response.status_code == 400
+
+
+def test_listing_analysis_persists_scored_decision_and_risks(
+    client: TestClient, monkeypatch
+):
+    lego_set = create_lego_set(client, "75192")
+    listing_payload = create_listing_payload(lego_set["set_number"])
+    listing_payload.update(
+        {
+            "title": "LEGO 75192 sealed complete set",
+            "price": "500.00",
+            "shipping_price": "20.00",
+            "total_price": "520.00",
+            "seller_rating": "99.00",
+            "is_verified": True,
+        }
+    )
+    listing = client.post("/listings", json=listing_payload).json()
+
+    class Snapshot:
+        metric_type = "fair_market_value"
+        currency = "USD"
+        condition = "new"
+        value = Decimal("725.00")
+        sample_size = 12
+        retrieval_time = datetime.now(UTC)
+
+    async def snapshots(*args, **kwargs):
+        return {lego_set["set_number"]: [Snapshot()]}
+
+    monkeypatch.setattr(repositories, "get_latest_snapshots_for_set_numbers", snapshots)
+    response = client.post(f"/listings/{listing['id']}/analysis")
+
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["decision"] == "buy"
+    assert body["total_cost"] == "520.00"
+    assert body["discount_percent"] == "28.30"
+    assert body["product_match_confidence"] == "100.00"
+    assert body["valuation_sample_size"] == 12
+    assert body["reasons"]
+
+
+def test_listing_analysis_returns_insufficient_data_without_fair_value(
+    client: TestClient,
+):
+    lego_set = create_lego_set(client)
+    listing = client.post(
+        "/listings", json=create_listing_payload(lego_set["set_number"])
+    ).json()
+    response = client.post(f"/listings/{listing['id']}/analysis")
+    assert response.status_code == 201, response.text
+    assert response.json()["decision"] == "insufficient_data"
+    assert "missing_fair_value" in response.json()["risk_flags"]
 
 
 def test_deals_endpoint_returns_ranked_metrics_and_marketplace_details(
