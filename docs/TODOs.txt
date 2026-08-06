@@ -572,23 +572,23 @@ Classification: MUST SHIP
 14. Add sorting by score, discount, total price, and confidence. -
 15. Add filtering and ordering tests. -
 
-PHASE 29: SAVED SEARCHES
+PHASE 29: SAVED SEARCHES (Complete) 
 Classification: SHIP LATER
 
-1. Finalize the saved-search model.
-2. Store a name and validated filter configuration.
-3. Add create, read, update, and delete operations.
-4. Add saved-search limits.
-5. Add Save Current Search.
-6. Add a saved-search selector.
-7. Add a default saved search.
-8. Allow duplication and editing.
-9. Add last-run timestamps.
-10. Add result counts.
-11. Add ownership checks.
-12. Add frontend management.
-13. Add filter-version migration support.
-14. Add tests.
+1. Finalize the saved-search model. - (complete) 
+2. Store a name and validated filter configuration. - (complete) 
+3. Add create, read, update, and delete operations. - (complete) 
+4. Add saved-search limits. - (complete) 
+5. Add Save Current Search. - (complete) 
+6. Add a saved-search selector. - (complete) 
+7. Add a default saved search. - (complete) 
+8. Allow duplication and editing. - (complete) 
+9. Add last-run timestamps. - (complete) 
+10. Add result counts. - (complete) 
+11. Add ownership checks. - (complete) 
+12. Add frontend management. - (complete) 
+13. Add filter-version migration support. - (complete) 
+14. Add tests. - (complete) 
 
 ==================================================
 PART VIII - LISTING EVALUATION

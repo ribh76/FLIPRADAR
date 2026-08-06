@@ -38,7 +38,9 @@ from flipradar.api.schemas.lego_set_schema import (
 )
 from flipradar.api.schemas.listing_schema import (
     ListingCreate,
+    ListingEvaluationRequest,
     ListingResponse,
+    ManualListingEntry,
     MarketplaceCreate,
     MarketplaceResponse,
 )
@@ -98,8 +100,10 @@ __all__ = [
     "LegoSetCollectionResponse",
     "LegoSetResponse",
     "ListingCreate",
+    "ListingEvaluationRequest",
     "ListingCollectionResponse",
     "ListingResponse",
+    "ManualListingEntry",
     "LogoutRequest",
     "MarketplaceCreate",
     "MarketplaceResponse",

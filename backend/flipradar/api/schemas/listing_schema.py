@@ -57,6 +57,7 @@ class ListingCreate(BaseModel):
     match_reasons: list[str] | None = Field(default=None, max_length=32)
     exclusion_flags: list[str] | None = Field(default=None, max_length=32)
     raw_payload: dict | None = None
+    is_verified: bool = True
 
     @model_validator(mode="after")
     def validate_total_price(self):
@@ -88,9 +89,34 @@ class ListingResponse(BaseModel):
     match_reasons: list[str] | None
     exclusion_flags: list[str] | None
     raw_payload: dict | None
+    is_verified: bool
     first_seen_at: datetime
     last_seen_at: datetime
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ManualListingEntry(BaseModel):
+    """User-provided fallback, used only when an official provider cannot retrieve."""
+
+    title: str = Field(..., min_length=1, max_length=500)
+    price: Money = Field(..., ge=0, decimal_places=2)
+    shipping_price: Money = Field(default=Decimal("0.00"), ge=0, decimal_places=2)
+    currency: str = Field(
+        default="USD", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$"
+    )
+    condition: ListingConditionValue = ListingCondition.UNKNOWN
+    listing_status: LowerText = Field(
+        default="active", pattern=r"^(active|sold|ended|removed)$"
+    )
+    seller_name: str | None = Field(default=None, max_length=255)
+    is_complete: bool | None = None
+    is_sealed: bool | None = None
+
+
+class ListingEvaluationRequest(BaseModel):
+    set_number: SetNumber = Field(..., min_length=1, max_length=32)
+    url: str = Field(..., min_length=1, max_length=1000)
+    manual_listing: ManualListingEntry | None = None

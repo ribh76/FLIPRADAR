@@ -614,6 +614,18 @@ async def create_listing(
     return listing
 
 
+async def update_listing(
+    db: AsyncSession, listing: MarketplaceListing, listing_data: dict[str, Any]
+) -> MarketplaceListing:
+    """Refresh a known provider listing without creating a duplicate row."""
+    for key, value in listing_data.items():
+        setattr(listing, key, value)
+    listing.last_seen_at = func.now()
+    await db.flush()
+    await db.refresh(listing)
+    return listing
+
+
 async def list_listings_for_set(
     db: AsyncSession,
     set_number: str,

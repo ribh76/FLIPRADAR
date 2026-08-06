@@ -7,6 +7,7 @@ from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
     ListingCollectionResponse,
     ListingCreate,
+    ListingEvaluationRequest,
     ListingResponse,
 )
 from flipradar.api.schemas.common_schema import collection_response
@@ -48,6 +49,30 @@ async def create_marketplace_listing(
         "request finished route=create_marketplace_listing set_number=%s marketplace=%s",
         payload.set_number,
         payload.marketplace_name,
+    )
+    return listing
+
+
+@router.post(
+    "/listing-evaluations",
+    response_model=ListingResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Evaluate a marketplace listing URL",
+    description="Safely retrieves an eBay or BrickLink listing through its official API; a manual fallback may be supplied when retrieval fails.",
+)
+async def evaluate_listing_url(
+    payload: ListingEvaluationRequest, db: AsyncSession = Depends(get_db_session)
+) -> MarketplaceListing:
+    """Ingest one allowlisted listing URL, recording whether data is provider verified."""
+    logger.info(
+        "request started route=evaluate_listing_url set_number=%s", payload.set_number
+    )
+    try:
+        listing = await listing_service.evaluate_listing_url(db, payload)
+    except ServiceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    logger.info(
+        "request finished route=evaluate_listing_url set_number=%s", payload.set_number
     )
     return listing
 

@@ -26,6 +26,11 @@ from flipradar.services import (
     recommendation_service,
 )
 from flipradar.services.errors import ServiceProviderError, ServiceProviderTimeoutError
+from flipradar.integrations.listing_provider_client import (
+    ProviderListing,
+    ProviderRetrievalError,
+)
+from flipradar.services import listing_evaluation_service
 
 logger = logging.getLogger(__name__)
 VALID_PASSWORD = "Str0ng!Pass"
@@ -407,6 +412,81 @@ def test_create_listing_endpoint(client: TestClient):
     logger.info(f"API TEST: POST /listings status={response.status_code}")
     assert response.status_code == 201
     assert response.json()["external_listing_id"] == payload["external_listing_id"]
+
+
+def test_listing_evaluation_uses_provider_data_and_deduplicates_recent_requests(
+    client: TestClient, monkeypatch
+):
+    lego_set = create_lego_set(client)
+    calls = []
+
+    def fetch(provider, listing_id, url, settings):
+        calls.append((provider, listing_id, url))
+        return ProviderListing(
+            marketplace_name="ebay",
+            external_listing_id=listing_id,
+            title="Verified LEGO listing",
+            url=url,
+            price="100.00",
+            shipping_price="10.00",
+            currency="USD",
+            condition="new",
+            raw_payload={"itemId": listing_id},
+        )
+
+    monkeypatch.setattr(listing_evaluation_service.provider_client, "fetch", fetch)
+    payload = {
+        "set_number": lego_set["set_number"],
+        "url": "https://m.ebay.com/itm/123456789012?campid=x",
+    }
+    first = client.post("/listing-evaluations", json=payload)
+    second = client.post("/listing-evaluations", json=payload)
+
+    assert first.status_code == 201, first.text
+    assert first.json()["is_verified"] is True
+    assert second.status_code == 201
+    assert len(calls) == 1
+
+
+def test_listing_evaluation_allows_manual_fallback_when_provider_fails(
+    client: TestClient, monkeypatch
+):
+    lego_set = create_lego_set(client)
+
+    def fail(*args, **kwargs):
+        raise ProviderRetrievalError("provider unavailable")
+
+    monkeypatch.setattr(listing_evaluation_service.provider_client, "fetch", fail)
+    response = client.post(
+        "/listing-evaluations",
+        json={
+            "set_number": lego_set["set_number"],
+            "url": "https://www.ebay.com/itm/123456789013",
+            "manual_listing": {
+                "title": "Manual LEGO listing",
+                "price": "75.00",
+                "shipping_price": "5.00",
+                "currency": "USD",
+            },
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json()["is_verified"] is False
+    assert response.json()["total_price"] == "80.00"
+
+
+def test_listing_evaluation_rejects_private_and_unsupported_urls(client: TestClient):
+    lego_set = create_lego_set(client)
+    for url in (
+        "https://127.0.0.1/itm/123456789012",
+        "https://evil.test/itm/123456789012",
+    ):
+        response = client.post(
+            "/listing-evaluations",
+            json={"set_number": lego_set["set_number"], "url": url},
+        )
+        assert response.status_code == 400
 
 
 def test_deals_endpoint_returns_ranked_metrics_and_marketplace_details(
