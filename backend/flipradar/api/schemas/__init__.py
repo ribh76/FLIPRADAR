@@ -82,6 +82,7 @@ from flipradar.api.schemas.watchlist_schema import (
     WatchlistItemResponse,
     WatchlistItemUpdate,
     WatchlistMoveToPortfolio,
+    WatchlistSummaryResponse,
 )
 
 __all__ = [
@@ -149,6 +150,7 @@ __all__ = [
     "UserResponse",
     "WatchlistItemCreate",
     "WatchlistMoveToPortfolio",
+    "WatchlistSummaryResponse",
     "WatchlistItemResponse",
     "WatchlistItemUpdate",
 ]

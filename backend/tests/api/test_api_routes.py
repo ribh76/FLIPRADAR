@@ -1009,6 +1009,10 @@ def test_watchlist_crud_supports_set_and_listing_entries_with_ownership(
         set_item["id"],
         listing_item["id"],
     }
+    summary = client.get("/watchlist/summary", headers=owner_headers)
+    assert summary.status_code == 200, summary.text
+    assert summary.json()["total_entries"] == 2
+    assert summary.json()["ended_or_removed_count"] == 0
     moved = client.post(
         f"/watchlist/{listing_item['id']}/move-to-portfolio", headers=owner_headers
     )

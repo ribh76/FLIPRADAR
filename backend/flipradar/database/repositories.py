@@ -33,6 +33,7 @@ from flipradar.domain.models import (
     SavedSearch,
     User,
     WatchlistItem,
+    WatchlistPriceHistory,
 )
 
 logger = logging.getLogger(__name__)
@@ -1378,3 +1379,28 @@ async def update_watchlist_item(
 async def delete_watchlist_item(db: AsyncSession, item: WatchlistItem) -> None:
     await db.delete(item)
     await db.flush()
+
+
+async def create_watchlist_price_history(
+    db: AsyncSession, data: dict[str, Any]
+) -> WatchlistPriceHistory:
+    entry = WatchlistPriceHistory(**data)
+    db.add(entry)
+    await db.flush()
+    return entry
+
+
+async def list_watchlist_price_history(
+    db: AsyncSession, watchlist_item_ids: list[UUID]
+) -> list[WatchlistPriceHistory]:
+    if not watchlist_item_ids:
+        return []
+    result = await db.execute(
+        select(WatchlistPriceHistory)
+        .where(WatchlistPriceHistory.watchlist_item_id.in_(watchlist_item_ids))
+        .order_by(
+            WatchlistPriceHistory.watchlist_item_id,
+            WatchlistPriceHistory.observed_at.desc(),
+        )
+    )
+    return list(result.scalars())

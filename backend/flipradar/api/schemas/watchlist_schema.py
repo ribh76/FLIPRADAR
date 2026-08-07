@@ -42,6 +42,9 @@ class WatchlistItemResponse(BaseModel):
     current_price: Decimal | None
     valuation: Decimal | None
     discount_percent: Decimal | None
+    deal_score: Decimal | None
+    price_change: Decimal | None
+    is_under_target: bool
     last_checked_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -52,3 +55,12 @@ class WatchlistItemResponse(BaseModel):
 class WatchlistMoveToPortfolio(BaseModel):
     quantity: int = Field(default=1, gt=0)
     purchase_price: OptionalMoney = Field(default=None, ge=0, decimal_places=2)
+
+
+class WatchlistSummaryResponse(BaseModel):
+    total_entries: int
+    under_target_count: int
+    price_changed_count: int
+    ended_or_removed_count: int
+    scored_entries: int
+    average_deal_score: Decimal | None

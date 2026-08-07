@@ -12,7 +12,7 @@ from flipradar.api.schemas.watchlist_schema import (
 )
 from flipradar.database import repositories
 from flipradar.database.repositories import DuplicateRecordError, Pagination
-from flipradar.domain.engines import price_estimator
+from flipradar.domain.engines import price_estimator, scoring_engine
 from flipradar.domain.models import WatchlistItem
 from flipradar.services import marketplace_service, portfolio_service
 from flipradar.services.errors import ServiceConflictError, ServiceNotFoundError
@@ -59,7 +59,9 @@ async def create_watchlist_item(
     data["user_id"] = user_id
     try:
         item = await repositories.create_watchlist_item(db, data)
-        return (await _responses(db, [item]))[0]
+        responses = await _responses(db, [item])
+        await _record_intelligence(db, responses)
+        return responses[0]
     except DuplicateRecordError as exc:
         raise ServiceConflictError("This item is already on your watchlist") from exc
 
@@ -110,7 +112,33 @@ async def refresh_watchlist_items(db: AsyncSession, user_id: UUID) -> list[dict]
             item.last_known_listing_status = item.listing.listing_status
         item.updated_at = now
     await db.flush()
-    return await _responses(db, refreshed, checked_at=now)
+    responses = await _responses(db, refreshed, checked_at=now)
+    await _record_intelligence(db, responses, observed_at=now)
+    return responses
+
+
+async def get_watchlist_summary(db: AsyncSession, user_id: UUID) -> dict:
+    entries = await list_watchlist_items(db, user_id)
+    scores = [
+        entry["deal_score"] for entry in entries if entry["deal_score"] is not None
+    ]
+    return {
+        "total_entries": len(entries),
+        "under_target_count": sum(entry["is_under_target"] for entry in entries),
+        "price_changed_count": sum(
+            entry["price_change"] is not None for entry in entries
+        ),
+        "ended_or_removed_count": sum(
+            entry["last_known_listing_status"] in {"ended", "removed"}
+            for entry in entries
+        ),
+        "scored_entries": len(scores),
+        "average_deal_score": (
+            (sum(scores, Decimal("0")) / len(scores)).quantize(Decimal("0.01"))
+            if scores
+            else None
+        ),
+    }
 
 
 async def move_watchlist_item_to_portfolio(
@@ -166,11 +194,26 @@ async def _responses(
             if item.lego_set or item.listing
         },
     )
-    return [_response(item, snapshots_by_set, checked_at=checked_at) for item in items]
+    history = await repositories.list_watchlist_price_history(
+        db, [item.id for item in items]
+    )
+    by_item: dict[UUID, list] = {}
+    for entry in history:
+        by_item.setdefault(entry.watchlist_item_id, []).append(entry)
+    return [
+        _response(
+            item, snapshots_by_set, by_item.get(item.id, []), checked_at=checked_at
+        )
+        for item in items
+    ]
 
 
 def _response(
-    item: WatchlistItem, snapshots_by_set: dict, *, checked_at: datetime | None
+    item: WatchlistItem,
+    snapshots_by_set: dict,
+    history: list,
+    *,
+    checked_at: datetime | None,
 ) -> dict:
     lego_set = item.lego_set or (item.listing.lego_set if item.listing else None)
     if lego_set is None:  # pragma: no cover - guarded by target foreign keys
@@ -185,6 +228,34 @@ def _response(
         discount_percent = ((valuation - current_price) / valuation * 100).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
+    deal_score = None
+    if item.listing and current_price is not None:
+        deal_score = scoring_engine.score_deal(
+            asking_price=item.listing.price,
+            shipping_price=item.listing.shipping_price,
+            fair_value=valuation,
+            product_match_confidence_score=item.listing.match_confidence or 0,
+            seller_trust_score=item.listing.seller_rating or 50,
+            is_complete=item.listing.is_complete,
+        )["score"]
+    comparison = (
+        history[1]
+        if history and history[0].listing_price == current_price and len(history) > 1
+        else (history[0] if history else None)
+    )
+    price_change = (
+        (current_price - comparison.listing_price).quantize(Decimal("0.01"))
+        if comparison
+        and current_price is not None
+        and comparison.listing_price is not None
+        and current_price != comparison.listing_price
+        else None
+    )
+    is_under_target = bool(
+        item.target_price is not None
+        and current_price is not None
+        and current_price <= item.target_price
+    )
     return {
         "id": item.id,
         "user_id": item.user_id,
@@ -199,8 +270,31 @@ def _response(
         "current_price": current_price,
         "valuation": valuation,
         "discount_percent": discount_percent,
+        "deal_score": deal_score,
+        "price_change": price_change,
+        "is_under_target": is_under_target,
         "last_checked_at": checked_at
         or (item.listing.last_seen_at if item.listing else item.updated_at),
         "created_at": item.created_at,
         "updated_at": item.updated_at,
     }
+
+
+async def _record_intelligence(
+    db: AsyncSession, responses: list[dict], *, observed_at: datetime | None = None
+) -> None:
+    timestamp = observed_at or datetime.now(UTC)
+    for entry in responses:
+        await repositories.create_watchlist_price_history(
+            db,
+            {
+                "watchlist_item_id": entry["id"],
+                "listing_price": entry["current_price"],
+                "listing_status": entry["last_known_listing_status"],
+                "fair_value": entry["valuation"],
+                "discount_percent": entry["discount_percent"],
+                "deal_score": entry["deal_score"],
+                "is_under_target": entry["is_under_target"],
+                "observed_at": timestamp,
+            },
+        )

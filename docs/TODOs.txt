@@ -654,25 +654,25 @@ Classification: MUST SHIP
 PART IX - WATCHLIST
 ==================================================
 
-PHASE 33: MANUAL WATCHLIST
+PHASE 33: MANUAL WATCHLIST (Complete) 
 Classification: MUST SHIP
 
-1. Finalize the watchlist-item model.
-2. Support set-based and listing-based entries.
-3. Store owner, set, listing, target price, notes, and date saved.
-4. Store last known listing price and status.
-5. Add create, read, edit, and delete operations.
-6. Prevent accidental duplicates.
-7. Add ownership checks.
+1. Finalize the watchlist-item model. - (Complete) 
+2. Support set-based and listing-based entries. - (Complete) 
+3. Store owner, set, listing, target price, notes, and date saved. - (Complete) 
+4. Store last known listing price and status. - (Complete) 
+5. Add create, read, edit, and delete operations. - (Complete) 
+6. Prevent accidental duplicates. - (Complete) 
+7. Add ownership checks. - (Complete) 
 --
-8. Add Save to Watchlist across the application.
-9. Build the watchlist page.
-10. Display current price, target, valuation, discount, and last checked time.
-11. Add manual refresh.
-12. Add sorting and filtering.
-13. Add Move to Portfolio.
-14. Handle ended and removed listings.
-15. Add backend and frontend tests.
+8. Add Save to Watchlist across the application. - (Complete) 
+9. Build the watchlist page. - (Complete) 
+10. Display current price, target, valuation, discount, and last checked time. - (Complete) 
+11. Add manual refresh. - (Complete) 
+12. Add sorting and filtering. - (Complete) 
+13. Add Move to Portfolio. - (Complete) 
+14. Handle ended and removed listings. - (Complete) 
+15. Add backend and frontend tests. - (Complete) 
 
 PHASE 34: WATCHLIST INTELLIGENCE
 Classification: SHIP LATER

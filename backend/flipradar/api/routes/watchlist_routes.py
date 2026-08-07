@@ -10,6 +10,7 @@ from flipradar.api.schemas import (
     WatchlistItemResponse,
     WatchlistItemUpdate,
     WatchlistMoveToPortfolio,
+    WatchlistSummaryResponse,
 )
 from flipradar.services import watchlist_service
 from flipradar.services.errors import ServiceError
@@ -55,6 +56,14 @@ async def refresh_watchlist_items(
     db: AsyncSession = Depends(get_db_session),
 ):
     return await watchlist_service.refresh_watchlist_items(db, current_user.id)
+
+
+@router.get("/summary", response_model=WatchlistSummaryResponse)
+async def get_watchlist_summary(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+):
+    return await watchlist_service.get_watchlist_summary(db, current_user.id)
 
 
 @router.post("/{item_id}/move-to-portfolio")
