@@ -78,10 +78,12 @@ from flipradar.api.schemas.set_detail_schema import (
     SetMetadataSummary,
 )
 from flipradar.api.schemas.watchlist_schema import (
+    WatchlistHistoryPoint,
     WatchlistItemCreate,
     WatchlistItemResponse,
     WatchlistItemUpdate,
     WatchlistMoveToPortfolio,
+    WatchlistReplacementResponse,
     WatchlistSummaryResponse,
 )
 
@@ -151,6 +153,8 @@ __all__ = [
     "WatchlistItemCreate",
     "WatchlistMoveToPortfolio",
     "WatchlistSummaryResponse",
+    "WatchlistHistoryPoint",
+    "WatchlistReplacementResponse",
     "WatchlistItemResponse",
     "WatchlistItemUpdate",
 ]

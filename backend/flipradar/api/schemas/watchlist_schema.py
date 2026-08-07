@@ -45,6 +45,7 @@ class WatchlistItemResponse(BaseModel):
     deal_score: Decimal | None
     price_change: Decimal | None
     is_under_target: bool
+    recommendation: str
     last_checked_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -64,3 +65,22 @@ class WatchlistSummaryResponse(BaseModel):
     ended_or_removed_count: int
     scored_entries: int
     average_deal_score: Decimal | None
+
+
+class WatchlistHistoryPoint(BaseModel):
+    observed_at: datetime
+    listing_price: Decimal | None
+    fair_value: Decimal | None
+    deal_score: Decimal | None
+    listing_status: ListingStatus | None
+
+
+class WatchlistReplacementResponse(BaseModel):
+    listing_id: UUID
+    title: str
+    url: str
+    total_price: Decimal
+    currency: str
+    fair_value: Decimal | None
+    deal_score: Decimal | None
+    recommendation: str

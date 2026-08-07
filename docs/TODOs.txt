@@ -677,13 +677,13 @@ Classification: MUST SHIP
 PHASE 34: WATCHLIST INTELLIGENCE
 Classification: SHIP LATER
 
-1. Add watchlist summary metrics.
-2. Identify entries under target price.
-3. Identify price changes.
-4. Identify ended or removed listings.
-5. Recalculate fair-value comparisons.
-6. Recalculate deal scores.
-7. Store watchlist price history.
+1. Add watchlist summary metrics. - (Complete) 
+2. Identify entries under target price. - (Complete) 
+3. Identify price changes. - (Complete) 
+4. Identify ended or removed listings. - (Complete) 
+5. Recalculate fair-value comparisons. - (Complete) 
+6. Recalculate deal scores. - (Complete) 
+7. Store watchlist price history. - (Complete) 
 8. Add price-history charts.
 9. Add manual bulk refresh.
 10. Add provider throttling.

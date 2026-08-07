@@ -994,6 +994,11 @@ def test_watchlist_crud_supports_set_and_listing_entries_with_ownership(
     assert listing_item["current_price"] == "162.49"
     assert "valuation" in listing_item
     assert listing_item["last_checked_at"] is not None
+    history = client.get(
+        f"/watchlist/{listing_item['id']}/history", headers=owner_headers
+    )
+    assert history.status_code == 200, history.text
+    assert len(history.json()) == 1
     assert (
         client.post(
             "/watchlist",
@@ -1036,6 +1041,11 @@ def test_watchlist_crud_supports_set_and_listing_entries_with_ownership(
         json={"listing_id": ended_listing.json()["id"]},
     )
     assert ended_item.status_code == 201, ended_item.text
+    replacements = client.get(
+        f"/watchlist/{ended_item.json()['id']}/replacements", headers=owner_headers
+    )
+    assert replacements.status_code == 200, replacements.text
+    assert replacements.json()[0]["listing_id"] == listing.json()["id"]
     assert (
         client.post(
             f"/watchlist/{ended_item.json()['id']}/move-to-portfolio",
@@ -1047,6 +1057,8 @@ def test_watchlist_crud_supports_set_and_listing_entries_with_ownership(
         client.delete(f"/watchlist/{set_item['id']}", headers=owner_headers).status_code
         == 204
     )
+    assert client.post("/watchlist/refresh", headers=owner_headers).status_code == 200
+    assert client.post("/watchlist/refresh", headers=owner_headers).status_code == 409
 
 
 def verification_token_from_url(verification_url: str) -> str:

@@ -202,7 +202,30 @@ export type WatchlistItem = {
   current_price: string | number | null;
   valuation: string | number | null;
   discount_percent: string | number | null;
+  deal_score: string | number | null;
+  price_change: string | number | null;
+  is_under_target: boolean;
+  recommendation: "BUY" | "WATCH" | "PASS";
   last_checked_at: string | null;
+};
+
+export type WatchlistHistoryPoint = {
+  observed_at: string;
+  listing_price: string | number | null;
+  fair_value: string | number | null;
+  deal_score: string | number | null;
+  listing_status: string | null;
+};
+
+export type WatchlistReplacement = {
+  listing_id: string;
+  title: string;
+  url: string;
+  total_price: string | number;
+  currency: string;
+  fair_value: string | number | null;
+  deal_score: string | number | null;
+  recommendation: "BUY" | "WATCH" | "PASS";
 };
 
 export type ListingAnalysis = {

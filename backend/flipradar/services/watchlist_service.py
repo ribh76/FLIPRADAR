@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
@@ -16,6 +16,9 @@ from flipradar.domain.engines import price_estimator, scoring_engine
 from flipradar.domain.models import WatchlistItem
 from flipradar.services import marketplace_service, portfolio_service
 from flipradar.services.errors import ServiceConflictError, ServiceNotFoundError
+
+MANUAL_REFRESH_COOLDOWN = timedelta(hours=1)
+_last_manual_refresh_by_user: dict[UUID, datetime] = {}
 
 
 async def list_watchlist_items(
@@ -90,6 +93,16 @@ async def delete_watchlist_item(db: AsyncSession, user_id: UUID, item_id: UUID) 
 
 async def refresh_watchlist_items(db: AsyncSession, user_id: UUID) -> list[dict]:
     """Force fresh marketplace evidence for every watched set and listing."""
+    now = datetime.now(UTC)
+    previous_refresh = _last_manual_refresh_by_user.get(user_id)
+    if (
+        previous_refresh is not None
+        and now - previous_refresh < MANUAL_REFRESH_COOLDOWN
+    ):
+        remaining = MANUAL_REFRESH_COOLDOWN - (now - previous_refresh)
+        raise ServiceConflictError(
+            f"Manual refresh is available in {max(1, int(remaining.total_seconds() // 60) + 1)} minutes"
+        )
     items = await repositories.list_watchlist_items_for_user(db, user_id)
     set_numbers = {
         (item.lego_set or item.listing.lego_set).set_number
@@ -105,7 +118,6 @@ async def refresh_watchlist_items(db: AsyncSession, user_id: UUID) -> list[dict]
             # Preserve the last known evidence when a provider is unavailable.
             continue
     refreshed = await repositories.list_watchlist_items_for_user(db, user_id)
-    now = datetime.now(UTC)
     for item in refreshed:
         if item.listing:
             item.last_known_listing_price = item.listing.total_price
@@ -114,7 +126,74 @@ async def refresh_watchlist_items(db: AsyncSession, user_id: UUID) -> list[dict]
     await db.flush()
     responses = await _responses(db, refreshed, checked_at=now)
     await _record_intelligence(db, responses, observed_at=now)
+    _last_manual_refresh_by_user[user_id] = now
     return responses
+
+
+async def get_watchlist_history(
+    db: AsyncSession, user_id: UUID, item_id: UUID
+) -> list[dict]:
+    item = await _owned_item(db, user_id, item_id)
+    history = await repositories.list_watchlist_price_history(db, [item.id])
+    return [
+        {
+            "observed_at": point.observed_at,
+            "listing_price": point.listing_price,
+            "fair_value": point.fair_value,
+            "deal_score": point.deal_score,
+            "listing_status": point.listing_status,
+        }
+        for point in reversed(history)
+    ]
+
+
+async def find_replacements(
+    db: AsyncSession, user_id: UUID, item_id: UUID
+) -> list[dict]:
+    item = await _owned_item(db, user_id, item_id)
+    if item.last_known_listing_status not in {"ended", "removed", "sold"}:
+        raise ServiceConflictError(
+            "Replacement search is only available for inactive listings"
+        )
+    lego_set = item.listing.lego_set if item.listing else item.lego_set
+    if lego_set is None:
+        raise ServiceNotFoundError("Watchlist set not found")
+    listings = await repositories.list_listings_for_set(
+        db,
+        lego_set.set_number,
+        listing_status="active",
+        pagination=Pagination(limit=10),
+    )
+    snapshots = await repositories.get_latest_snapshots_for_set_numbers(
+        db, {lego_set.set_number}
+    )
+    valuation = price_estimator.estimate_fair_value(
+        snapshots.get(lego_set.set_number, [])
+    )
+    fair_value = valuation.get("fair_value") if valuation.get("error") is None else None
+    results = []
+    for listing in listings:
+        scored = scoring_engine.score_deal(
+            asking_price=listing.price,
+            shipping_price=listing.shipping_price,
+            fair_value=fair_value,
+            product_match_confidence_score=listing.match_confidence or 0,
+            seller_trust_score=listing.seller_rating or 50,
+            is_complete=listing.is_complete,
+        )
+        results.append(
+            {
+                "listing_id": listing.id,
+                "title": listing.title,
+                "url": listing.url,
+                "total_price": listing.total_price,
+                "currency": listing.currency,
+                "fair_value": fair_value,
+                "deal_score": scored["score"],
+                "recommendation": _recommendation(scored["score"]),
+            }
+        )
+    return sorted(results, key=lambda result: result["deal_score"] or -1, reverse=True)
 
 
 async def get_watchlist_summary(db: AsyncSession, user_id: UUID) -> dict:
@@ -273,11 +352,22 @@ def _response(
         "deal_score": deal_score,
         "price_change": price_change,
         "is_under_target": is_under_target,
+        "recommendation": _recommendation(deal_score),
         "last_checked_at": checked_at
         or (item.listing.last_seen_at if item.listing else item.updated_at),
         "created_at": item.created_at,
         "updated_at": item.updated_at,
     }
+
+
+def _recommendation(deal_score: int | Decimal | None) -> str:
+    if deal_score is None:
+        return "PASS"
+    if deal_score >= 70:
+        return "BUY"
+    if deal_score >= 50:
+        return "WATCH"
+    return "PASS"
 
 
 async def _record_intelligence(

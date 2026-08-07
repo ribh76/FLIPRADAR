@@ -26,6 +26,8 @@ import type {
   ManualListingEntry,
   SetDetail,
   WatchlistItem,
+  WatchlistHistoryPoint,
+  WatchlistReplacement,
 } from "../types";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
@@ -378,6 +380,16 @@ export const apiClient = {
     },
     refresh() {
       return requestData(api.post<WatchlistItem[]>("/watchlist/refresh"));
+    },
+    history(itemId: string) {
+      return requestData(
+        api.get<WatchlistHistoryPoint[]>(`/watchlist/${itemId}/history`),
+      );
+    },
+    replacements(itemId: string) {
+      return requestData(
+        api.get<WatchlistReplacement[]>(`/watchlist/${itemId}/replacements`),
+      );
     },
     moveToPortfolio(itemId: string) {
       return requestData(

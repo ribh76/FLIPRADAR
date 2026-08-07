@@ -1,4 +1,4 @@
-import { RefreshCw, Trash2 } from "lucide-react";
+import { RefreshCw, Search, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import {
   EmptyState,
@@ -9,7 +9,11 @@ import {
 } from "../../components/ui";
 import { useServerQuery } from "../../hooks/serverState";
 import { apiClient, getApiError } from "../../services/apiClient";
-import type { WatchlistItem } from "../../types";
+import type {
+  WatchlistHistoryPoint,
+  WatchlistItem,
+  WatchlistReplacement,
+} from "../../types";
 import { currency, percent } from "../../utils/format";
 
 function checkedAt(value: string | null) {
@@ -24,6 +28,12 @@ export function WatchlistPage() {
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [history, setHistory] = useState<
+    Record<string, WatchlistHistoryPoint[]>
+  >({});
+  const [replacements, setReplacements] = useState<
+    Record<string, WatchlistReplacement[]>
+  >({});
 
   async function refresh() {
     setRefreshing(true);
@@ -64,6 +74,22 @@ export function WatchlistPage() {
       setMessage(getApiError(error));
     } finally {
       setBusyId("");
+    }
+  }
+  async function loadHistory(item: WatchlistItem) {
+    try {
+      const points = await apiClient.watchlist.history(item.id);
+      setHistory((current) => ({ ...current, [item.id]: points }));
+    } catch (error) {
+      setMessage(getApiError(error));
+    }
+  }
+  async function findReplacements(item: WatchlistItem) {
+    try {
+      const results = await apiClient.watchlist.replacements(item.id);
+      setReplacements((current) => ({ ...current, [item.id]: results }));
+    } catch (error) {
+      setMessage(getApiError(error));
     }
   }
   if (query.isLoading) return <LoadingState title="Loading watchlist..." />;
@@ -146,6 +172,7 @@ export function WatchlistPage() {
             </p>
           ) : null}
           <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--color-border-soft)] pt-4">
+            <StatusBadge value={item.recommendation} />
             {item.entry_type === "listing" &&
             item.last_known_listing_status === "active" ? (
               <button
@@ -165,6 +192,24 @@ export function WatchlistPage() {
               </p>
             ) : null}
             <button
+              className="secondary-button"
+              onClick={() => void loadHistory(item)}
+              type="button"
+            >
+              Price history
+            </button>
+            {item.last_known_listing_status === "ended" ||
+            item.last_known_listing_status === "removed" ? (
+              <button
+                className="secondary-button"
+                onClick={() => void findReplacements(item)}
+                type="button"
+              >
+                <Search size={16} />
+                Find replacements
+              </button>
+            ) : null}
+            <button
               aria-label={`Remove ${item.set_number} from watchlist`}
               className="secondary-button"
               disabled={busyId === item.id}
@@ -175,8 +220,78 @@ export function WatchlistPage() {
               Remove
             </button>
           </div>
+          {history[item.id] ? (
+            <PriceHistoryChart points={history[item.id]} />
+          ) : null}
+          {replacements[item.id] ? (
+            <div className="mt-4 space-y-2">
+              <p className="metric-label">Replacement listings</p>
+              {replacements[item.id].length ? (
+                replacements[item.id].map((replacement) => (
+                  <a
+                    className="block rounded border border-[var(--color-border-soft)] p-3 text-sm hover:border-[var(--color-accent)]"
+                    href={replacement.url}
+                    key={replacement.listing_id}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {replacement.title} ·{" "}
+                    {currency(replacement.total_price, replacement.currency)} ·{" "}
+                    <strong>{replacement.recommendation}</strong>
+                  </a>
+                ))
+              ) : (
+                <p className="text-sm text-[var(--color-text-muted)]">
+                  No active replacements found.
+                </p>
+              )}
+            </div>
+          ) : null}
         </article>
       ))}
     </section>
+  );
+}
+
+function PriceHistoryChart({ points }: { points: WatchlistHistoryPoint[] }) {
+  const values = points
+    .map((point) => Number(point.listing_price ?? point.fair_value))
+    .filter(Number.isFinite);
+  if (!values.length)
+    return (
+      <p className="mt-4 text-sm text-[var(--color-text-muted)]">
+        No price observations yet.
+      </p>
+    );
+  const low = Math.min(...values);
+  const high = Math.max(...values);
+  const range = high - low || 1;
+  const chartPoints = points
+    .map(
+      (point, index) =>
+        `${index * (100 / Math.max(points.length - 1, 1))},${100 - ((Number(point.listing_price ?? point.fair_value) - low) / range) * 100}`,
+    )
+    .join(" ");
+  return (
+    <div className="mt-4">
+      <p className="metric-label">Price history</p>
+      <svg
+        aria-label="Price history chart"
+        className="mt-2 h-28 w-full overflow-visible"
+        preserveAspectRatio="none"
+        viewBox="0 0 100 100"
+      >
+        <polyline
+          fill="none"
+          points={chartPoints}
+          stroke="var(--color-accent)"
+          strokeWidth="3"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <p className="text-xs text-[var(--color-text-muted)]">
+        {points.length} observations · {currency(low)}–{currency(high)}
+      </p>
+    </div>
   );
 }

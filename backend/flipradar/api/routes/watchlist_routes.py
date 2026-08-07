@@ -6,10 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from flipradar.api.dependencies.auth import AuthenticatedUser
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
+    WatchlistHistoryPoint,
     WatchlistItemCreate,
     WatchlistItemResponse,
     WatchlistItemUpdate,
     WatchlistMoveToPortfolio,
+    WatchlistReplacementResponse,
     WatchlistSummaryResponse,
 )
 from flipradar.services import watchlist_service
@@ -64,6 +66,34 @@ async def get_watchlist_summary(
     db: AsyncSession = Depends(get_db_session),
 ):
     return await watchlist_service.get_watchlist_summary(db, current_user.id)
+
+
+@router.get("/{item_id}/history", response_model=list[WatchlistHistoryPoint])
+async def get_watchlist_history(
+    item_id: UUID,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+):
+    try:
+        return await watchlist_service.get_watchlist_history(
+            db, current_user.id, item_id
+        )
+    except ServiceError as exc:
+        _raise(exc)
+
+
+@router.get(
+    "/{item_id}/replacements", response_model=list[WatchlistReplacementResponse]
+)
+async def find_watchlist_replacements(
+    item_id: UUID,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+):
+    try:
+        return await watchlist_service.find_replacements(db, current_user.id, item_id)
+    except ServiceError as exc:
+        _raise(exc)
 
 
 @router.post("/{item_id}/move-to-portfolio")
