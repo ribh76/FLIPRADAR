@@ -17,6 +17,7 @@ from flipradar.api.routes import (
     lego_routes,
     listing_routes,
     marketplace_routes,
+    notification_routes,
     portfolio_routes,
     price_snapshot_routes,
     recommendation_routes,
@@ -79,6 +80,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "name": "Watchlist",
                 "description": "Authenticated set and listing watchlist tracking.",
             },
+            {"name": "Notifications", "description": "Watchlist notification inbox."},
             {
                 "name": "Marketplace/Internal",
                 "description": (
@@ -112,6 +114,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(deal_routes.router)
     app.include_router(saved_search_routes.router)
     app.include_router(watchlist_routes.router)
+    app.include_router(notification_routes.router)
     app.include_router(listing_routes.router)
     app.include_router(price_snapshot_routes.router)
     app.include_router(recommendation_routes.router)

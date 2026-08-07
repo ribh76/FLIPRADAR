@@ -17,7 +17,11 @@ import redis
 from flipradar.core.settings import get_settings
 from flipradar.database import repositories
 from flipradar.database.session import SessionLocal
-from flipradar.services import marketplace_service, watchlist_service
+from flipradar.services import (
+    marketplace_service,
+    notification_service,
+    watchlist_service,
+)
 from flipradar.worker.celery_app import celery_app
 from flipradar.worker.health import record_job_metric
 
@@ -146,6 +150,25 @@ async def _dispatch_daily_refresh() -> dict[str, int]:
             len(set_users),
         )
     return {provider: len(set_users) for provider, set_users in batches.items()}
+
+
+@celery_app.task(name="flipradar.notifications.deliver_email_digests")
+def deliver_notification_email_digests() -> dict[str, int]:
+    """Send each opted-in user at most one digest of pending watchlist changes."""
+    return asyncio.run(_deliver_notification_email_digests())
+
+
+async def _deliver_notification_email_digests() -> dict[str, int]:
+    async with SessionLocal() as db:
+        result = await notification_service.deliver_pending_email_digests(db)
+        await db.commit()
+    logger.info(
+        "watchlist notification digests complete users=%s pending=%s delivered=%s",
+        result["users"],
+        result["pending"],
+        result["delivered"],
+    )
+    return result
 
 
 @celery_app.task(
@@ -296,6 +319,7 @@ async def _log_watchlist_guardrails(db: Any, user_id: UUID) -> None:
     per_item: dict[UUID, list[Any]] = defaultdict(list)
     for history in histories:
         per_item[history.watchlist_item_id].append(history)
+    items_by_id = {item.id: item for item in items}
     for item_id, observations in per_item.items():
         if len(observations) < 2:
             continue
@@ -311,4 +335,19 @@ async def _log_watchlist_guardrails(db: Any, user_id: UUID) -> None:
                 event,
                 user_id,
                 item_id,
+            )
+        created = await notification_service.emit_watchlist_notifications(
+            db,
+            user_id=user_id,
+            item=items_by_id[item_id],
+            previous=observations[1],
+            current=observations[0],
+            material_price_change_percent=threshold,
+        )
+        if created:
+            logger.info(
+                "watchlist notifications created user_id=%s watchlist_item_id=%s count=%s",
+                user_id,
+                item_id,
+                len(created),
             )

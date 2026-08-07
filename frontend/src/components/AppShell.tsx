@@ -1,6 +1,7 @@
 import {
   Boxes,
   Bookmark,
+  Bell,
   Calculator,
   Tags,
   LayoutDashboard,
@@ -15,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { apiClient, getApiError } from "../services/apiClient";
@@ -55,6 +56,12 @@ const navItems = [
     icon: Bookmark,
     label: "Watchlist",
     to: "/watchlist",
+  },
+  {
+    description: "Price, target, listing status, and deal alerts.",
+    icon: Bell,
+    label: "Notifications",
+    to: "/notifications",
   },
   {
     description: "Set metadata and valuation lookup.",
@@ -139,6 +146,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const routeMeta = useMemo(
     () => getRouteMeta(location.pathname),
     [location.pathname],
@@ -160,6 +168,28 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }
 
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    const refreshUnreadCount = async () => {
+      try {
+        const response = await apiClient.notifications.unreadCount();
+        if (active) setUnreadNotifications(response.unread_count);
+      } catch {
+        // Notification polling must never interrupt normal navigation.
+      }
+    };
+    void refreshUnreadCount();
+    const interval = window.setInterval(
+      () => void refreshUnreadCount(),
+      60_000,
+    );
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [user]);
+
   const navContent = (
     <>
       {navItems.map((item) => {
@@ -173,6 +203,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Icon size={18} aria-hidden="true" />
             {item.label}
+            {item.to === "/notifications" && unreadNotifications > 0 ? (
+              <span className="ml-auto rounded-full bg-brand-black px-2 py-0.5 text-xs font-bold text-brand-accent">
+                {unreadNotifications > 99 ? "99+" : unreadNotifications}
+              </span>
+            ) : null}
           </NavLink>
         );
       })}

@@ -45,6 +45,13 @@ from flipradar.api.schemas.listing_schema import (
     MarketplaceCreate,
     MarketplaceResponse,
 )
+from flipradar.api.schemas.notification_schema import (
+    NotificationMarkAllReadResponse,
+    NotificationPreferenceResponse,
+    NotificationPreferenceUpdate,
+    NotificationResponse,
+    NotificationUnreadCountResponse,
+)
 from flipradar.api.schemas.portfolio_schema import (
     PortfolioDashboardResponse,
     PortfolioHoldingDetailResponse,
@@ -117,6 +124,11 @@ __all__ = [
     "ListingAnalysisResponse",
     "ListingResponse",
     "ManualListingEntry",
+    "NotificationMarkAllReadResponse",
+    "NotificationPreferenceResponse",
+    "NotificationPreferenceUpdate",
+    "NotificationResponse",
+    "NotificationUnreadCountResponse",
     "LogoutRequest",
     "MarketplaceCreate",
     "MarketplaceResponse",

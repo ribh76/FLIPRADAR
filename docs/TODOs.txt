@@ -702,15 +702,15 @@ Classification: SHIP LATER
 4. Batch entries by provider. - (Complete) 
 5. Respect provider rate limits. - (Complete) 
 6. Record job attempts and failures. - (Complete) 
-7. Add retry behavior.
-8. Prevent duplicate concurrent jobs.
-9. Detect material price changes.
-10. Detect target-price crossings.
-11. Detect listing expiration.
-12. Add user monitoring preferences.
-13. Add job health metrics.
-14. Add job inspection tools.
-15. Add worker tests.
+7. Add retry behavior.  - (Complete) 
+8. Prevent duplicate concurrent jobs. - (Complete) 
+9. Detect material price changes. - (Complete) 
+10. Detect target-price crossings. - (Complete) 
+11. Detect listing expiration. - (Complete) 
+12. Add user monitoring preferences. - (Complete) 
+13. Add job health metrics. - (Complete) 
+14. Add job inspection tools. - (Complete) 
+15. Add worker tests. - (Complete) 
 
 PHASE 36: WATCHLIST NOTIFICATIONS
 Classification: SHIP LATER

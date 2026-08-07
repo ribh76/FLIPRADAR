@@ -228,6 +228,27 @@ export type WatchlistReplacement = {
   recommendation: "BUY" | "WATCH" | "PASS";
 };
 
+export type NotificationType =
+  "price_drop" | "target_reached" | "ended_listing" | "deal_score";
+
+export type AppNotification = {
+  id: string;
+  notification_type: NotificationType;
+  watchlist_item_id: string | null;
+  title: string;
+  message: string;
+  payload: Record<string, unknown>;
+  is_read: boolean;
+  created_at: string;
+  read_at: string | null;
+};
+
+export type NotificationPreference = {
+  notification_type: NotificationType;
+  in_app_enabled: boolean;
+  email_enabled: boolean;
+};
+
 export type ListingAnalysis = {
   id: string;
   listing_id: string;

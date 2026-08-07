@@ -5,6 +5,7 @@ import type {
   AnalyzeResponse,
   ApiMessage,
   AuthSession,
+  AppNotification,
   CatalogSearchResponse,
   CollectionResponse,
   CurrentUser,
@@ -24,6 +25,7 @@ import type {
   Listing,
   ListingAnalysis,
   ManualListingEntry,
+  NotificationPreference,
   SetDetail,
   WatchlistItem,
   WatchlistHistoryPoint,
@@ -398,6 +400,48 @@ export const apiClient = {
     },
     remove(itemId: string) {
       return requestData(api.delete<void>(`/watchlist/${itemId}`));
+    },
+  },
+  notifications: {
+    list(unreadOnly = false) {
+      return requestData(
+        api.get<AppNotification[]>("/notifications", {
+          params: { unread_only: unreadOnly },
+        }),
+      );
+    },
+    unreadCount() {
+      return requestData(
+        api.get<{ unread_count: number }>("/notifications/unread-count"),
+      );
+    },
+    markRead(notificationId: string) {
+      return requestData(
+        api.post<AppNotification>(`/notifications/${notificationId}/read`),
+      );
+    },
+    markAllRead() {
+      return requestData(
+        api.post<{ updated_count: number }>("/notifications/mark-all-read"),
+      );
+    },
+    preferences() {
+      return requestData(
+        api.get<NotificationPreference[]>("/notifications/preferences"),
+      );
+    },
+    updatePreference(
+      notificationType: NotificationPreference["notification_type"],
+      payload: Partial<
+        Pick<NotificationPreference, "in_app_enabled" | "email_enabled">
+      >,
+    ) {
+      return requestData(
+        api.patch<NotificationPreference>(
+          `/notifications/preferences/${notificationType}`,
+          payload,
+        ),
+      );
     },
   },
   sets: {

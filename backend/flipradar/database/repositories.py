@@ -18,19 +18,25 @@ from sqlalchemy.orm import selectinload
 from flipradar.api.schemas.validation import MarketplaceName, normalize_set_number
 from flipradar.domain.models import (
     AccountToken,
+    DealScoreNotification,
+    EndedListingNotification,
     LegoSet,
     ListingEvaluation,
     Marketplace,
     MarketplaceListing,
+    Notification,
+    NotificationPreference,
     PortfolioItem,
     PortfolioItemValuationSnapshot,
     PortfolioValuationDailyRollup,
     PortfolioValuationSnapshot,
+    PriceDropNotification,
     PriceSnapshot,
     Recommendation,
     RefreshTokenBlacklist,
     RefreshTokenSession,
     SavedSearch,
+    TargetReachedNotification,
     User,
     WatchlistItem,
     WatchlistMonitoringPreference,
@@ -1383,6 +1389,162 @@ async def upsert_watchlist_monitoring_preference(
     await db.flush()
     await db.refresh(preference)
     return preference
+
+
+# Notification repository
+async def create_notification(
+    db: AsyncSession, data: dict[str, Any]
+) -> Notification | None:
+    notification_models = {
+        "price_drop": PriceDropNotification,
+        "target_reached": TargetReachedNotification,
+        "ended_listing": EndedListingNotification,
+        "deal_score": DealScoreNotification,
+    }
+    notification = notification_models[data["notification_type"]](**data)
+    try:
+        async with db.begin_nested():
+            db.add(notification)
+            await db.flush()
+    except IntegrityError:
+        return None
+    return notification
+
+
+async def list_notifications_for_user(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    unread_only: bool = False,
+    pagination: Pagination | None = None,
+) -> list[Notification]:
+    statement = (
+        select(Notification)
+        .where(Notification.user_id == user_id, Notification.is_in_app.is_(True))
+        .order_by(Notification.created_at.desc())
+    )
+    if unread_only:
+        statement = statement.where(Notification.is_read.is_(False))
+    result = await db.execute(
+        _apply_pagination(statement, pagination) if pagination else statement
+    )
+    return list(result.scalars())
+
+
+async def get_notification_for_user(
+    db: AsyncSession, notification_id: UUID, user_id: UUID
+) -> Notification | None:
+    result = await db.execute(
+        select(Notification).where(
+            Notification.id == notification_id,
+            Notification.user_id == user_id,
+            Notification.is_in_app.is_(True),
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def unread_notification_count(db: AsyncSession, user_id: UUID) -> int:
+    result = await db.execute(
+        select(func.count(Notification.id)).where(
+            Notification.user_id == user_id,
+            Notification.is_in_app.is_(True),
+            Notification.is_read.is_(False),
+        )
+    )
+    return int(result.scalar_one())
+
+
+async def mark_notification_read(
+    db: AsyncSession, notification: Notification, *, read_at: datetime
+) -> Notification:
+    notification.is_read = True
+    notification.read_at = read_at
+    await db.flush()
+    return notification
+
+
+async def mark_all_notifications_read(
+    db: AsyncSession, user_id: UUID, *, read_at: datetime
+) -> int:
+    result = await db.execute(
+        update(Notification)
+        .where(
+            Notification.user_id == user_id,
+            Notification.is_in_app.is_(True),
+            Notification.is_read.is_(False),
+        )
+        .values(is_read=True, read_at=read_at)
+    )
+    await db.flush()
+    return cast(CursorResult, result).rowcount or 0
+
+
+async def list_notification_preferences(
+    db: AsyncSession, user_id: UUID
+) -> dict[str, NotificationPreference]:
+    result = await db.execute(
+        select(NotificationPreference).where(NotificationPreference.user_id == user_id)
+    )
+    return {preference.notification_type: preference for preference in result.scalars()}
+
+
+async def upsert_notification_preference(
+    db: AsyncSession, user_id: UUID, notification_type: str, data: dict[str, Any]
+) -> NotificationPreference:
+    preferences = await list_notification_preferences(db, user_id)
+    preference = preferences.get(notification_type)
+    if preference is None:
+        preference = NotificationPreference(
+            user_id=user_id, notification_type=notification_type, **data
+        )
+        db.add(preference)
+    else:
+        for field_name, value in data.items():
+            setattr(preference, field_name, value)
+    await db.flush()
+    await db.refresh(preference)
+    return preference
+
+
+async def list_users_with_pending_notification_emails(db: AsyncSession) -> list[User]:
+    result = await db.execute(
+        select(User)
+        .join(Notification)
+        .where(
+            Notification.email_eligible.is_(True),
+            Notification.email_sent_at.is_(None),
+        )
+        .distinct()
+    )
+    return list(result.scalars())
+
+
+async def list_pending_notification_emails(
+    db: AsyncSession, user_id: UUID
+) -> list[Notification]:
+    result = await db.execute(
+        select(Notification)
+        .where(
+            Notification.user_id == user_id,
+            Notification.email_eligible.is_(True),
+            Notification.email_sent_at.is_(None),
+        )
+        .order_by(Notification.created_at.asc())
+    )
+    return list(result.scalars())
+
+
+async def mark_notification_emails_sent(
+    db: AsyncSession, notification_ids: list[UUID], *, sent_at: datetime
+) -> None:
+    if notification_ids:
+        await db.execute(
+            update(Notification)
+            .where(Notification.id.in_(notification_ids))
+            .values(email_sent_at=sent_at)
+        )
+        await db.flush()
 
 
 async def get_watchlist_item_for_user(

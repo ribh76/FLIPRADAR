@@ -93,6 +93,7 @@ class WatchlistItem(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    notifications = relationship("Notification", back_populates="watchlist_item")
 
 
 class WatchlistPriceHistory(Base):

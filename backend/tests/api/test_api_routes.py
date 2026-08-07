@@ -1096,6 +1096,42 @@ def test_watchlist_monitoring_preferences_are_user_scoped(client: TestClient):
     )
 
 
+def test_notification_preferences_and_empty_inbox_are_user_scoped(client: TestClient):
+    owner_headers = auth_headers(client, "notification-owner")
+    other_headers = auth_headers(client, "notification-other")
+
+    preferences = client.get("/notifications/preferences", headers=owner_headers)
+    assert preferences.status_code == 200, preferences.text
+    assert len(preferences.json()) == 4
+    assert all(preference["in_app_enabled"] for preference in preferences.json())
+    assert all(not preference["email_enabled"] for preference in preferences.json())
+
+    updated = client.patch(
+        "/notifications/preferences/price_drop",
+        headers=owner_headers,
+        json={"email_enabled": True},
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json() == {
+        "notification_type": "price_drop",
+        "in_app_enabled": True,
+        "email_enabled": True,
+    }
+    other_preferences = client.get("/notifications/preferences", headers=other_headers)
+    other_price_drop = next(
+        preference
+        for preference in other_preferences.json()
+        if preference["notification_type"] == "price_drop"
+    )
+    assert other_price_drop["email_enabled"] is False
+    assert client.get("/notifications/unread-count", headers=owner_headers).json() == {
+        "unread_count": 0
+    }
+    assert client.post(
+        "/notifications/mark-all-read", headers=owner_headers
+    ).json() == {"updated_count": 0}
+
+
 def verification_token_from_url(verification_url: str) -> str:
     parsed = urlparse(verification_url)
     tokens = parse_qs(parsed.query).get("token")

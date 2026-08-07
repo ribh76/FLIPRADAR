@@ -12,6 +12,7 @@ import { VerifyEmailPage } from "./features/auth/VerifyEmailPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { DealsPage } from "./features/deals/DealsPage";
 import { ListingEvaluatorPage } from "./features/listings/ListingEvaluatorPage";
+import { NotificationsPage } from "./features/notifications/NotificationsPage";
 import { PortfolioPage } from "./features/portfolio/PortfolioPage";
 import { HoldingDetailPage } from "./features/portfolio/HoldingDetailPage";
 import { SetDetailPage } from "./features/sets/SetDetailPage";
@@ -49,6 +50,7 @@ export const appRoutes: RouteObject[] = [
           { path: "/listing-evaluator", element: <ListingEvaluatorPage /> },
           { path: "/portfolio", element: <PortfolioPage /> },
           { path: "/watchlist", element: <WatchlistPage /> },
+          { path: "/notifications", element: <NotificationsPage /> },
           { path: "/portfolio/items/:itemId", element: <HoldingDetailPage /> },
           { path: "/sets", element: <SetsPage /> },
           { path: "/sets/:setNumber", element: <SetDetailPage /> },

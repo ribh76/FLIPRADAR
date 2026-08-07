@@ -108,3 +108,15 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    notifications = relationship(
+        "Notification",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    notification_preferences = relationship(
+        "NotificationPreference",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

@@ -55,5 +55,12 @@ class RecommendationDecision(StrEnum):
     WATCH = "WATCH"
 
 
+class NotificationType(StrEnum):
+    PRICE_DROP = "price_drop"
+    TARGET_REACHED = "target_reached"
+    ENDED_LISTING = "ended_listing"
+    DEAL_SCORE = "deal_score"
+
+
 def sql_values(enum_type: type[StrEnum]) -> str:
     return ", ".join(f"'{item.value}'" for item in enum_type)

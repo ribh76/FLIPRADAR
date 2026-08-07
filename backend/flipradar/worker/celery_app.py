@@ -19,6 +19,10 @@ celery_app.conf.update(
         "refresh-watchlists-daily": {
             "task": "flipradar.watchlist.dispatch_daily_refresh",
             "schedule": 24 * 60 * 60,
-        }
+        },
+        "deliver-watchlist-notification-digests-hourly": {
+            "task": "flipradar.notifications.deliver_email_digests",
+            "schedule": 60 * 60,
+        },
     },
 )

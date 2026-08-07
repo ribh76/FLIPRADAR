@@ -49,6 +49,11 @@ def test_celery_configures_daily_watchlist_dispatch():
     assert schedule["task"] == "flipradar.watchlist.dispatch_daily_refresh"
     assert schedule["schedule"] == 24 * 60 * 60
     assert tasks.refresh_provider_batch.max_retries is None
+    digest = worker_app.celery_app.conf.beat_schedule[
+        "deliver-watchlist-notification-digests-hourly"
+    ]
+    assert digest["task"] == "flipradar.notifications.deliver_email_digests"
+    assert digest["schedule"] == 60 * 60
 
 
 def test_provider_rate_limiter_allows_only_hourly_limit(monkeypatch):
