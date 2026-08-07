@@ -33,6 +33,7 @@ from flipradar.domain.models import (
     SavedSearch,
     User,
     WatchlistItem,
+    WatchlistMonitoringPreference,
     WatchlistPriceHistory,
 )
 
@@ -1349,6 +1350,39 @@ async def list_watchlist_items_for_background_refresh(
         )
     )
     return list(result.scalars())
+
+
+async def list_watchlist_monitoring_preferences(
+    db: AsyncSession,
+) -> dict[UUID, WatchlistMonitoringPreference]:
+    result = await db.execute(select(WatchlistMonitoringPreference))
+    return {preference.user_id: preference for preference in result.scalars()}
+
+
+async def get_watchlist_monitoring_preference(
+    db: AsyncSession, user_id: UUID
+) -> WatchlistMonitoringPreference | None:
+    result = await db.execute(
+        select(WatchlistMonitoringPreference).where(
+            WatchlistMonitoringPreference.user_id == user_id
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def upsert_watchlist_monitoring_preference(
+    db: AsyncSession, user_id: UUID, data: dict[str, Any]
+) -> WatchlistMonitoringPreference:
+    preference = await get_watchlist_monitoring_preference(db, user_id)
+    if preference is None:
+        preference = WatchlistMonitoringPreference(user_id=user_id, **data)
+        db.add(preference)
+    else:
+        for field_name, value in data.items():
+            setattr(preference, field_name, value)
+    await db.flush()
+    await db.refresh(preference)
+    return preference
 
 
 async def get_watchlist_item_for_user(

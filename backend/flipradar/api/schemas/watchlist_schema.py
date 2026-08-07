@@ -28,6 +28,22 @@ class WatchlistItemUpdate(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
 
 
+class WatchlistMonitoringPreferenceUpdate(BaseModel):
+    is_enabled: bool | None = None
+    monitor_listing_expiration: bool | None = None
+    material_price_change_percent: Decimal | None = Field(
+        default=None, gt=0, le=100, decimal_places=2
+    )
+
+
+class WatchlistMonitoringPreferenceResponse(BaseModel):
+    is_enabled: bool
+    monitor_listing_expiration: bool
+    material_price_change_percent: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class WatchlistItemResponse(BaseModel):
     id: UUID
     user_id: UUID

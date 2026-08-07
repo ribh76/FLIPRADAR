@@ -1061,6 +1061,41 @@ def test_watchlist_crud_supports_set_and_listing_entries_with_ownership(
     assert client.post("/watchlist/refresh", headers=owner_headers).status_code == 409
 
 
+def test_watchlist_monitoring_preferences_are_user_scoped(client: TestClient):
+    owner_headers = auth_headers(client, "watchlist-preference-owner")
+    other_headers = auth_headers(client, "watchlist-preference-other")
+
+    default = client.get("/watchlist/monitoring-preferences", headers=owner_headers)
+    assert default.status_code == 200, default.text
+    assert default.json() == {
+        "is_enabled": True,
+        "monitor_listing_expiration": True,
+        "material_price_change_percent": "10",
+    }
+
+    updated = client.patch(
+        "/watchlist/monitoring-preferences",
+        headers=owner_headers,
+        json={
+            "is_enabled": False,
+            "monitor_listing_expiration": False,
+            "material_price_change_percent": "15.50",
+        },
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json() == {
+        "is_enabled": False,
+        "monitor_listing_expiration": False,
+        "material_price_change_percent": "15.50",
+    }
+    assert (
+        client.get("/watchlist/monitoring-preferences", headers=other_headers).json()[
+            "is_enabled"
+        ]
+        is True
+    )
+
+
 def verification_token_from_url(verification_url: str) -> str:
     parsed = urlparse(verification_url)
     tokens = parse_qs(parsed.query).get("token")

@@ -20,6 +20,7 @@ from flipradar.domain.models.refresh_token import (
 from flipradar.domain.models.saved_search import SavedSearch
 from flipradar.domain.models.user import User
 from flipradar.domain.models.watchlist import WatchlistItem, WatchlistPriceHistory
+from flipradar.domain.models.watchlist_monitoring_preference import WatchlistMonitoringPreference
 
 __all__ = [
     "AccountToken",
@@ -39,4 +40,5 @@ __all__ = [
     "User",
     "WatchlistItem",
     "WatchlistPriceHistory",
+    "WatchlistMonitoringPreference",
 ]

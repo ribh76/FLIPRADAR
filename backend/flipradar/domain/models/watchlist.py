@@ -136,6 +136,7 @@ class WatchlistPriceHistory(Base):
     fair_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     discount_percent: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
     deal_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    target_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     is_under_target: Mapped[bool] = mapped_column(nullable=False, default=False)
     observed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False

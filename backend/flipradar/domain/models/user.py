@@ -101,3 +101,10 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    watchlist_monitoring_preference = relationship(
+        "WatchlistMonitoringPreference",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

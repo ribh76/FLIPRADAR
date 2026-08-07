@@ -10,6 +10,8 @@ from flipradar.api.schemas import (
     WatchlistItemCreate,
     WatchlistItemResponse,
     WatchlistItemUpdate,
+    WatchlistMonitoringPreferenceResponse,
+    WatchlistMonitoringPreferenceUpdate,
     WatchlistMoveToPortfolio,
     WatchlistReplacementResponse,
     WatchlistSummaryResponse,
@@ -66,6 +68,31 @@ async def get_watchlist_summary(
     db: AsyncSession = Depends(get_db_session),
 ):
     return await watchlist_service.get_watchlist_summary(db, current_user.id)
+
+
+@router.get(
+    "/monitoring-preferences", response_model=WatchlistMonitoringPreferenceResponse
+)
+async def get_watchlist_monitoring_preferences(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+):
+    return await watchlist_service.get_watchlist_monitoring_preference(
+        db, current_user.id
+    )
+
+
+@router.patch(
+    "/monitoring-preferences", response_model=WatchlistMonitoringPreferenceResponse
+)
+async def update_watchlist_monitoring_preferences(
+    payload: WatchlistMonitoringPreferenceUpdate,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+):
+    return await watchlist_service.update_watchlist_monitoring_preference(
+        db, current_user.id, payload
+    )
 
 
 @router.get("/{item_id}/history", response_model=list[WatchlistHistoryPoint])

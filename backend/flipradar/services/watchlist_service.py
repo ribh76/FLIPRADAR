@@ -8,6 +8,7 @@ from flipradar.api.schemas.portfolio_schema import PortfolioItemCreate
 from flipradar.api.schemas.watchlist_schema import (
     WatchlistItemCreate,
     WatchlistItemUpdate,
+    WatchlistMonitoringPreferenceUpdate,
     WatchlistMoveToPortfolio,
 )
 from flipradar.database import repositories
@@ -19,6 +20,28 @@ from flipradar.services.errors import ServiceConflictError, ServiceNotFoundError
 
 MANUAL_REFRESH_COOLDOWN = timedelta(hours=1)
 _last_manual_refresh_by_user: dict[UUID, datetime] = {}
+
+
+async def get_watchlist_monitoring_preference(db: AsyncSession, user_id: UUID) -> dict:
+    preference = await repositories.get_watchlist_monitoring_preference(db, user_id)
+    if preference is None:
+        return {
+            "is_enabled": True,
+            "monitor_listing_expiration": True,
+            "material_price_change_percent": Decimal("10"),
+        }
+    return _monitoring_preference_response(preference)
+
+
+async def update_watchlist_monitoring_preference(
+    db: AsyncSession,
+    user_id: UUID,
+    payload: WatchlistMonitoringPreferenceUpdate,
+) -> dict:
+    preference = await repositories.upsert_watchlist_monitoring_preference(
+        db, user_id, payload.model_dump(exclude_unset=True)
+    )
+    return _monitoring_preference_response(preference)
 
 
 async def list_watchlist_items(
@@ -385,6 +408,14 @@ def _recommendation(deal_score: int | Decimal | None) -> str:
     return "PASS"
 
 
+def _monitoring_preference_response(preference: object) -> dict:
+    return {
+        "is_enabled": preference.is_enabled,
+        "monitor_listing_expiration": preference.monitor_listing_expiration,
+        "material_price_change_percent": preference.material_price_change_percent,
+    }
+
+
 async def _record_intelligence(
     db: AsyncSession, responses: list[dict], *, observed_at: datetime | None = None
 ) -> None:
@@ -399,6 +430,7 @@ async def _record_intelligence(
                 "fair_value": entry["valuation"],
                 "discount_percent": entry["discount_percent"],
                 "deal_score": entry["deal_score"],
+                "target_price": entry["target_price"],
                 "is_under_target": entry["is_under_target"],
                 "observed_at": timestamp,
             },

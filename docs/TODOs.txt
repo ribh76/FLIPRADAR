@@ -696,12 +696,12 @@ Classification: SHIP LATER
 PHASE 35: AUTOMATED WATCHLIST MONITORING
 Classification: SHIP LATER
 
-1. Select a background job system.
-2. Add a separate worker process.
-3. Add scheduled watchlist refresh jobs.
-4. Batch entries by provider.
-5. Respect provider rate limits.
-6. Record job attempts and failures.
+1. Select a background job system. - (Complete) 
+2. Add a separate worker process. - (Complete) 
+3. Add scheduled watchlist refresh jobs. - (Complete) 
+4. Batch entries by provider. - (Complete) 
+5. Respect provider rate limits. - (Complete) 
+6. Record job attempts and failures. - (Complete) 
 7. Add retry behavior.
 8. Prevent duplicate concurrent jobs.
 9. Detect material price changes.
