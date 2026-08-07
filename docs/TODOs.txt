@@ -712,24 +712,24 @@ Classification: SHIP LATER
 14. Add job inspection tools. - (Complete) 
 15. Add worker tests. - (Complete) 
 
-PHASE 36: WATCHLIST NOTIFICATIONS
+PHASE 36: WATCHLIST NOTIFICATIONS (Complete) 
 Classification: SHIP LATER
 
-1. Create a notification model.
-2. Define price-drop, target-reached, ended-listing, and deal-score notification types.
-3. Add in-app notifications.
-4. Add unread counts.
-5. Add notification history.
-6. Add per-type preferences.
-7. Add email notifications.
-8. Batch notifications to reduce spam.
-9. Add quiet hours.
-10. Add unsubscribe controls.
-11. Prevent duplicate alerts.
-12. Add direct links to relevant items.
-13. Add delivery-failure handling.
-14. Add audit logs.
-15. Add workflow tests.
+1. Create a notification model. - (Complete) 
+2. Define price-drop, target-reached, ended-listing, and deal-score notification types. - (Complete) 
+3. Add in-app notifications. - (Complete) 
+4. Add unread counts. - (Complete) 
+5. Add notification history. - (Complete) 
+6. Add per-type preferences. - (Complete) 
+7. Add email notifications. - (Complete) 
+8. Batch notifications to reduce spam. - (Complete) 
+9. Add quiet hours. - (Complete) 
+10. Add unsubscribe controls. - (Complete) 
+11. Prevent duplicate alerts. - (Complete) 
+12. Add direct links to relevant items. - (Complete) 
+13. Add delivery-failure handling. - (Complete) 
+14. Add audit logs. - (Complete) 
+15. Add workflow tests. - (Complete) 
 
 ==================================================
 PART X - PORTFOLIO ANALYSIS AND AI
@@ -1287,7 +1287,7 @@ Complete Phases 15-20.
 MILESTONE C: PORTFOLIO PRODUCT (Complete) 
 Complete Phases 21-25.
 
-MILESTONE D: MARKETPLACE PRODUCT
+MILESTONE D: MARKETPLACE PRODUCT (Complete) 
 Complete Phases 26-33 for V1.
 Complete Phases 29 and 34-36 later.
 
