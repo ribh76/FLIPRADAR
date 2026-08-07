@@ -1,8 +1,9 @@
 import { CheckCheck, Mail } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useServerQuery } from "../../hooks/serverState";
 import { apiClient } from "../../services/apiClient";
 import type { AppNotification, NotificationPreference } from "../../types";
+import type { NotificationSettings } from "../../types";
 import {
   Card,
   CardHeader,
@@ -28,6 +29,8 @@ function formatNotificationTime(value: string): string {
 }
 
 export function NotificationsPage() {
+  const [quietHoursStart, setQuietHoursStart] = useState("");
+  const [quietHoursEnd, setQuietHoursEnd] = useState("");
   const inbox = useServerQuery<AppNotification[]>(
     ["notifications"],
     useCallback(() => apiClient.notifications.list(), []),
@@ -36,6 +39,15 @@ export function NotificationsPage() {
     ["notification-preferences"],
     useCallback(() => apiClient.notifications.preferences(), []),
   );
+  const settings = useServerQuery<NotificationSettings>(
+    ["notification-settings"],
+    useCallback(() => apiClient.notifications.settings(), []),
+  );
+
+  useEffect(() => {
+    setQuietHoursStart(settings.data?.quiet_hours_start ?? "");
+    setQuietHoursEnd(settings.data?.quiet_hours_end ?? "");
+  }, [settings.data?.quiet_hours_end, settings.data?.quiet_hours_start]);
 
   async function markRead(notification: AppNotification) {
     if (notification.is_read) return;
@@ -69,16 +81,35 @@ export function NotificationsPage() {
     );
   }
 
-  if (inbox.isLoading || preferences.isLoading)
+  async function updateSettings(payload: Partial<NotificationSettings>) {
+    const updated = await apiClient.notifications.updateSettings(payload);
+    settings.setData(updated);
+  }
+
+  async function saveQuietHours() {
+    if (!quietHoursStart && !quietHoursEnd) {
+      await updateSettings({ quiet_hours_start: null, quiet_hours_end: null });
+      return;
+    }
+    if (quietHoursStart && quietHoursEnd) {
+      await updateSettings({
+        quiet_hours_start: quietHoursStart,
+        quiet_hours_end: quietHoursEnd,
+      });
+    }
+  }
+
+  if (inbox.isLoading || preferences.isLoading || settings.isLoading)
     return <LoadingState title="Loading notifications..." />;
-  if (inbox.error || preferences.error)
+  if (inbox.error || preferences.error || settings.error)
     return (
       <ErrorState
         title="Notifications unavailable"
-        message={inbox.error || preferences.error}
+        message={inbox.error || preferences.error || settings.error}
         onRetry={() => {
           void inbox.refetch();
           void preferences.refetch();
+          void settings.refetch();
         }}
       />
     );
@@ -116,11 +147,9 @@ export function NotificationsPage() {
             />
           ) : (
             inbox.data.map((notification) => (
-              <button
+              <article
                 className={`w-full rounded-lg border p-4 text-left transition hover:border-[var(--color-accent)] ${notification.is_read ? "border-[var(--color-border-soft)]" : "border-[var(--color-accent)] bg-[rgba(73,252,226,0.08)]"}`}
                 key={notification.id}
-                onClick={() => void markRead(notification)}
-                type="button"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -130,15 +159,106 @@ export function NotificationsPage() {
                     <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                       {notification.message}
                     </p>
+                    <div className="mt-3 flex gap-3 text-sm font-semibold">
+                      <a
+                        className="text-[var(--color-accent)] hover:underline"
+                        href={notification.action_url}
+                        onClick={() => void markRead(notification)}
+                      >
+                        View item
+                      </a>
+                      {!notification.is_read ? (
+                        <button
+                          className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                          onClick={() => void markRead(notification)}
+                          type="button"
+                        >
+                          Mark read
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                   <time className="shrink-0 text-xs text-[var(--color-text-muted)]">
                     {formatNotificationTime(notification.created_at)}
                   </time>
                 </div>
-              </button>
+              </article>
             ))
           )}
         </div>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Global email delivery</CardTitle>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+            Quiet hours defer digests until the selected window ends.
+          </p>
+        </CardHeader>
+        {settings.data ? (
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <label className="inline-flex items-center gap-2 text-sm font-semibold">
+              <input
+                checked={settings.data.email_enabled}
+                onChange={() =>
+                  void updateSettings({
+                    email_enabled: !settings.data?.email_enabled,
+                  })
+                }
+                type="checkbox"
+              />{" "}
+              Email digests enabled
+            </label>
+            <label className="text-sm font-semibold">
+              Timezone
+              <input
+                className="mt-1 w-full rounded border border-[var(--color-border-soft)] bg-transparent px-3 py-2"
+                onBlur={(event) => {
+                  if (event.target.value !== settings.data?.timezone)
+                    void updateSettings({ timezone: event.target.value });
+                }}
+                defaultValue={settings.data.timezone}
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-sm font-semibold">
+                Quiet start
+                <input
+                  className="mt-1 w-full rounded border border-[var(--color-border-soft)] bg-transparent px-3 py-2"
+                  onChange={(event) => setQuietHoursStart(event.target.value)}
+                  type="time"
+                  value={quietHoursStart}
+                />
+              </label>
+              <label className="text-sm font-semibold">
+                Quiet end
+                <input
+                  className="mt-1 w-full rounded border border-[var(--color-border-soft)] bg-transparent px-3 py-2"
+                  onChange={(event) => setQuietHoursEnd(event.target.value)}
+                  type="time"
+                  value={quietHoursEnd}
+                />
+              </label>
+            </div>
+            <button
+              className="secondary-button self-end"
+              onClick={() => void saveQuietHours()}
+              type="button"
+            >
+              Save quiet hours
+            </button>
+            <button
+              className="secondary-button self-end"
+              onClick={() =>
+                void apiClient.notifications
+                  .unsubscribeEmail()
+                  .then(settings.setData)
+              }
+              type="button"
+            >
+              Unsubscribe from all email
+            </button>
+          </div>
+        ) : null}
       </Card>
       <Card>
         <CardHeader>

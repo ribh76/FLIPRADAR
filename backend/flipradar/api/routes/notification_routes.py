@@ -10,6 +10,8 @@ from flipradar.api.schemas.notification_schema import (
     NotificationPreferenceResponse,
     NotificationPreferenceUpdate,
     NotificationResponse,
+    NotificationSettingsResponse,
+    NotificationSettingsUpdate,
     NotificationUnreadCountResponse,
 )
 from flipradar.domain.models.enums import NotificationType
@@ -54,6 +56,33 @@ async def list_notification_preferences(
     db: AsyncSession = Depends(get_db_session),
 ):
     return await notification_service.list_preferences(db, current_user.id)
+
+
+@router.get("/settings", response_model=NotificationSettingsResponse)
+async def get_notification_settings(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+):
+    return await notification_service.get_notification_settings(db, current_user.id)
+
+
+@router.patch("/settings", response_model=NotificationSettingsResponse)
+async def update_notification_settings(
+    payload: NotificationSettingsUpdate,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+):
+    return await notification_service.update_notification_settings(
+        db, current_user.id, payload.provided_fields()
+    )
+
+
+@router.post("/unsubscribe-email", response_model=NotificationSettingsResponse)
+async def unsubscribe_notification_email(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+):
+    return await notification_service.unsubscribe_email(db, current_user.id)
 
 
 @router.patch(

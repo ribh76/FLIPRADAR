@@ -26,6 +26,7 @@ import type {
   ListingAnalysis,
   ManualListingEntry,
   NotificationPreference,
+  NotificationSettings,
   SetDetail,
   WatchlistItem,
   WatchlistHistoryPoint,
@@ -441,6 +442,21 @@ export const apiClient = {
           `/notifications/preferences/${notificationType}`,
           payload,
         ),
+      );
+    },
+    settings() {
+      return requestData(
+        api.get<NotificationSettings>("/notifications/settings"),
+      );
+    },
+    updateSettings(payload: Partial<NotificationSettings>) {
+      return requestData(
+        api.patch<NotificationSettings>("/notifications/settings", payload),
+      );
+    },
+    unsubscribeEmail() {
+      return requestData(
+        api.post<NotificationSettings>("/notifications/unsubscribe-email"),
       );
     },
   },

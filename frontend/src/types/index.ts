@@ -237,6 +237,7 @@ export type AppNotification = {
   watchlist_item_id: string | null;
   title: string;
   message: string;
+  action_url: string;
   payload: Record<string, unknown>;
   is_read: boolean;
   created_at: string;
@@ -247,6 +248,13 @@ export type NotificationPreference = {
   notification_type: NotificationType;
   in_app_enabled: boolean;
   email_enabled: boolean;
+};
+
+export type NotificationSettings = {
+  email_enabled: boolean;
+  timezone: string;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
 };
 
 export type ListingAnalysis = {

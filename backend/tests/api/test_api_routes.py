@@ -1130,6 +1130,23 @@ def test_notification_preferences_and_empty_inbox_are_user_scoped(client: TestCl
     assert client.post(
         "/notifications/mark-all-read", headers=owner_headers
     ).json() == {"updated_count": 0}
+    settings = client.patch(
+        "/notifications/settings",
+        headers=owner_headers,
+        json={
+            "timezone": "America/Los_Angeles",
+            "quiet_hours_start": "22:00:00",
+            "quiet_hours_end": "07:00:00",
+        },
+    )
+    assert settings.status_code == 200, settings.text
+    assert settings.json()["quiet_hours_start"] == "22:00:00"
+    assert settings.json()["timezone"] == "America/Los_Angeles"
+    unsubscribed = client.post(
+        "/notifications/unsubscribe-email", headers=owner_headers
+    )
+    assert unsubscribed.status_code == 200, unsubscribed.text
+    assert unsubscribed.json()["email_enabled"] is False
 
 
 def verification_token_from_url(verification_url: str) -> str:

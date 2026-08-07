@@ -7,9 +7,11 @@ from flipradar.domain.models.notification import (
     DealScoreNotification,
     EndedListingNotification,
     Notification,
+    NotificationAuditLog,
     NotificationPreference,
     PriceDropNotification,
     TargetReachedNotification,
+    UserNotificationSettings,
 )
 from flipradar.domain.models.portfolio import PortfolioItem
 from flipradar.domain.models.portfolio_valuation_rollup import (
@@ -39,11 +41,13 @@ __all__ = [
     "MarketplaceListing",
     "ListingEvaluation",
     "Notification",
+    "NotificationAuditLog",
     "NotificationPreference",
     "PriceDropNotification",
     "TargetReachedNotification",
     "EndedListingNotification",
     "DealScoreNotification",
+    "UserNotificationSettings",
     "PortfolioItem",
     "PortfolioItemValuationSnapshot",
     "PortfolioValuationSnapshot",

@@ -25,6 +25,7 @@ from flipradar.domain.models import (
     Marketplace,
     MarketplaceListing,
     Notification,
+    NotificationAuditLog,
     NotificationPreference,
     PortfolioItem,
     PortfolioItemValuationSnapshot,
@@ -38,6 +39,7 @@ from flipradar.domain.models import (
     SavedSearch,
     TargetReachedNotification,
     User,
+    UserNotificationSettings,
     WatchlistItem,
     WatchlistMonitoringPreference,
     WatchlistPriceHistory,
@@ -1411,6 +1413,39 @@ async def create_notification(
     return notification
 
 
+async def get_latest_notification_by_dedupe_key(
+    db: AsyncSession, user_id: UUID, dedupe_key: str
+) -> Notification | None:
+    result = await db.execute(
+        select(Notification)
+        .where(Notification.user_id == user_id, Notification.dedupe_key == dedupe_key)
+        .order_by(Notification.created_at.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_notification_audit_log(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    event: str,
+    notification_id: UUID | None = None,
+    channel: str | None = None,
+    detail: str | None = None,
+) -> NotificationAuditLog:
+    audit_log = NotificationAuditLog(
+        user_id=user_id,
+        notification_id=notification_id,
+        event=event,
+        channel=channel,
+        detail=detail,
+    )
+    db.add(audit_log)
+    await db.flush()
+    return audit_log
+
+
 async def list_notifications_for_user(
     db: AsyncSession,
     user_id: UUID,
@@ -1505,6 +1540,47 @@ async def upsert_notification_preference(
     await db.flush()
     await db.refresh(preference)
     return preference
+
+
+async def get_user_notification_settings(
+    db: AsyncSession, user_id: UUID
+) -> UserNotificationSettings | None:
+    result = await db.execute(
+        select(UserNotificationSettings).where(
+            UserNotificationSettings.user_id == user_id
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def upsert_user_notification_settings(
+    db: AsyncSession, user_id: UUID, data: dict[str, Any]
+) -> UserNotificationSettings:
+    settings = await get_user_notification_settings(db, user_id)
+    if settings is None:
+        settings = UserNotificationSettings(user_id=user_id, **data)
+        db.add(settings)
+    else:
+        for field_name, value in data.items():
+            setattr(settings, field_name, value)
+    await db.flush()
+    await db.refresh(settings)
+    return settings
+
+
+async def disable_pending_notification_emails(
+    db: AsyncSession, user_id: UUID, notification_type: str | None = None
+) -> int:
+    statement = update(Notification).where(
+        Notification.user_id == user_id,
+        Notification.email_eligible.is_(True),
+        Notification.email_sent_at.is_(None),
+    )
+    if notification_type is not None:
+        statement = statement.where(Notification.notification_type == notification_type)
+    result = await db.execute(statement.values(email_eligible=False))
+    await db.flush()
+    return cast(CursorResult, result).rowcount or 0
 
 
 async def list_users_with_pending_notification_emails(db: AsyncSession) -> list[User]:

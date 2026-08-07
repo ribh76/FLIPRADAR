@@ -6,9 +6,11 @@ from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from flipradar.core.settings import get_settings as get_app_settings
 from flipradar.database import repositories
 from flipradar.database.repositories import Pagination
 from flipradar.domain.models import Notification, WatchlistItem
@@ -31,6 +33,24 @@ def _item_label(item: WatchlistItem) -> str:
     return lego_set.set_number if lego_set else "this listing"
 
 
+def _item_action_url(item: WatchlistItem) -> str:
+    return f"{get_app_settings().frontend_url.rstrip('/')}/watchlist?item_id={item.id}"
+
+
+def _quiet_hours_active(settings: Any, now: datetime) -> bool:
+    if settings is None or settings.quiet_hours_start is None:
+        return False
+    try:
+        local_time = now.astimezone(ZoneInfo(settings.timezone)).time()
+    except ZoneInfoNotFoundError:
+        local_time = now.astimezone(UTC).time()
+    start = settings.quiet_hours_start
+    end = settings.quiet_hours_end
+    if start < end:
+        return start <= local_time < end
+    return local_time >= start or local_time < end
+
+
 async def emit_watchlist_notifications(
     db: AsyncSession,
     *,
@@ -42,7 +62,9 @@ async def emit_watchlist_notifications(
 ) -> list[Notification]:
     """Emit deduplicated notifications for a fresh watchlist observation."""
     preferences = await repositories.list_notification_preferences(db, user_id)
+    settings = await repositories.get_user_notification_settings(db, user_id)
     label = _item_label(item)
+    action_url = _item_action_url(item)
     created: list[Notification] = []
 
     async def emit(
@@ -55,7 +77,20 @@ async def emit_watchlist_notifications(
         in_app_enabled, email_enabled = _preference_values(
             preferences.get(notification_type.value)
         )
+        email_enabled = email_enabled and (settings is None or settings.email_enabled)
         if not in_app_enabled and not email_enabled:
+            return
+        dedupe_key = f"{item.id}:{notification_type.value}:{payload}"
+        if await repositories.get_latest_notification_by_dedupe_key(
+            db, user_id, dedupe_key
+        ):
+            await repositories.create_notification_audit_log(
+                db,
+                user_id=user_id,
+                event="suppressed_duplicate",
+                channel="notification",
+                detail=dedupe_key,
+            )
             return
         notification = await repositories.create_notification(
             db,
@@ -64,9 +99,11 @@ async def emit_watchlist_notifications(
                 "watchlist_item_id": item.id,
                 "notification_type": notification_type.value,
                 "event_key": f"{current.id}:{notification_type.value}",
+                "dedupe_key": dedupe_key,
                 "title": title,
                 "message": message,
-                "payload": payload,
+                "action_url": action_url,
+                "payload": {**payload, "action_url": action_url},
                 "is_in_app": in_app_enabled,
                 "email_eligible": email_enabled,
                 **specific_fields,
@@ -74,6 +111,13 @@ async def emit_watchlist_notifications(
         )
         if notification is not None:
             created.append(notification)
+            await repositories.create_notification_audit_log(
+                db,
+                user_id=user_id,
+                notification_id=notification.id,
+                event="created",
+                channel="in_app",
+            )
 
     if previous.listing_price and current.listing_price is not None:
         drop_percent = (
@@ -217,11 +261,40 @@ async def update_preference(
     preference = await repositories.upsert_notification_preference(
         db, user_id, notification_type.value, data
     )
+    if data.get("email_enabled") is False:
+        await repositories.disable_pending_notification_emails(
+            db, user_id, notification_type.value
+        )
     return {
         "notification_type": preference.notification_type,
         "in_app_enabled": preference.in_app_enabled,
         "email_enabled": preference.email_enabled,
     }
+
+
+async def get_notification_settings(db: AsyncSession, user_id: UUID) -> dict[str, Any]:
+    settings = await repositories.get_user_notification_settings(db, user_id)
+    return _settings_response(settings)
+
+
+async def update_notification_settings(
+    db: AsyncSession, user_id: UUID, data: dict[str, Any]
+) -> dict[str, Any]:
+    settings = await repositories.upsert_user_notification_settings(db, user_id, data)
+    if data.get("email_enabled") is False:
+        await repositories.disable_pending_notification_emails(db, user_id)
+    return _settings_response(settings)
+
+
+async def unsubscribe_email(db: AsyncSession, user_id: UUID) -> dict[str, Any]:
+    settings = await repositories.upsert_user_notification_settings(
+        db, user_id, {"email_enabled": False}
+    )
+    await repositories.disable_pending_notification_emails(db, user_id)
+    await repositories.create_notification_audit_log(
+        db, user_id=user_id, event="email_unsubscribed", channel="email"
+    )
+    return _settings_response(settings)
 
 
 async def deliver_pending_email_digests(db: AsyncSession) -> dict[str, int]:
@@ -234,27 +307,73 @@ async def deliver_pending_email_digests(db: AsyncSession) -> dict[str, int]:
         if not notifications:
             continue
         pending_count += len(notifications)
-        lines = "\n".join(
-            f"- {notification.title}: {notification.message}"
-            for notification in notifications
-        )
+        settings = await repositories.get_user_notification_settings(db, user.id)
+        if settings is not None and not settings.email_enabled:
+            await repositories.disable_pending_notification_emails(db, user.id)
+            continue
+        if _quiet_hours_active(settings, datetime.now(UTC)):
+            continue
         html_items = "".join(
-            f"<li><strong>{notification.title}</strong>: {notification.message}</li>"
+            f"<li><strong>{notification.title}</strong>: {notification.message} "
+            f'<a href="{notification.action_url}">View item</a></li>'
             for notification in notifications
         )
-        result = await get_email_service().send(
-            to_address=user.email,
-            subject=f"FlipRadar watchlist update ({len(notifications)})",
-            text_body=f"Hi {user.username},\n\nYour watchlist updates:\n{lines}",
-            html_body=f"<p>Hi {user.username},</p><p>Your watchlist updates:</p><ul>{html_items}</ul>",
+        lines = "\n".join(
+            f"- {notification.title}: {notification.message}\n  View: {notification.action_url}"
+            for notification in notifications
         )
+        unsubscribe_url = f"{get_app_settings().frontend_url.rstrip('/')}/notifications?unsubscribe=email"
+        try:
+            result = await get_email_service().send(
+                to_address=user.email,
+                subject=f"FlipRadar watchlist update ({len(notifications)})",
+                text_body=(
+                    f"Hi {user.username},\n\nYour watchlist updates:\n{lines}\n\n"
+                    f"Manage or unsubscribe from email alerts: {unsubscribe_url}"
+                ),
+                html_body=(
+                    f"<p>Hi {user.username},</p><p>Your watchlist updates:</p>"
+                    f'<ul>{html_items}</ul><p><a href="{unsubscribe_url}">'
+                    "Manage or unsubscribe from email alerts</a></p>"
+                ),
+            )
+        except Exception as exc:
+            for notification in notifications:
+                await repositories.create_notification_audit_log(
+                    db,
+                    user_id=user.id,
+                    notification_id=notification.id,
+                    event="delivery_failed",
+                    channel="email",
+                    detail=str(exc),
+                )
+            continue
         if result.sent:
             await repositories.mark_notification_emails_sent(
                 db,
                 [notification.id for notification in notifications],
                 sent_at=datetime.now(UTC),
             )
+            for notification in notifications:
+                await repositories.create_notification_audit_log(
+                    db,
+                    user_id=user.id,
+                    notification_id=notification.id,
+                    event="delivered",
+                    channel="email",
+                )
             delivered += len(notifications)
+        else:
+            event = "delivery_failed" if result.attempted else "delivery_deferred"
+            for notification in notifications:
+                await repositories.create_notification_audit_log(
+                    db,
+                    user_id=user.id,
+                    notification_id=notification.id,
+                    event=event,
+                    channel="email",
+                    detail=result.reason,
+                )
     return {"users": len(users), "pending": pending_count, "delivered": delivered}
 
 
@@ -265,8 +384,20 @@ def _response(notification: Notification) -> dict[str, Any]:
         "watchlist_item_id": notification.watchlist_item_id,
         "title": notification.title,
         "message": notification.message,
+        "action_url": notification.action_url,
         "payload": notification.payload,
         "is_read": notification.is_read,
         "created_at": notification.created_at,
         "read_at": notification.read_at,
+    }
+
+
+def _settings_response(settings: Any | None) -> dict[str, Any]:
+    return {
+        "email_enabled": settings.email_enabled if settings is not None else True,
+        "timezone": settings.timezone if settings is not None else "UTC",
+        "quiet_hours_start": (
+            settings.quiet_hours_start if settings is not None else None
+        ),
+        "quiet_hours_end": settings.quiet_hours_end if settings is not None else None,
     }

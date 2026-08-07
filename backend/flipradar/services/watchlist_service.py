@@ -14,7 +14,7 @@ from flipradar.api.schemas.watchlist_schema import (
 from flipradar.database import repositories
 from flipradar.database.repositories import DuplicateRecordError, Pagination
 from flipradar.domain.engines import price_estimator, scoring_engine
-from flipradar.domain.models import WatchlistItem
+from flipradar.domain.models import WatchlistItem, WatchlistMonitoringPreference
 from flipradar.services import marketplace_service, portfolio_service
 from flipradar.services.errors import ServiceConflictError, ServiceNotFoundError
 
@@ -65,24 +65,25 @@ async def get_watchlist_item(db: AsyncSession, user_id: UUID, item_id: UUID) -> 
 async def create_watchlist_item(
     db: AsyncSession, user_id: UUID, payload: WatchlistItemCreate
 ) -> dict:
-    data = payload.model_dump(exclude_none=True)
+    data = {
+        "user_id": user_id,
+        "target_price": payload.target_price,
+        "notes": payload.notes,
+    }
     if payload.set_number is not None:
         lego_set = await repositories.get_set_by_number(db, payload.set_number)
         if lego_set is None:
             raise ServiceNotFoundError("LEGO set not found")
-        data.pop("set_number")
         data["lego_set_id"] = lego_set.id
     else:
         listing = await repositories.get_listing_for_evaluation(db, payload.listing_id)
         if listing is None:
             raise ServiceNotFoundError("Marketplace listing not found")
-        data.pop("listing_id")
         data.update(
             marketplace_listing_id=listing.id,
             last_known_listing_price=listing.total_price,
             last_known_listing_status=listing.listing_status,
         )
-    data["user_id"] = user_id
     try:
         item = await repositories.create_watchlist_item(db, data)
         responses = await _responses(db, [item])
@@ -270,8 +271,10 @@ async def move_watchlist_item_to_portfolio(
         raise ServiceNotFoundError("Watchlist set not found")
     if item.last_known_listing_status in {"ended", "removed", "sold"}:
         raise ServiceConflictError("This listing is no longer available to purchase")
-    purchase_price = payload.purchase_price or (
-        item.listing.total_price if item.listing else None
+    purchase_price = (
+        payload.purchase_price
+        if payload.purchase_price is not None
+        else (item.listing.total_price if item.listing else None)
     )
     if purchase_price is None:
         raise ServiceConflictError("Enter a purchase price before moving this set")
@@ -408,7 +411,9 @@ def _recommendation(deal_score: int | Decimal | None) -> str:
     return "PASS"
 
 
-def _monitoring_preference_response(preference: object) -> dict:
+def _monitoring_preference_response(
+    preference: WatchlistMonitoringPreference,
+) -> dict[str, bool | Decimal]:
     return {
         "is_enabled": preference.is_enabled,
         "monitor_listing_expiration": preference.monitor_listing_expiration,

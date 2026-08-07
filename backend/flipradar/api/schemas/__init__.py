@@ -50,6 +50,8 @@ from flipradar.api.schemas.notification_schema import (
     NotificationPreferenceResponse,
     NotificationPreferenceUpdate,
     NotificationResponse,
+    NotificationSettingsResponse,
+    NotificationSettingsUpdate,
     NotificationUnreadCountResponse,
 )
 from flipradar.api.schemas.portfolio_schema import (
@@ -128,6 +130,8 @@ __all__ = [
     "NotificationPreferenceResponse",
     "NotificationPreferenceUpdate",
     "NotificationResponse",
+    "NotificationSettingsResponse",
+    "NotificationSettingsUpdate",
     "NotificationUnreadCountResponse",
     "LogoutRequest",
     "MarketplaceCreate",
