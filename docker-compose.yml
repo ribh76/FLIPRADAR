@@ -134,6 +134,51 @@ services:
         condition: service_healthy
     command: npm run dev -- --host 0.0.0.0
 
+  # Opt-in only: `docker compose --profile workers up celery-worker celery-beat`.
+  # Kept out of the default stack so the monitoring worker is configured but not deployed.
+  celery-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: flipradar-celery-worker
+    profiles: ["workers"]
+    environment:
+      APP_ENV: development
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: flipradar
+      DATABASE_USER: flipradar_app
+      DATABASE_PASSWORD: flipradar_dev_password
+      DATABASE_SSL_MODE: disable
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      WATCHLIST_WORKER_ENABLED: "true"
+      WATCHLIST_PROVIDER_HOURLY_LIMIT: "60"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A flipradar.worker.celery_app:celery_app worker --loglevel=INFO
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: flipradar-celery-beat
+    profiles: ["workers"]
+    environment:
+      APP_ENV: development
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      WATCHLIST_WORKER_ENABLED: "true"
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A flipradar.worker.celery_app:celery_app beat --loglevel=INFO
+
 volumes:
   postgres_data:
   redis_data:

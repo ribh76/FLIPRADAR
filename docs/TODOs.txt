@@ -674,7 +674,7 @@ Classification: MUST SHIP
 14. Handle ended and removed listings. - (Complete) 
 15. Add backend and frontend tests. - (Complete) 
 
-PHASE 34: WATCHLIST INTELLIGENCE
+PHASE 34: WATCHLIST INTELLIGENCE (Complete) 
 Classification: SHIP LATER
 
 1. Add watchlist summary metrics. - (Complete) 
@@ -684,14 +684,14 @@ Classification: SHIP LATER
 5. Recalculate fair-value comparisons. - (Complete) 
 6. Recalculate deal scores. - (Complete) 
 7. Store watchlist price history. - (Complete) 
-8. Add price-history charts.
-9. Add manual bulk refresh.
-10. Add provider throttling.
-11. Add recommendation badges.
-12. Add stale-data indicators.
-13. Add replacement search for ended listings.
-14. Add refresh-failure reporting.
-15. Add tests.
+8. Add price-history charts. - (Complete) 
+9. Add manual bulk refresh. - (Complete) 
+10. Add provider throttling. - (Complete) 
+11. Add recommendation badges. - (Complete) 
+12. Add stale-data indicators. - (Complete) 
+13. Add replacement search for ended listings. - (Complete) 
+14. Add refresh-failure reporting. - (Complete) 
+15. Add tests. - (Complete) 
 
 PHASE 35: AUTOMATED WATCHLIST MONITORING
 Classification: SHIP LATER

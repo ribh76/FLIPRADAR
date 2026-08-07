@@ -253,6 +253,16 @@ class Settings(BaseSettings):
     llm_max_tokens: int = Field(default=1500, ge=1, alias="LLM_MAX_TOKENS")
 
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
+    celery_broker_url: str | None = Field(default=None, alias="CELERY_BROKER_URL")
+    celery_result_backend: str | None = Field(
+        default=None, alias="CELERY_RESULT_BACKEND"
+    )
+    watchlist_worker_enabled: bool = Field(
+        default=False, alias="WATCHLIST_WORKER_ENABLED"
+    )
+    watchlist_provider_hourly_limit: int = Field(
+        default=60, ge=1, alias="WATCHLIST_PROVIDER_HOURLY_LIMIT"
+    )
 
     cors_allowed_origins: str = Field(
         default="http://127.0.0.1:5173,http://localhost:5173",
@@ -324,6 +334,14 @@ class Settings(BaseSettings):
             debug=self.app_debug,
             frontend_url=self.frontend_url,
         )
+
+    @property
+    def resolved_celery_broker_url(self) -> str:
+        return self.celery_broker_url or self.redis_url
+
+    @property
+    def resolved_celery_result_backend(self) -> str:
+        return self.celery_result_backend or self.redis_url
 
     @property
     def database(self) -> DatabaseSettings:

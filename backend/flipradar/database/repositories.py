@@ -1334,6 +1334,23 @@ async def list_watchlist_items_for_user(
     return list(result.scalars())
 
 
+async def list_watchlist_items_for_background_refresh(
+    db: AsyncSession,
+) -> list[WatchlistItem]:
+    result = await db.execute(
+        select(WatchlistItem).options(
+            selectinload(WatchlistItem.lego_set),
+            selectinload(WatchlistItem.listing).selectinload(
+                MarketplaceListing.lego_set
+            ),
+            selectinload(WatchlistItem.listing).selectinload(
+                MarketplaceListing.marketplace
+            ),
+        )
+    )
+    return list(result.scalars())
+
+
 async def get_watchlist_item_for_user(
     db: AsyncSession, item_id: UUID, user_id: UUID
 ) -> WatchlistItem | None:

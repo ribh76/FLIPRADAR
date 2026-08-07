@@ -130,6 +130,21 @@ async def refresh_watchlist_items(db: AsyncSession, user_id: UUID) -> list[dict]
     return responses
 
 
+async def capture_watchlist_intelligence(db: AsyncSession, user_id: UUID) -> list[dict]:
+    """Persist post-provider price, valuation, status, and score observations."""
+    items = await repositories.list_watchlist_items_for_user(db, user_id)
+    now = datetime.now(UTC)
+    for item in items:
+        if item.listing:
+            item.last_known_listing_price = item.listing.total_price
+            item.last_known_listing_status = item.listing.listing_status
+        item.updated_at = now
+    await db.flush()
+    responses = await _responses(db, items, checked_at=now)
+    await _record_intelligence(db, responses, observed_at=now)
+    return responses
+
+
 async def get_watchlist_history(
     db: AsyncSession, user_id: UUID, item_id: UUID
 ) -> list[dict]:
