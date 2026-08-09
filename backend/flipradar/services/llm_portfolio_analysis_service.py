@@ -42,16 +42,18 @@ SYSTEM_PROMPT = """You write a short portfolio narrative for calculated FlipRada
 Return JSON only, with exactly this shape:
 {
   "executive_summary": "string",
-  "observations": [{"source_metric": "allowed metric id", "text": "string"}],
-  "actions": [{"item_key": "allowed item key", "label": "matching deterministic label", "text": "string"}],
+  "diversification_observations": [{"source_metric": "portfolio.diversification", "text": "string"}],
+  "concentration_observations": [{"source_metric": "portfolio.concentration", "text": "string"}],
+  "prioritized_actions": [{"item_key": "allowed item key", "label": "matching deterministic label", "priority": 1, "text": "string"}],
   "uncertainties": [{"code": "allowed uncertainty code", "text": "string"}]
 }
 
 The deterministic system, not you, calculates all metrics and item labels.
-Use only the supplied calculated metrics. Every observation must reference an
-allowed metric id. Every action must use an allowed item key and its exact,
-already-calculated label. Uncertainties must use only a supplied uncertainty
-code. Never invent, estimate, repeat, compare, or imply prices, percentages,
+Use only the supplied calculated metrics. Diversification observations must
+reference portfolio.diversification; concentration observations must reference
+portfolio.concentration. Every prioritized action must use an allowed item key
+and its exact, already-calculated label and priority. Uncertainties must use
+only a supplied uncertainty code. Never invent, estimate, repeat, compare, or imply prices, percentages,
 listing counts, sales, sellers, availability, or marketplace facts. Never name a
 marketplace. Text fields must contain no digits, currency symbols, or currency
 names. Do not provide financial advice or guarantees."""
@@ -97,10 +99,13 @@ class PortfolioPromptMetrics:
                 "low_confidence_count": len(attention["low_confidence"]),
                 "insufficient_data_count": len(attention["insufficient_data"]),
             },
+            "portfolio.confidence_summary": analysis["confidence_summary"],
+            "portfolio.data_quality_warnings": analysis["data_quality_warnings"],
         }
         item_metrics = {
             str(item["portfolio_item_id"]): {
                 "label": item["label"],
+                "priority": item["priority"],
                 "confidence": item["confidence"],
                 "reason_codes": item["reason_codes"],
                 "data_quality_flags": item["data_quality_flags"],
@@ -110,15 +115,9 @@ class PortfolioPromptMetrics:
         item_labels = {
             item_key: item_metrics[item_key]["label"] for item_key in item_metrics
         }
-        uncertainty_codes: set[str] = set()
-        if analytics["holding_count"] != analytics["valued_holding_count"]:
-            uncertainty_codes.add("incomplete_valuation_coverage")
-        if attention["stale"]:
-            uncertainty_codes.add("stale_valuations")
-        if attention["low_confidence"]:
-            uncertainty_codes.add("low_confidence_valuations")
-        if attention["insufficient_data"]:
-            uncertainty_codes.add("insufficient_market_data")
+        uncertainty_codes = {
+            warning["code"] for warning in analysis["data_quality_warnings"]
+        }
         return cls(
             values=values,
             item_metrics=item_metrics,
@@ -162,14 +161,18 @@ def generate_portfolio_narrative(
         ) from exc
 
     if any(
-        observation.source_metric not in metrics.values
-        for observation in narrative.observations
+        observation.source_metric != "portfolio.diversification"
+        for observation in narrative.diversification_observations
+    ) or any(
+        observation.source_metric != "portfolio.concentration"
+        for observation in narrative.concentration_observations
     ):
-        raise LlmStructuredOutputError("LLM referenced an unavailable portfolio metric")
+        raise LlmStructuredOutputError("LLM referenced an invalid observation metric")
     if any(
         action.item_key not in metrics.item_labels
         or action.label != metrics.item_labels[action.item_key]
-        for action in narrative.actions
+        or action.priority != metrics.item_metrics[action.item_key]["priority"]
+        for action in narrative.prioritized_actions
     ):
         raise LlmStructuredOutputError("LLM changed or invented an item label")
     if any(

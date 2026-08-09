@@ -13,13 +13,14 @@ from flipradar.domain.models import (
     LegoSet,
     Marketplace,
     MarketplaceListing,
+    PortfolioAnalysis,
     PortfolioAnalyticsSnapshot,
     PortfolioHoldingAnalytics,
     PortfolioItem,
     PriceSnapshot,
     User,
 )
-from flipradar.services import portfolio_analytics_service
+from flipradar.services import portfolio_analysis_service, portfolio_analytics_service
 
 ANALYSIS_AT = datetime(2026, 8, 1, 12, tzinfo=UTC)
 
@@ -287,3 +288,40 @@ async def test_refresh_calculates_persists_and_retrieves_deterministic_analytics
         db_session, user.id
     )
     assert latest["id"] == result["id"]
+
+
+@pytest.mark.asyncio
+async def test_completed_portfolio_analysis_persists_confidence_and_data_quality(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+):
+    user = await _seed_analytics_data(db_session)
+
+    async def fixed_value_map(_db, items):
+        del _db
+        values = {
+            "900001": (Decimal("200.00"), "valued", "high"),
+            "900002": (Decimal("120.00"), "valued", "low"),
+            "900003": (None, "missing_market_data", "missing_market_data"),
+        }
+        return {
+            (item.set_number, item.condition): values[item.set_number] for item in items
+        }
+
+    monkeypatch.setattr(
+        portfolio_analytics_service, "_current_unit_value_map", fixed_value_map
+    )
+
+    result = await portfolio_analysis_service.analyze_portfolio(db_session, user.id)
+
+    stored = list((await db_session.execute(select(PortfolioAnalysis))).scalars())
+    assert len(stored) == 1
+    assert stored[0].id == result["id"]
+    assert stored[0].analytics_snapshot_id == result["analytics"]["id"]
+    assert stored[0].confidence_summary == result["confidence_summary"]
+    assert stored[0].data_quality_warnings == result["data_quality_warnings"]
+    assert stored[0].item_recommendations[0]["priority"] >= 1
+    assert result["confidence_summary"]["overall"] == "low"
+    assert any(
+        warning["code"] == "insufficient_market_data"
+        for warning in result["data_quality_warnings"]
+    )

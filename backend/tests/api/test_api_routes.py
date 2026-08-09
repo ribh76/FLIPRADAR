@@ -3565,9 +3565,15 @@ def test_portfolio_analytics_refresh_persists_holdings_allocations_and_signals(
     analyzed = client.post("/portfolio/analyze", headers=headers)
     assert analyzed.status_code == 201, analyzed.text
     analysis_body = analyzed.json()
+    assert analysis_body["id"]
     assert analysis_body["analytics"]["holding_count"] == 2
+    assert analysis_body["confidence_summary"]["overall"] in {"low", "medium", "high"}
+    assert analysis_body["data_quality_warnings"]
     assert analysis_body["ai_narrative"] is None
     assert analysis_body["ai_narrative_status"] == "disabled"
-    labels = {item["set_number"]: item["label"] for item in analysis_body["item_recommendations"]}
+    labels = {
+        item["set_number"]: item["label"]
+        for item in analysis_body["item_recommendations"]
+    }
     assert labels["910001"] in {"hold", "watch", "consider_selling"}
     assert labels["910002"] in {"hold", "watch", "consider_selling"}

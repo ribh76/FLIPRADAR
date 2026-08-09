@@ -27,6 +27,7 @@ from flipradar.domain.models import (
     Notification,
     NotificationAuditLog,
     NotificationPreference,
+    PortfolioAnalysis,
     PortfolioAnalyticsSnapshot,
     PortfolioHoldingAnalytics,
     PortfolioItem,
@@ -1240,6 +1241,15 @@ async def get_latest_portfolio_analytics_snapshot(
         .limit(1)
     )
     return result.scalar_one_or_none()
+
+
+async def create_portfolio_analysis(
+    db: AsyncSession, *, analysis_data: dict[str, Any]
+) -> PortfolioAnalysis:
+    analysis = PortfolioAnalysis(**analysis_data)
+    db.add(analysis)
+    await db.flush()
+    return analysis
 
 
 async def get_user_ids_with_portfolio_set(

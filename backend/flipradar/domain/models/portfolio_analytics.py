@@ -126,3 +126,43 @@ class PortfolioHoldingAnalytics(Base):
     analytics_snapshot = relationship(
         "PortfolioAnalyticsSnapshot", back_populates="holding_metrics"
     )
+
+
+class PortfolioAnalysis(Base):
+    """Completed user-facing analysis linked to its immutable metric snapshot."""
+
+    __tablename__ = "portfolio_analyses"
+    __table_args__ = (
+        Index("ix_portfolio_analyses_user_generated_at", "user_id", "generated_at"),
+    )
+
+    id: Mapped[PyUUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
+    user_id: Mapped[PyUUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    analytics_snapshot_id: Mapped[PyUUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("portfolio_analytics_snapshots.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    ai_narrative_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    ai_narrative: Mapped[dict | None] = mapped_column(JsonDocument)
+    item_recommendations: Mapped[list[dict]] = mapped_column(
+        JsonDocument, nullable=False
+    )
+    confidence_summary: Mapped[dict] = mapped_column(JsonDocument, nullable=False)
+    data_quality_warnings: Mapped[list[dict]] = mapped_column(
+        JsonDocument, nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user = relationship("User", back_populates="portfolio_analyses")
+    analytics_snapshot = relationship("PortfolioAnalyticsSnapshot")

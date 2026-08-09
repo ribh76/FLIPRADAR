@@ -1,6 +1,7 @@
 """Schemas for an authenticated, deterministic portfolio analysis run."""
 
 import re
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -30,9 +31,21 @@ class PortfolioItemRecommendation(BaseModel):
     set_number: str
     set_name: str | None
     label: PortfolioRecommendationLabel
+    priority: int = Field(..., ge=1)
     confidence: str
     reason_codes: list[str]
     data_quality_flags: list[str]
+
+
+class PortfolioConfidenceSummary(BaseModel):
+    overall: Literal["low", "medium", "high"]
+    item_counts: dict[str, int]
+
+
+class PortfolioDataQualityWarning(BaseModel):
+    code: str
+    affected_holding_count: int = Field(..., ge=1)
+    message: str
 
 
 class LlmPortfolioObservation(BaseModel):
@@ -54,6 +67,7 @@ class LlmPortfolioObservation(BaseModel):
 class LlmPortfolioAction(BaseModel):
     item_key: str = Field(..., min_length=1, max_length=160)
     label: PortfolioRecommendationLabel
+    priority: int = Field(..., ge=1)
     text: str = Field(..., min_length=1, max_length=320)
 
     model_config = ConfigDict(extra="forbid")
@@ -86,10 +100,15 @@ class LlmPortfolioNarrative(BaseModel):
     """Bounded prose over calculated portfolio metrics and item labels."""
 
     executive_summary: str = Field(..., min_length=1, max_length=500)
-    observations: list[LlmPortfolioObservation] = Field(
+    diversification_observations: list[LlmPortfolioObservation] = Field(
         default_factory=list, max_length=6
     )
-    actions: list[LlmPortfolioAction] = Field(default_factory=list, max_length=10)
+    concentration_observations: list[LlmPortfolioObservation] = Field(
+        default_factory=list, max_length=6
+    )
+    prioritized_actions: list[LlmPortfolioAction] = Field(
+        default_factory=list, max_length=10
+    )
     uncertainties: list[LlmPortfolioUncertainty] = Field(
         default_factory=list, max_length=6
     )
@@ -110,7 +129,11 @@ class LlmPortfolioNarrative(BaseModel):
 class PortfolioAnalysisResponse(BaseModel):
     """A refreshed portfolio snapshot plus deterministic labels and optional prose."""
 
+    id: UUID
+    generated_at: datetime
     analytics: PortfolioAnalyticsResponse
     item_recommendations: list[PortfolioItemRecommendation]
+    confidence_summary: PortfolioConfidenceSummary
+    data_quality_warnings: list[PortfolioDataQualityWarning]
     ai_narrative: LlmPortfolioNarrative | None = None
     ai_narrative_status: LlmNarrativeStatus = "disabled"

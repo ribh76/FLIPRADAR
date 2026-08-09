@@ -799,11 +799,11 @@ Classification: MUST SHIP
 2. Generate deterministic metrics. - (Complete)
 3. Generate item-level recommendations. - (Complete)
 4. Pass structured metrics to the LLM. - (Complete)
-5. Generate an executive summary.
-6. Generate diversification and concentration observations.
-7. Generate prioritized actions.
-8. Include confidence and data-quality warnings.
-9. Store completed analyses.
+5. Generate an executive summary. - (Complete)
+6. Generate diversification and concentration observations. - (Complete)
+7. Generate prioritized actions. - (Complete)
+8. Include confidence and data-quality warnings. - (Complete)
+9. Store completed analyses. - (Complete)
 10. Build the Analyze Portfolio page.
 11. Display the summary.
 12. Display portfolio-wide risks and opportunities.

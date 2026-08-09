@@ -58,10 +58,27 @@ def portfolio_analysis_payload() -> dict:
                 "set_number": "12345",
                 "set_name": "Untrusted catalog name",
                 "label": "consider_selling",
+                "priority": 1,
                 "confidence": "medium",
                 "reason_codes": ["strong_profit"],
                 "data_quality_flags": [],
             }
+        ],
+        "confidence_summary": {
+            "overall": "medium",
+            "item_counts": {"high": 0, "medium": 1, "low": 0},
+        },
+        "data_quality_warnings": [
+            {
+                "code": "stale_valuation",
+                "affected_holding_count": 1,
+                "message": "Some holdings use valuation evidence that needs refreshing.",
+            },
+            {
+                "code": "insufficient_market_data",
+                "affected_holding_count": 1,
+                "message": "Some holdings do not have enough market data for a current valuation.",
+            },
         ],
     }
 
@@ -82,15 +99,15 @@ def test_portfolio_prompt_exposes_only_whitelisted_metrics_and_labels() -> None:
     assert result["item_metrics"] == {
         str(payload["item_recommendations"][0]["portfolio_item_id"]): {
             "label": "consider_selling",
+            "priority": 1,
             "confidence": "medium",
             "reason_codes": ["strong_profit"],
             "data_quality_flags": [],
         }
     }
     assert result["allowed_uncertainty_codes"] == [
-        "incomplete_valuation_coverage",
         "insufficient_market_data",
-        "stale_valuations",
+        "stale_valuation",
     ]
 
 
@@ -101,16 +118,18 @@ def test_portfolio_narrative_cannot_change_deterministic_item_label() -> None:
         json.dumps(
             {
                 "executive_summary": "The calculated portfolio profile calls for deliberate review.",
-                "observations": [
+                "diversification_observations": [],
+                "concentration_observations": [
                     {
                         "source_metric": "portfolio.concentration",
                         "text": "The calculated concentration profile merits attention.",
                     }
                 ],
-                "actions": [
+                "prioritized_actions": [
                     {
                         "item_key": item_id,
                         "label": "hold",
+                        "priority": 1,
                         "text": "Keep this item under review.",
                     }
                 ],
@@ -130,22 +149,29 @@ def test_portfolio_narrative_accepts_calculated_metric_and_matching_label() -> N
         json.dumps(
             {
                 "executive_summary": "The calculated portfolio profile calls for deliberate review.",
-                "observations": [
+                "diversification_observations": [
+                    {
+                        "source_metric": "portfolio.diversification",
+                        "text": "The calculated mix has room for further review.",
+                    }
+                ],
+                "concentration_observations": [
                     {
                         "source_metric": "portfolio.concentration",
                         "text": "The calculated concentration profile merits attention.",
                     }
                 ],
-                "actions": [
+                "prioritized_actions": [
                     {
                         "item_key": item_id,
                         "label": "consider_selling",
+                        "priority": 1,
                         "text": "Keep this item under review.",
                     }
                 ],
                 "uncertainties": [
                     {
-                        "code": "stale_valuations",
+                        "code": "stale_valuation",
                         "text": "Some calculated inputs need a freshness review.",
                     }
                 ],
@@ -156,7 +182,7 @@ def test_portfolio_narrative_accepts_calculated_metric_and_matching_label() -> N
     narrative, completion = generate_portfolio_narrative(provider, payload)
 
     assert completion.model == "claude-test"
-    assert narrative.actions[0].label == "consider_selling"
+    assert narrative.prioritized_actions[0].label == "consider_selling"
     assert provider.request is not None
     assert provider.request.max_tokens == 900
 
@@ -167,6 +193,8 @@ async def test_portfolio_analysis_derives_labels_before_calling_llm(
 ) -> None:
     item_id = uuid4()
     analytics = {
+        "id": item_id,
+        "generated_at": "2026-08-09T12:00:00Z",
         "holdings": [
             {
                 "portfolio_item_id": item_id,
@@ -181,7 +209,7 @@ async def test_portfolio_analysis_derives_labels_before_calling_llm(
                     },
                 },
             }
-        ]
+        ],
     }
     captured: dict = {}
 
@@ -193,6 +221,12 @@ async def test_portfolio_analysis_derives_labels_before_calling_llm(
         captured["user_key"] = user_key
         return PortfolioLlmNarrativeResult(status="disabled", narrative=None)
 
+    async def store(_db, *, analysis_data):
+        captured["stored"] = analysis_data
+        return type(
+            "Stored", (), {"id": item_id, "generated_at": analytics["generated_at"]}
+        )()
+
     monkeypatch.setattr(
         portfolio_analysis_service.portfolio_analytics_service,
         "refresh_portfolio_analytics",
@@ -201,6 +235,7 @@ async def test_portfolio_analysis_derives_labels_before_calling_llm(
     monkeypatch.setattr(
         portfolio_analysis_service, "maybe_generate_portfolio_narrative", narrate
     )
+    monkeypatch.setattr(portfolio_analysis_service, "create_portfolio_analysis", store)
 
     response = await portfolio_analysis_service.analyze_portfolio(None, item_id)
 
@@ -211,9 +246,22 @@ async def test_portfolio_analysis_derives_labels_before_calling_llm(
             "set_number": "12345",
             "set_name": "Example Set",
             "label": "watch",
+            "priority": 2,
             "confidence": "low",
             "reason_codes": ["valuation_freshness"],
             "data_quality_flags": ["stale_valuation"],
         }
     ]
+    assert captured["analysis"]["confidence_summary"] == {
+        "overall": "low",
+        "item_counts": {"high": 0, "medium": 0, "low": 1},
+    }
+    assert captured["analysis"]["data_quality_warnings"] == [
+        {
+            "code": "stale_valuation",
+            "affected_holding_count": 1,
+            "message": "Some holdings use valuation evidence that needs refreshing.",
+        }
+    ]
+    assert captured["stored"]["ai_narrative_status"] == "disabled"
     assert response["ai_narrative_status"] == "disabled"
