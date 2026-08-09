@@ -40,6 +40,11 @@ def _as_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
+def _current_time() -> datetime:
+    """Small clock seam used by deterministic analytics refreshes and tests."""
+    return datetime.now(UTC)
+
+
 def _json_value(value: Any) -> Any:
     if isinstance(value, Decimal):
         return format(value, ".2f")
@@ -195,9 +200,14 @@ def _performance_reference(holding: dict) -> dict:
     }
 
 
-async def refresh_portfolio_analytics(db: AsyncSession, user_id: UUID) -> dict:
+async def refresh_portfolio_analytics(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    analysis_at: datetime | None = None,
+) -> dict:
     """Calculate and persist a complete point-in-time portfolio analysis."""
-    now = datetime.now(UTC)
+    now = _as_utc(analysis_at) if analysis_at is not None else _current_time()
     items = await get_all_portfolio_items_for_user(db, user_id)
     value_map = await _current_unit_value_map(db, items)
     set_numbers = {item.set_number for item in items}

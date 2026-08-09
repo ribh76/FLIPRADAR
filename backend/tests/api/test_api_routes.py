@@ -27,6 +27,7 @@ from flipradar.services import (
     auth_service,
     listing_evaluation_service,
     marketplace_service,
+    portfolio_analytics_service,
     portfolio_service,
     recommendation_service,
 )
@@ -3430,6 +3431,7 @@ def test_get_recommendation_endpoint(client: TestClient):
 
 def test_portfolio_analytics_refresh_persists_holdings_allocations_and_signals(
     client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
 ):
     first = create_set_payload("910001")
     first.update({"theme": "Icons", "release_year": 2021})
@@ -3438,8 +3440,24 @@ def test_portfolio_analytics_refresh_persists_holdings_allocations_and_signals(
     assert client.post("/sets", json=first).status_code == 201
     assert client.post("/sets", json=second).status_code == 201
 
-    now = datetime.now(UTC).replace(microsecond=0)
+    now = datetime(2026, 8, 9, 12, tzinfo=UTC)
     older = now - timedelta(days=30)
+    monkeypatch.setattr(portfolio_analytics_service, "_current_time", lambda: now)
+
+    async def fixed_values(_db, items):
+        del _db
+        return {
+            (item.set_number, item.condition): (
+                Decimal("200.00") if item.set_number == "910001" else Decimal("100.00"),
+                "valued",
+                "high",
+            )
+            for item in items
+        }
+
+    monkeypatch.setattr(
+        portfolio_analytics_service, "_current_unit_value_map", fixed_values
+    )
     for set_number, previous, current in (
         ("910001", "150.00", "200.00"),
         ("910002", "120.00", "100.00"),
