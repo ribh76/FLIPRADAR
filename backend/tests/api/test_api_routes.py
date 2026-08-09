@@ -3558,3 +3558,16 @@ def test_portfolio_analytics_refresh_persists_holdings_allocations_and_signals(
     latest = client.get("/portfolio/analytics", headers=headers)
     assert latest.status_code == 200
     assert latest.json()["id"] == body["id"]
+
+    unauthenticated = client.post("/portfolio/analyze")
+    assert unauthenticated.status_code == 401
+
+    analyzed = client.post("/portfolio/analyze", headers=headers)
+    assert analyzed.status_code == 201, analyzed.text
+    analysis_body = analyzed.json()
+    assert analysis_body["analytics"]["holding_count"] == 2
+    assert analysis_body["ai_narrative"] is None
+    assert analysis_body["ai_narrative_status"] == "disabled"
+    labels = {item["set_number"]: item["label"] for item in analysis_body["item_recommendations"]}
+    assert labels["910001"] in {"hold", "watch", "consider_selling"}
+    assert labels["910002"] in {"hold", "watch", "consider_selling"}

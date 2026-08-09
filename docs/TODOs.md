@@ -790,15 +790,15 @@ Classification: MUST SHIP
 12. Validate every model response. - (Complete) 
 13. Fall back to deterministic results. - (Complete) 
 14. Add mocked tests. - (Complete) 
-15. Document AI limitations.
+15. Document AI limitations. -  (Complete) 
 
 PHASE 40: ANALYZE PORTFOLIO FEATURE
 Classification: MUST SHIP
 
-1. Create an authenticated portfolio-analysis endpoint.
-2. Generate deterministic metrics.
-3. Generate item-level recommendations.
-4. Pass structured metrics to the LLM.
+1. Create an authenticated portfolio-analysis endpoint. - (Complete)
+2. Generate deterministic metrics. - (Complete)
+3. Generate item-level recommendations. - (Complete)
+4. Pass structured metrics to the LLM. - (Complete)
 5. Generate an executive summary.
 6. Generate diversification and concentration observations.
 7. Generate prioritized actions.

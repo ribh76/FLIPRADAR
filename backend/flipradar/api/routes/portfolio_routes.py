@@ -8,6 +8,7 @@ from flipradar.api.dependencies.auth import AuthenticatedUser
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.dependencies.ownership import OwnedPortfolioItem
 from flipradar.api.schemas import (
+    PortfolioAnalysisResponse,
     PortfolioAnalyticsResponse,
     PortfolioDashboardResponse,
     PortfolioHoldingDetailResponse,
@@ -19,10 +20,39 @@ from flipradar.api.schemas import (
     PortfolioValuationHistoryResponse,
 )
 from flipradar.api.schemas.common_schema import collection_response
-from flipradar.services import portfolio_analytics_service, portfolio_service
+from flipradar.services import (
+    portfolio_analysis_service,
+    portfolio_analytics_service,
+    portfolio_service,
+)
 
 router = APIRouter(prefix="/portfolio", tags=["Portfolio"])
 logger = logging.getLogger(__name__)
+
+
+@router.post(
+    "/analyze",
+    response_model=PortfolioAnalysisResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Analyze the authenticated user's portfolio",
+    description=(
+        "Refresh deterministic portfolio metrics and item labels, then optionally "
+        "produce a grounded AI narrative over those calculated results."
+    ),
+)
+async def analyze_portfolio(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    logger.info("request started route=analyze_portfolio user_id=%s", current_user.id)
+    response = await portfolio_analysis_service.analyze_portfolio(db, current_user.id)
+    logger.info(
+        "request finished route=analyze_portfolio user_id=%s holdings=%s ai_status=%s",
+        current_user.id,
+        response["analytics"]["holding_count"],
+        response["ai_narrative_status"],
+    )
+    return response
 
 
 @router.get(
