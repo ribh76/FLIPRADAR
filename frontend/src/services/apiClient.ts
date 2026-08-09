@@ -16,6 +16,7 @@ import type {
   PortfolioItemUpdate,
   PortfolioFilters,
   PortfolioDashboard,
+  PortfolioAnalysis,
   PortfolioHoldingDetail,
   PortfolioHistory,
   PortfolioSummary,
@@ -328,6 +329,9 @@ export const apiClient = {
     },
   },
   portfolio: {
+    analyze() {
+      return requestData(api.post<PortfolioAnalysis>("/portfolio/analyze"));
+    },
     detail(itemId: string) {
       return requestData(
         api.get<PortfolioHoldingDetail>(`/portfolio/items/${itemId}/detail`),

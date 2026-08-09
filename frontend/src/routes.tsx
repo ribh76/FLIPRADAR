@@ -14,6 +14,7 @@ import { DealsPage } from "./features/deals/DealsPage";
 import { ListingEvaluatorPage } from "./features/listings/ListingEvaluatorPage";
 import { NotificationsPage } from "./features/notifications/NotificationsPage";
 import { PortfolioPage } from "./features/portfolio/PortfolioPage";
+import { AnalyzePortfolioPage } from "./features/portfolio/AnalyzePortfolioPage";
 import { HoldingDetailPage } from "./features/portfolio/HoldingDetailPage";
 import { SetDetailPage } from "./features/sets/SetDetailPage";
 import { SetsPage } from "./features/sets/SetsPage";
@@ -49,6 +50,7 @@ export const appRoutes: RouteObject[] = [
           { path: "/analyze", element: <AnalyzePage /> },
           { path: "/listing-evaluator", element: <ListingEvaluatorPage /> },
           { path: "/portfolio", element: <PortfolioPage /> },
+          { path: "/portfolio/analyze", element: <AnalyzePortfolioPage /> },
           { path: "/watchlist", element: <WatchlistPage /> },
           { path: "/notifications", element: <NotificationsPage /> },
           { path: "/portfolio/items/:itemId", element: <HoldingDetailPage /> },

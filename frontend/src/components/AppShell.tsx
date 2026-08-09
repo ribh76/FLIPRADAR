@@ -52,6 +52,12 @@ const navItems = [
     to: "/portfolio",
   },
   {
+    description: "Portfolio-wide risks, opportunities, and holding actions.",
+    icon: Calculator,
+    label: "Analyze portfolio",
+    to: "/portfolio/analyze",
+  },
+  {
     description: "Sets and listings you want to monitor.",
     icon: Bookmark,
     label: "Watchlist",

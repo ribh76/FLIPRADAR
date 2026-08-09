@@ -804,11 +804,11 @@ Classification: MUST SHIP
 7. Generate prioritized actions. - (Complete)
 8. Include confidence and data-quality warnings. - (Complete)
 9. Store completed analyses. - (Complete)
-10. Build the Analyze Portfolio page.
-11. Display the summary.
-12. Display portfolio-wide risks and opportunities.
-13. Display sortable item recommendations.
-14. Add a collectibles-market disclaimer.
+10. Build the Analyze Portfolio page. - (Complete)
+11. Display the summary. - (Complete)
+12. Display portfolio-wide risks and opportunities. - (Complete)
+13. Display sortable item recommendations. - (Complete)
+14. Add a collectibles-market disclaimer. - (Complete)
 15. Add end-to-end tests.
 
 PHASE 41: RECOMMENDATION HISTORY

@@ -331,6 +331,80 @@ export type PortfolioSummary = {
   unrealized_gain_loss_percent: string | number | null;
 };
 
+export type PortfolioRecommendationLabel =
+  "hold" | "watch" | "consider_selling" | "insufficient_data";
+
+export type PortfolioItemRecommendation = {
+  portfolio_item_id: string;
+  set_number: string;
+  set_name: string | null;
+  label: PortfolioRecommendationLabel;
+  priority: number;
+  confidence: "low" | "medium" | "high";
+  reason_codes: string[];
+  data_quality_flags: string[];
+};
+
+export type PortfolioDataQualityWarning = {
+  code: string;
+  affected_holding_count: number;
+  message: string;
+};
+
+export type PortfolioAnalysisNarrative = {
+  executive_summary: string;
+  diversification_observations: Array<{ source_metric: string; text: string }>;
+  concentration_observations: Array<{ source_metric: string; text: string }>;
+  prioritized_actions: Array<{
+    item_key: string;
+    label: PortfolioRecommendationLabel;
+    priority: number;
+    text: string;
+  }>;
+  uncertainties: Array<{ code: string; text: string }>;
+  prompt_version: string;
+};
+
+export type PortfolioAnalysis = {
+  id: string;
+  generated_at: string;
+  analytics: {
+    holding_count: number;
+    valued_holding_count: number;
+    total_cost_basis: string | number;
+    total_market_value: string | number;
+    currency: string;
+    summary_metrics: {
+      concentration: {
+        level: string;
+        largest_holding_percent: string | number;
+        top_three_percent: string | number;
+      };
+      diversification: {
+        distinct_sets: number;
+        distinct_themes: number;
+        value_coverage_percent: string | number;
+      };
+      signals: Record<string, number>;
+      top_performers: Array<{ set_number: string; set_name: string | null }>;
+    };
+  };
+  item_recommendations: PortfolioItemRecommendation[];
+  confidence_summary: {
+    overall: "low" | "medium" | "high";
+    item_counts: Record<string, number>;
+  };
+  data_quality_warnings: PortfolioDataQualityWarning[];
+  ai_narrative: PortfolioAnalysisNarrative | null;
+  ai_narrative_status:
+    | "available"
+    | "disabled"
+    | "rate_limited"
+    | "timed_out"
+    | "failed"
+    | "invalid_response";
+};
+
 export type PortfolioHistoryPoint = {
   timestamp: string;
   cost_basis: string | number;
