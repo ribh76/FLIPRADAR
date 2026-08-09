@@ -89,6 +89,14 @@ def _confidence_band(score: int) -> str:
     return "low"
 
 
+def _category_for_score(score: int) -> RecommendationCategory:
+    if score >= 65:
+        return RecommendationCategory.CONSIDER_SELLING
+    if score >= 45:
+        return RecommendationCategory.WATCH
+    return RecommendationCategory.HOLD
+
+
 def _base_insufficient_result(*, reason_code: str, warning: str, score: int) -> dict:
     return {
         "verdict": "HOLD",
@@ -446,7 +454,7 @@ def decide_sell_or_hold(
         0, min(100, round(50 + sum(item["contribution"] for item in weighted_inputs)))
     )
     recommendation_confidence_score = 100
-    recommendation_confidence_score -= {"high": 0, "medium": 15, "low": 35}.get(
+    recommendation_confidence_score -= {"high": 0, "medium": 15, "low": 55}.get(
         confidence, 55
     )
     recommendation_confidence_score -= 15 if trend_pct is None else 0
@@ -459,13 +467,7 @@ def decide_sell_or_hold(
         max(0, recommendation_confidence_score)
     )
 
-    category = (
-        RecommendationCategory.CONSIDER_SELLING
-        if score >= 65
-        else (
-            RecommendationCategory.WATCH if score >= 45 else RecommendationCategory.HOLD
-        )
-    )
+    category = _category_for_score(score)
     if (
         category is RecommendationCategory.CONSIDER_SELLING
         and recommendation_confidence == "low"

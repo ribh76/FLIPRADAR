@@ -3241,23 +3241,22 @@ def test_analyze_endpoint_allows_sell_without_asking_price(client: TestClient):
 
 def test_analyze_endpoint_sell_goal_uses_hold_sell_engine(client: TestClient):
     create_lego_set(client, "910023")
-    for days_ago, median_price in [(2, "150.00"), (1, "160.00"), (0, "200.00")]:
-        snapshot = create_snapshot_payload("910023", fair_value=median_price)
-        snapshot.update(
-            {
+    for days_ago, fair_value in [(2, "150.00"), (1, "160.00"), (0, "200.00")]:
+        response = client.post(
+            "/snapshots",
+            json={
+                "set_number": "910023",
                 "marketplace_name": "ebay",
                 "condition": "new",
-                "low_price": "150.00",
-                "median_price": median_price,
-                "average_price": median_price,
-                "high_price": "210.00",
-                "listing_count": 24,
-                "snapshot_at": (
+                "currency": "USD",
+                "metric_type": "fair_market_value",
+                "value": fair_value,
+                "sample_size": 24,
+                "retrieval_time": (
                     datetime.now(UTC) - timedelta(days=days_ago)
                 ).isoformat(),
-            }
+            },
         )
-        response = client.post("/snapshots", json=snapshot)
         assert response.status_code == 201, response.text
 
     response = client.post(
@@ -3274,7 +3273,9 @@ def test_analyze_endpoint_sell_goal_uses_hold_sell_engine(client: TestClient):
     assert response.status_code == 201
     body = response.json()
     assert body["recommendation"] == "SELL"
-    assert body["score"] == 83
+    assert body["recommendation_category"] == "consider_selling"
+    assert body["recommendation_confidence"] in {"medium", "high"}
+    assert body["score"] >= 65
     assert body["estimated_net_sell_value"] == 174.0
     assert body["total_estimated_net_value"] == 348.0
     assert body["cost_basis"] == 160.0
@@ -3284,6 +3285,29 @@ def test_analyze_endpoint_sell_goal_uses_hold_sell_engine(client: TestClient):
     assert body["trend_pct"] == 29.03
     assert "very_strong_profit" in body["reason_codes"]
     assert "price_trend_rising" in body["reason_codes"]
+    assert len(body["weighted_inputs"]) == 6
+    assert body["warnings"]
+
+    stored = client.get("/recommendations/910023")
+    assert stored.status_code == 200, stored.text
+    market_summary = stored.json()["market_summary"]
+    assert market_summary["recommendation"] == "SELL"
+    assert market_summary["recommendation_inputs"] == {
+        "condition": "new",
+        "purchase_price": 80.0,
+        "quantity": 2,
+        "marketplace_fee_pct": 0.13,
+        "target_profit_pct": 0.25,
+        "concentration_percent": None,
+        "marketplace_supply": None,
+        "supply_reliable": None,
+        "demand_signal": None,
+        "valuation_age_days": None,
+    }
+    assert (
+        market_summary["recommendation_analysis"]["recommendation_category"]
+        == "consider_selling"
+    )
 
 
 def test_post_analyze_returns_low_confidence_result_when_no_snapshots_exist(

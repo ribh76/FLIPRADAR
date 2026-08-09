@@ -458,6 +458,19 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
                 "supply_reliable": payload.supply_reliable,
                 "demand_signal": payload.demand_signal,
                 "valuation_age_days": payload.valuation_age_days,
+                "recommendation_inputs": {
+                    "condition": payload.condition,
+                    "purchase_price": _money(payload.purchase_price),
+                    "quantity": payload.quantity,
+                    "marketplace_fee_pct": _money(payload.marketplace_fee_pct),
+                    "target_profit_pct": _money(payload.target_profit_pct),
+                    "concentration_percent": _money(payload.concentration_percent),
+                    "marketplace_supply": payload.marketplace_supply,
+                    "supply_reliable": payload.supply_reliable,
+                    "demand_signal": payload.demand_signal,
+                    "valuation_age_days": payload.valuation_age_days,
+                },
+                "recommendation_analysis": analysis_details,
                 "manual_valuation_override": (
                     payload.manual_valuation_override.model_dump(mode="json")
                     if payload.manual_valuation_override
