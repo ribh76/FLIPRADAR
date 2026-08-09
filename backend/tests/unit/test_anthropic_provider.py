@@ -107,3 +107,12 @@ def test_anthropic_provider_rejects_invalid_response(post: Mock) -> None:
 
     with pytest.raises(LlmProviderError):
         provider.complete(LlmCompletionRequest(prompt="Hello"))
+
+
+@patch("flipradar.integrations.anthropic_provider.requests.post")
+def test_anthropic_provider_maps_invalid_json_to_provider_error(post: Mock) -> None:
+    post.return_value = Mock(status_code=200, json=Mock(side_effect=ValueError()))
+    provider = AnthropicLlmProvider(configured_settings())
+
+    with pytest.raises(LlmProviderError):
+        provider.complete(LlmCompletionRequest(prompt="Hello"))

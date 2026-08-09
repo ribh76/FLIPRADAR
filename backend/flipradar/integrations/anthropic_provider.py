@@ -23,9 +23,11 @@ class AnthropicLlmProvider(LlmProvider):
     """Completes prompts through Anthropic's Messages API."""
 
     def __init__(self, settings: LlmSettings) -> None:
-        if not settings.configured or not settings.api_key:
+        api_key = settings.api_key
+        if not settings.configured or not api_key:
             raise LlmProviderConfigurationError("Anthropic LLM is not configured")
         self._settings = settings
+        self._api_key = api_key
 
     def complete(self, request: LlmCompletionRequest) -> LlmCompletion:
         payload: dict[str, Any] = {
@@ -43,7 +45,7 @@ class AnthropicLlmProvider(LlmProvider):
             response = requests.post(
                 ANTHROPIC_MESSAGES_URL,
                 headers={
-                    "x-api-key": self._settings.api_key,
+                    "x-api-key": self._api_key,
                     "anthropic-version": ANTHROPIC_API_VERSION,
                     "content-type": "application/json",
                 },
@@ -58,7 +60,11 @@ class AnthropicLlmProvider(LlmProvider):
         if response.status_code >= 400:
             raise LlmProviderError("Anthropic returned an error response")
 
-        return _parse_completion(response.json())
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise LlmProviderError("Anthropic returned an invalid response") from exc
+        return _parse_completion(payload)
 
 
 def _parse_completion(payload: Any) -> LlmCompletion:

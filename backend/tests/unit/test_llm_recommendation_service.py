@@ -1,13 +1,16 @@
 import json
+from types import SimpleNamespace
 
 import pytest
 
 from flipradar.integrations.llm_provider import (
     LlmCompletion,
     LlmCompletionRequest,
+    LlmProvider,
     LlmProviderTimeoutError,
     LlmUsage,
 )
+from flipradar.services import llm_recommendation_service
 from flipradar.services.llm_recommendation_service import (
     SYSTEM_PROMPT,
     LlmExecutionPolicy,
@@ -18,10 +21,11 @@ from flipradar.services.llm_recommendation_service import (
     build_recommendation_prompt,
     generate_narrative_with_guardrails,
     generate_recommendation_narrative,
+    maybe_generate_recommendation_narrative,
 )
 
 
-class FakeProvider:
+class FakeProvider(LlmProvider):
     def __init__(self, text: str) -> None:
         self.text = text
         self.request: LlmCompletionRequest | None = None
@@ -36,7 +40,7 @@ class FakeProvider:
         )
 
 
-class SequenceProvider:
+class SequenceProvider(LlmProvider):
     def __init__(self, outcomes: list[Exception | str]) -> None:
         self.outcomes = outcomes
         self.calls = 0
@@ -296,4 +300,32 @@ def test_guarded_workflow_falls_back_on_invalid_model_output() -> None:
     )
 
     assert result.status == "invalid_response"
+    assert result.narrative is None
+
+
+@pytest.mark.asyncio
+async def test_optional_workflow_falls_back_on_unexpected_provider_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    policy = execution_policy()
+    configured_llm = SimpleNamespace(configured=True, **policy.__dict__)
+
+    class BrokenProvider(LlmProvider):
+        def complete(self, _request: LlmCompletionRequest) -> LlmCompletion:
+            raise RuntimeError("unexpected provider failure")
+
+    monkeypatch.setattr(
+        llm_recommendation_service,
+        "get_settings",
+        lambda: SimpleNamespace(llm=configured_llm),
+    )
+    monkeypatch.setattr(
+        llm_recommendation_service,
+        "create_llm_provider",
+        lambda _settings: BrokenProvider(),
+    )
+
+    result = await maybe_generate_recommendation_narrative(analysis_payload())
+
+    assert result.status == "failed"
     assert result.narrative is None

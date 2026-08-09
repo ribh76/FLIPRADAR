@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 PROMPT_VERSION = RECOMMENDATION_NARRATIVE_PROMPT_VERSION
 NARRATIVE_MAX_TOKENS = 600
+MAX_USAGE_RECORDS = 10_000
 
 SYSTEM_PROMPT = """You write a short explanation for a deterministic FlipRadar recommendation.
 Return JSON only, with exactly this shape:
@@ -139,6 +140,8 @@ class LlmUsageTracker:
     def record(self, record: LlmUsageRecord) -> None:
         with self._lock:
             self._records.append(record)
+            if len(self._records) > MAX_USAGE_RECORDS:
+                del self._records[: len(self._records) - MAX_USAGE_RECORDS]
 
     def snapshot(self) -> list[LlmUsageRecord]:
         with self._lock:
@@ -293,13 +296,17 @@ async def maybe_generate_recommendation_narrative(
     except LlmProviderError as exc:
         logger.warning("LLM narrative unavailable error_type=%s", type(exc).__name__)
         return LlmNarrativeResult(status="failed", narrative=None)
-    return await asyncio.to_thread(
-        generate_narrative_with_guardrails,
-        provider,
-        analysis,
-        user_key=user_key,
-        policy=policy,
-    )
+    try:
+        return await asyncio.to_thread(
+            generate_narrative_with_guardrails,
+            provider,
+            analysis,
+            user_key=user_key,
+            policy=policy,
+        )
+    except Exception as exc:
+        logger.warning("LLM narrative unavailable error_type=%s", type(exc).__name__)
+        return LlmNarrativeResult(status="failed", narrative=None)
 
 
 def generate_narrative_with_guardrails(
