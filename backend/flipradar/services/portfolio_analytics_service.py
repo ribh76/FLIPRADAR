@@ -106,6 +106,23 @@ def _trend_from_snapshots(snapshots: list, condition: str | None) -> dict[str, A
     return {"label": label, "percent": change_percent, "points": points}
 
 
+def _demand_signal(snapshots: list, condition: str | None) -> str | None:
+    """Infer demand only when a latest pricing payload contains evidence counts."""
+    latest_fair = _latest_by_metric(snapshots, condition).get("fair_market_value")
+    evidence = (getattr(latest_fair, "source_payload", None) or {}).get(
+        "evidence_counts", {}
+    )
+    sold = int(evidence.get("sold", 0) or 0)
+    active = int(evidence.get("active", 0) or 0)
+    if not (sold or active):
+        return None
+    if sold >= max(3, active):
+        return "strong"
+    if active >= max(3, sold * 3):
+        return "weak"
+    return "moderate"
+
+
 def _allocation(holdings: list[dict], field: str, total_value: Decimal) -> list[dict]:
     grouped: dict[str, dict] = {}
     for holding in holdings:
@@ -212,6 +229,14 @@ async def refresh_portfolio_analytics(
     value_map = await _current_unit_value_map(db, items)
     set_numbers = {item.set_number for item in items}
     historical_snapshots, listings_by_set = await _market_evidence(db, set_numbers, now)
+    total_market_value = _money(
+        sum(
+            unit_value * item.quantity
+            for item in items
+            if (unit_value := value_map[(item.set_number, item.condition)][0])
+            is not None
+        )
+    )
 
     holdings: list[dict] = []
     persisted_holdings: list[dict] = []
@@ -221,19 +246,13 @@ async def refresh_portfolio_analytics(
             unit_value_data=value_map[(item.set_number, item.condition)],
             price_snapshots=historical_snapshots.get(item.set_number, []),
             listings=listings_by_set.get(item.set_number, []),
+            portfolio_total_value=total_market_value,
             now=now,
         )
         holdings.append(holding)
         persisted_holdings.append(persisted)
 
     total_cost_basis = _money(sum(item["cost_basis"] for item in holdings))
-    total_market_value = _money(
-        sum(
-            item["current_total_value"]
-            for item in holdings
-            if item["current_total_value"] is not None
-        )
-    )
     summary_metrics = _summary_metrics(holdings, total_market_value)
     currencies = {item.currency for item in items}
     snapshot = await create_portfolio_analytics_snapshot(
@@ -284,6 +303,7 @@ def _analyze_holding(
     unit_value_data: tuple,
     price_snapshots: list,
     listings: list,
+    portfolio_total_value: Decimal,
     now: datetime,
 ) -> tuple[dict, dict]:
     unit_value, valuation_status, confidence = unit_value_data
@@ -317,6 +337,11 @@ def _analyze_holding(
         latest_valuation_at is None
         or latest_valuation_at < now - timedelta(days=VALUATION_STALE_AFTER_DAYS)
     )
+    valuation_age_days = (
+        max(0, (now - latest_valuation_at).days)
+        if latest_valuation_at is not None
+        else None
+    )
     trend = _trend_from_snapshots(price_snapshots, snapshot_condition)
     recent_fair_values = [float(point["value"]) for point in trend["points"]]
     fresh_listings = [
@@ -327,6 +352,11 @@ def _analyze_holding(
     ]
     supply_reliable = len(fresh_listings) >= MIN_RELIABLE_SUPPLY_LISTINGS
     marketplace_supply = len(fresh_listings) if supply_reliable else None
+    concentration_percent = (
+        _money((current_total_value / portfolio_total_value) * 100)
+        if current_total_value is not None and portfolio_total_value > 0
+        else None
+    )
     signal_input = hold_sell_engine.decide_sell_or_hold(
         set_number=item.set_number,
         fair_value=float(unit_value) if unit_value is not None else None,
@@ -346,6 +376,13 @@ def _analyze_holding(
         quantity=item.quantity,
         condition=item.condition,
         recent_fair_values=recent_fair_values,
+        concentration_percent=(
+            float(concentration_percent) if concentration_percent is not None else None
+        ),
+        marketplace_supply=marketplace_supply,
+        supply_reliable=supply_reliable,
+        demand_signal=_demand_signal(price_snapshots, snapshot_condition),
+        valuation_age_days=valuation_age_days,
     )
     signal = (
         "sell_consideration"
@@ -385,6 +422,7 @@ def _analyze_holding(
         "valuation_status": valuation_status,
         "valuation_confidence": confidence,
         "valuation_as_of": latest_valuation_at,
+        "valuation_age_days": valuation_age_days,
         "valuation_stale": valuation_stale,
         "price_trend": {
             "label": trend["label"],
@@ -403,10 +441,14 @@ def _analyze_holding(
         },
         "signal": {
             "action": signal,
+            "category": signal_input["category"],
             "score": signal_input["score"],
-            "confidence": signal_input["confidence"],
+            "confidence": signal_input["recommendation_confidence"],
             "reason_codes": signal_input["reason_codes"],
             "reasoning": signal_input["reasoning"],
+            "reasons": signal_input["reasons"],
+            "warnings": signal_input["warnings"],
+            "weighted_inputs": signal_input["weighted_inputs"],
         },
         "flags": flags,
     }

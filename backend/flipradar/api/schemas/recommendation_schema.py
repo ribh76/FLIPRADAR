@@ -61,6 +61,11 @@ class AnalyzeRequest(BaseModel):
     purchase_price: OptionalMoney = Field(default=None, ge=0, decimal_places=2)
     quantity: int = Field(default=1, gt=0)
     target_profit_pct: Decimal = Field(default=Decimal("0.25"), ge=0, le=10)
+    concentration_percent: Decimal | None = Field(default=None, ge=0, le=100)
+    marketplace_supply: int | None = Field(default=None, ge=0)
+    supply_reliable: bool | None = None
+    demand_signal: str | None = Field(default=None, pattern="^(strong|moderate|weak)$")
+    valuation_age_days: int | None = Field(default=None, ge=0)
     manual_valuation_override: ManualValuationOverride | None = None
 
 
@@ -90,6 +95,11 @@ class AnalyzeResponse(BaseModel):
     trend_pct: float | None = None
     trend_label: str | None = None
     target_sell_price: float | None = None
+    recommendation_category: str | None = None
+    recommendation_confidence: ConfidenceBand | None = None
+    weighted_inputs: list[dict] | None = None
+    reasons: list[dict] | None = None
+    warnings: list[str] | None = None
     valuation_source: str = "market"
 
 

@@ -1,4 +1,5 @@
 import logging
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -224,6 +225,11 @@ def _hold_sell_response_details(hold_sell_result: dict) -> dict:
         "trend_pct": hold_sell_result.get("trend_pct"),
         "trend_label": hold_sell_result.get("trend_label"),
         "target_sell_price": hold_sell_result.get("target_sell_price"),
+        "recommendation_category": hold_sell_result.get("category"),
+        "recommendation_confidence": hold_sell_result.get("recommendation_confidence"),
+        "weighted_inputs": hold_sell_result.get("weighted_inputs"),
+        "reasons": hold_sell_result.get("reasons"),
+        "warnings": hold_sell_result.get("warnings"),
     }
 
 
@@ -241,6 +247,17 @@ def _snapshot_price(snapshot) -> Decimal | None:
         if snapshot.metric_type in {"fair_market_value", "median"}
         else None
     )
+
+
+def _valuation_age_days(snapshots: list) -> int | None:
+    retrieval_times = [snapshot.retrieval_time for snapshot in snapshots]
+    if not retrieval_times:
+        return None
+    latest = max(retrieval_times)
+    latest = (
+        latest.replace(tzinfo=UTC) if latest.tzinfo is None else latest.astimezone(UTC)
+    )
+    return max(0, (datetime.now(UTC) - latest).days)
 
 
 async def _recent_fair_values(db: AsyncSession, set_number: str) -> list[float]:
@@ -321,6 +338,7 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
             raise InsufficientValuationDataError(estimate["error"]["message"])
         fair_value = estimate["fair_value"]
         analysis_details = {}
+        response_confidence = estimate["confidence"]
         if _is_buy_goal(payload.user_goal):
             buy_result = buy_decision_engine.decide_buy_or_pass(
                 set_number=set_number,
@@ -375,6 +393,23 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
                 recent_fair_values=await _recent_fair_values(db, set_number),
                 marketplace_fee_pct=float(payload.marketplace_fee_pct),
                 target_profit_pct=float(payload.target_profit_pct),
+                concentration_percent=(
+                    float(payload.concentration_percent)
+                    if payload.concentration_percent is not None
+                    else None
+                ),
+                marketplace_supply=payload.marketplace_supply,
+                supply_reliable=(
+                    payload.supply_reliable
+                    if payload.supply_reliable is not None
+                    else estimate["listing_count"] >= 3
+                ),
+                demand_signal=payload.demand_signal,
+                valuation_age_days=(
+                    payload.valuation_age_days
+                    if payload.valuation_age_days is not None
+                    else _valuation_age_days(snapshots)
+                ),
             )
             score_result = _hold_sell_score_result(hold_sell_result)
             decision = decision_engine.DecisionResult(
@@ -382,6 +417,7 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
                 reasoning=hold_sell_result["reasoning"],
             )
             analysis_details = _hold_sell_response_details(hold_sell_result)
+            response_confidence = hold_sell_result["recommendation_confidence"]
         else:
             raise RecommendationValidationError("Unsupported user goal.")
         logger.info(
@@ -407,6 +443,7 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
                 "fair_value": _money(fair_value),
                 "recommendation": decision.recommendation.value,
                 "confidence": estimate["confidence"],
+                "recommendation_confidence": response_confidence,
                 "reasoning": decision.reasoning,
                 "snapshot_found": bool(snapshots),
                 "condition": payload.condition,
@@ -416,6 +453,11 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
                 "target_profit_pct": _money(payload.target_profit_pct),
                 "purchase_price": _money(payload.purchase_price),
                 "quantity": payload.quantity,
+                "concentration_percent": _money(payload.concentration_percent),
+                "marketplace_supply": payload.marketplace_supply,
+                "supply_reliable": payload.supply_reliable,
+                "demand_signal": payload.demand_signal,
+                "valuation_age_days": payload.valuation_age_days,
                 "manual_valuation_override": (
                     payload.manual_valuation_override.model_dump(mode="json")
                     if payload.manual_valuation_override
@@ -434,7 +476,7 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
             "fair_value": _money(fair_value),
             "score": score_result["score"],
             "recommendation": decision.recommendation,
-            "confidence": estimate["confidence"],
+            "confidence": response_confidence,
             "reasoning": decision.reasoning,
             "market_low": _money(estimate["market_low"]),
             "market_high": _money(estimate["market_high"]),

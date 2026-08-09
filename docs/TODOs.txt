@@ -735,7 +735,7 @@ Classification: SHIP LATER
 PART X - PORTFOLIO ANALYSIS AND AI
 ==================================================
 
-PHASE 37: PORTFOLIO ANALYTICS METRICS
+PHASE 37: PORTFOLIO ANALYTICS METRICS - (Complete) 
 Classification: MUST SHIP
 
 1. Calculate performance for every holding. - (Complete) 
@@ -751,8 +751,8 @@ Classification: MUST SHIP
 11. Define objective hold, watch, and sell-consideration signals. - (Complete) 
 12. Store all metrics used. - (Complete) 
 13. Add an analytics service and endpoint. - (Complete) 
-14. Document methodology.
-15. Add deterministic tests.
+14. Document methodology. - (Complete) 
+15. Add deterministic tests. - (Complete) 
 
 PHASE 38: HOLD/SELL RECOMMENDATION ENGINE
 Classification: MUST SHIP
