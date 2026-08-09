@@ -105,6 +105,40 @@ class PortfolioDashboardResponse(BaseModel):
     history_unavailable: str | None = None
 
 
+class PortfolioAnalyticsHoldingResponse(BaseModel):
+    portfolio_item_id: UUID | None
+    set_number: str
+    condition: str
+    quantity: int
+    cost_basis: Decimal
+    current_total_value: Decimal | None
+    performance_percent: Decimal | None
+    holding_days: int | None
+    valuation_confidence: str
+    valuation_stale: bool
+    trend_label: str
+    trend_percent: Decimal | None
+    marketplace_supply: int | None
+    supply_reliable: bool
+    signal: str
+    signal_score: int
+    flags: list[str]
+    metrics: dict
+
+
+class PortfolioAnalyticsResponse(BaseModel):
+    id: UUID
+    generated_at: datetime
+    currency: str
+    schema_version: int
+    holding_count: int
+    valued_holding_count: int
+    total_cost_basis: Decimal
+    total_market_value: Decimal
+    summary_metrics: dict
+    holdings: list[PortfolioAnalyticsHoldingResponse]
+
+
 class HoldingMarketSnapshot(BaseModel):
     timestamp: datetime
     marketplace: str

@@ -3426,3 +3426,93 @@ def test_get_recommendation_endpoint(client: TestClient):
     assert body["set_number"] == analyzed["set_number"]
     assert body["recommendation"] == analyzed["recommendation"]
     assert body["reason"] == analyzed["reasoning"]
+
+
+def test_portfolio_analytics_refresh_persists_holdings_allocations_and_signals(
+    client: TestClient,
+):
+    first = create_set_payload("910001")
+    first.update({"theme": "Icons", "release_year": 2021})
+    second = create_set_payload("910002")
+    second.update({"theme": "Technic", "release_year": 2023})
+    assert client.post("/sets", json=first).status_code == 201
+    assert client.post("/sets", json=second).status_code == 201
+
+    now = datetime.now(UTC).replace(microsecond=0)
+    older = now - timedelta(days=30)
+    for set_number, previous, current in (
+        ("910001", "150.00", "200.00"),
+        ("910002", "120.00", "100.00"),
+    ):
+        for value, retrieval_time in ((previous, older), (current, now)):
+            snapshot_response = client.post(
+                "/snapshots",
+                json={
+                    "set_number": set_number,
+                    "marketplace_name": "ebay",
+                    "condition": "new",
+                    "currency": "USD",
+                    "metric_type": "fair_market_value",
+                    "value": value,
+                    "sample_size": 12,
+                    "retrieval_time": retrieval_time.isoformat(),
+                },
+            )
+            assert snapshot_response.status_code == 201, snapshot_response.text
+        for metric_type, value in (("low", "90.00"), ("high", "225.00")):
+            snapshot_response = client.post(
+                "/snapshots",
+                json={
+                    "set_number": set_number,
+                    "marketplace_name": "bricklink",
+                    "condition": "new",
+                    "currency": "USD",
+                    "metric_type": metric_type,
+                    "value": value,
+                    "sample_size": 12,
+                    "retrieval_time": now.isoformat(),
+                },
+            )
+            assert snapshot_response.status_code == 201, snapshot_response.text
+
+    headers = auth_headers(client, "portfolio-analytics-user")
+    for set_number, purchase_price in (("910001", "100.00"), ("910002", "150.00")):
+        response = client.post(
+            "/portfolio/items",
+            headers=headers,
+            json={
+                "set_number": set_number,
+                "quantity": 1,
+                "purchase_price": purchase_price,
+                "condition": "new",
+                "purchase_date": "2025-01-15T00:00:00Z",
+            },
+        )
+        assert response.status_code == 201, response.text
+
+    missing = client.get("/portfolio/analytics", headers=headers)
+    assert missing.status_code == 404
+
+    refreshed = client.post("/portfolio/analytics/refresh", headers=headers)
+    assert refreshed.status_code == 201, refreshed.text
+    body = refreshed.json()
+    assert body["holding_count"] == 2
+    assert body["valued_holding_count"] == 2
+    assert body["total_cost_basis"] == "250.00"
+    assert body["total_market_value"] == "300.00"
+    assert body["summary_metrics"]["allocation"]["theme"][0]["key"] == "Icons"
+    assert body["summary_metrics"]["top_performers"][0]["set_number"] == "910001"
+    assert body["summary_metrics"]["bottom_performers"][0]["set_number"] == "910002"
+    assert (
+        body["summary_metrics"]["concentration"]["largest_holding_percent"] == "66.67"
+    )
+    holding = next(item for item in body["holdings"] if item["set_number"] == "910001")
+    assert holding["performance_percent"] == "100.00"
+    assert holding["trend_label"] == "rising"
+    assert holding["supply_reliable"] is False
+    assert "marketplace_supply_unreliable" in holding["flags"]
+    assert holding["signal"] in {"hold", "watch", "sell_consideration"}
+
+    latest = client.get("/portfolio/analytics", headers=headers)
+    assert latest.status_code == 200
+    assert latest.json()["id"] == body["id"]

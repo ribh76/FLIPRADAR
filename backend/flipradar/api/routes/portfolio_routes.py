@@ -8,6 +8,7 @@ from flipradar.api.dependencies.auth import AuthenticatedUser
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.dependencies.ownership import OwnedPortfolioItem
 from flipradar.api.schemas import (
+    PortfolioAnalyticsResponse,
     PortfolioDashboardResponse,
     PortfolioHoldingDetailResponse,
     PortfolioItemCollectionResponse,
@@ -18,10 +19,47 @@ from flipradar.api.schemas import (
     PortfolioValuationHistoryResponse,
 )
 from flipradar.api.schemas.common_schema import collection_response
-from flipradar.services import portfolio_service
+from flipradar.services import portfolio_analytics_service, portfolio_service
 
 router = APIRouter(prefix="/portfolio", tags=["Portfolio"])
 logger = logging.getLogger(__name__)
+
+
+@router.get(
+    "/analytics",
+    response_model=PortfolioAnalyticsResponse,
+    summary="Get the latest persisted portfolio analytics",
+    description=(
+        "Return the most recently stored portfolio analytics snapshot. "
+        "Use the refresh endpoint to calculate a new snapshot from current market data."
+    ),
+)
+async def get_portfolio_analytics(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    return await portfolio_analytics_service.get_latest_portfolio_analytics(
+        db, current_user.id
+    )
+
+
+@router.post(
+    "/analytics/refresh",
+    response_model=PortfolioAnalyticsResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Refresh and store portfolio analytics",
+    description=(
+        "Calculate holding performance, allocations, concentration, market evidence, "
+        "and objective hold/watch/sell-consideration signals, then persist the result."
+    ),
+)
+async def refresh_portfolio_analytics(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    return await portfolio_analytics_service.refresh_portfolio_analytics(
+        db, current_user.id
+    )
 
 
 @router.get(

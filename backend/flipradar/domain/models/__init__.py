@@ -14,6 +14,10 @@ from flipradar.domain.models.notification import (
     UserNotificationSettings,
 )
 from flipradar.domain.models.portfolio import PortfolioItem
+from flipradar.domain.models.portfolio_analytics import (
+    PortfolioAnalyticsSnapshot,
+    PortfolioHoldingAnalytics,
+)
 from flipradar.domain.models.portfolio_valuation_rollup import (
     PortfolioValuationDailyRollup,
 )
@@ -49,6 +53,8 @@ __all__ = [
     "DealScoreNotification",
     "UserNotificationSettings",
     "PortfolioItem",
+    "PortfolioAnalyticsSnapshot",
+    "PortfolioHoldingAnalytics",
     "PortfolioItemValuationSnapshot",
     "PortfolioValuationSnapshot",
     "PortfolioValuationDailyRollup",

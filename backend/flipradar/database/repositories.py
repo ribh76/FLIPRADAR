@@ -27,6 +27,8 @@ from flipradar.domain.models import (
     Notification,
     NotificationAuditLog,
     NotificationPreference,
+    PortfolioAnalyticsSnapshot,
+    PortfolioHoldingAnalytics,
     PortfolioItem,
     PortfolioItemValuationSnapshot,
     PortfolioValuationDailyRollup,
@@ -867,7 +869,10 @@ async def list_price_snapshots_for_set(
     normalized_set_number = normalize_set_number(set_number)
     statement = (
         select(PriceSnapshot)
-        .options(selectinload(PriceSnapshot.marketplace))
+        .options(
+            selectinload(PriceSnapshot.marketplace),
+            selectinload(PriceSnapshot.lego_set),
+        )
         .join(LegoSet)
         .join(Marketplace)
         .where(LegoSet.set_number == normalized_set_number)
@@ -966,6 +971,66 @@ async def get_latest_snapshots_for_set_numbers(
         set_number: list(by_marketplace.values())
         for set_number, by_marketplace in latest_by_set_and_marketplace.items()
     }
+
+
+async def get_price_snapshots_for_set_numbers(
+    db: AsyncSession,
+    set_numbers: set[str],
+    *,
+    since: datetime,
+) -> dict[str, list[PriceSnapshot]]:
+    """Load bounded historical price evidence for a portfolio refresh."""
+    if not set_numbers:
+        return {}
+    normalized_set_numbers = {
+        normalize_set_number(set_number) for set_number in set_numbers
+    }
+    result = await db.execute(
+        select(PriceSnapshot)
+        .options(
+            selectinload(PriceSnapshot.marketplace),
+            selectinload(PriceSnapshot.lego_set),
+        )
+        .join(LegoSet)
+        .where(
+            LegoSet.set_number.in_(normalized_set_numbers),
+            PriceSnapshot.retrieval_time >= since,
+        )
+        .order_by(PriceSnapshot.retrieval_time.asc(), PriceSnapshot.created_at.asc())
+    )
+    snapshots_by_set: dict[str, list[PriceSnapshot]] = defaultdict(list)
+    for snapshot in result.scalars():
+        snapshots_by_set[snapshot.lego_set.set_number].append(snapshot)
+    return dict(snapshots_by_set)
+
+
+async def get_active_listing_supply_for_set_numbers(
+    db: AsyncSession, set_numbers: set[str]
+) -> dict[str, list[MarketplaceListing]]:
+    """Return verified active listings for user-owned sets only."""
+    if not set_numbers:
+        return {}
+    normalized_set_numbers = {
+        normalize_set_number(set_number) for set_number in set_numbers
+    }
+    result = await db.execute(
+        select(MarketplaceListing)
+        .options(
+            selectinload(MarketplaceListing.marketplace),
+            selectinload(MarketplaceListing.lego_set),
+        )
+        .join(LegoSet)
+        .where(
+            LegoSet.set_number.in_(normalized_set_numbers),
+            MarketplaceListing.listing_status == "active",
+            MarketplaceListing.is_verified.is_(True),
+        )
+        .order_by(MarketplaceListing.last_seen_at.desc())
+    )
+    listings_by_set: dict[str, list[MarketplaceListing]] = defaultdict(list)
+    for listing in result.scalars():
+        listings_by_set[listing.lego_set.set_number].append(listing)
+    return dict(listings_by_set)
 
 
 # Portfolio repository
@@ -1139,6 +1204,42 @@ async def create_portfolio_valuation_snapshot(
     )
     await db.flush()
     return snapshot
+
+
+async def create_portfolio_analytics_snapshot(
+    db: AsyncSession,
+    *,
+    snapshot_data: dict[str, Any],
+    holding_metrics_data: list[dict[str, Any]],
+) -> PortfolioAnalyticsSnapshot:
+    snapshot = PortfolioAnalyticsSnapshot(**snapshot_data)
+    db.add(snapshot)
+    await db.flush()
+    db.add_all(
+        [
+            PortfolioHoldingAnalytics(analytics_snapshot_id=snapshot.id, **metrics)
+            for metrics in holding_metrics_data
+        ]
+    )
+    await db.flush()
+    await db.refresh(snapshot, attribute_names=["holding_metrics"])
+    return snapshot
+
+
+async def get_latest_portfolio_analytics_snapshot(
+    db: AsyncSession, user_id: UUID
+) -> PortfolioAnalyticsSnapshot | None:
+    result = await db.execute(
+        select(PortfolioAnalyticsSnapshot)
+        .options(selectinload(PortfolioAnalyticsSnapshot.holding_metrics))
+        .where(PortfolioAnalyticsSnapshot.user_id == user_id)
+        .order_by(
+            PortfolioAnalyticsSnapshot.generated_at.desc(),
+            PortfolioAnalyticsSnapshot.created_at.desc(),
+        )
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
 
 
 async def get_user_ids_with_portfolio_set(

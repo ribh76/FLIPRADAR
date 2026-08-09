@@ -55,6 +55,8 @@ from flipradar.api.schemas.notification_schema import (
     NotificationUnreadCountResponse,
 )
 from flipradar.api.schemas.portfolio_schema import (
+    PortfolioAnalyticsHoldingResponse,
+    PortfolioAnalyticsResponse,
     PortfolioDashboardResponse,
     PortfolioHoldingDetailResponse,
     PortfolioHoldingSummary,
@@ -141,6 +143,8 @@ __all__ = [
     "PasswordResetRequest",
     "PasswordResetResponse",
     "PortfolioDashboardResponse",
+    "PortfolioAnalyticsHoldingResponse",
+    "PortfolioAnalyticsResponse",
     "PortfolioHoldingDetailResponse",
     "PaginationMeta",
     "PortfolioHoldingSummary",

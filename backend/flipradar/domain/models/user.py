@@ -71,6 +71,12 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    portfolio_analytics_snapshots = relationship(
+        "PortfolioAnalyticsSnapshot",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
     revoked_refresh_tokens = relationship(
         "RefreshTokenBlacklist",
         back_populates="user",
