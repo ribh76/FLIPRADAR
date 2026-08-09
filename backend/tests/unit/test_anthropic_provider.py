@@ -21,6 +21,13 @@ def configured_settings() -> LlmSettings:
         model="claude-test",
         timeout_seconds=12,
         max_tokens=123,
+        max_retries=2,
+        retry_backoff_seconds=0.1,
+        user_rate_limit=10,
+        global_rate_limit=100,
+        rate_limit_window_seconds=60,
+        input_cost_per_million_tokens=3.0,
+        output_cost_per_million_tokens=15.0,
     )
 
 

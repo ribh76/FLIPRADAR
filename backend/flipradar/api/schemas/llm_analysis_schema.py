@@ -2,8 +2,15 @@
 
 import re
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+RECOMMENDATION_NARRATIVE_PROMPT_VERSION = "recommendation-narrative-v1"
+
+LlmNarrativeStatus = Literal[
+    "available", "disabled", "rate_limited", "timed_out", "failed", "invalid_response"
+]
 
 
 class LlmFactMetric(StrEnum):
@@ -81,6 +88,9 @@ class LlmRecommendationNarrative(BaseModel):
     summary: str = Field(..., min_length=1, max_length=500)
     facts: list[LlmFactCard] = Field(default_factory=list, max_length=6)
     uncertainties: list[LlmUncertaintyCard] = Field(default_factory=list, max_length=6)
+    prompt_version: Literal[RECOMMENDATION_NARRATIVE_PROMPT_VERSION] = (
+        RECOMMENDATION_NARRATIVE_PROMPT_VERSION
+    )
 
     model_config = ConfigDict(extra="forbid")
 

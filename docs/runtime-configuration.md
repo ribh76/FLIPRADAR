@@ -46,6 +46,15 @@ FlipRadar's LLM integration currently supports Anthropic only. Set
 environment (or the ignored `backend/.env` file for local development). Never
 place the API key in source files, frontend configuration, or Docker Compose.
 
+LLM narratives use bounded retries, a per-user and global rolling-window rate
+limit, and deterministic fallback. Configure `LLM_MAX_RETRIES`,
+`LLM_USER_RATE_LIMIT`, `LLM_GLOBAL_RATE_LIMIT`, and
+`LLM_RATE_LIMIT_WINDOW_SECONDS` for the deployment. Usage logs contain the
+model, prompt version, token counts, latency, retry count, and estimated cost;
+they never contain prompts, provider payloads, or credentials. The token-cost
+rates are configuration values so they can be kept current with the selected
+model's published pricing.
+
 ## Tests
 
 Pytest configures `APP_ENV=test`, a test JWT secret, SQLite `DATABASE_URL`, and test CORS origins before app creation. Tests override the database dependency with in-memory SQLite sessions, so they do not require production credentials or live provider APIs.

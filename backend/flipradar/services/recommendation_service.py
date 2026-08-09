@@ -317,7 +317,9 @@ async def _save_recommendation(
     )
 
 
-async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
+async def analyze_set(
+    db: AsyncSession, payload: AnalyzeRequest, *, llm_user_key: str = "anonymous"
+) -> dict:
     set_number = payload.set_number
     logger.info("pipeline started set_number=%s", set_number)
 
@@ -498,14 +500,19 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
             "market_high": _money(estimate["market_high"]),
             "listing_count": estimate["listing_count"],
             "valuation_source": estimate["valuation_source"],
+            "ai_narrative": None,
+            "ai_narrative_status": "disabled",
             # Used solely to determine the allowed uncertainty cards. It is not
             # included in the LLM's calculated-metrics payload.
             "condition": payload.condition,
             **analysis_details,
         }
-        narrative = await maybe_generate_recommendation_narrative(response)
-        if narrative is not None:
-            response["ai_narrative"] = narrative
+        narrative_result = await maybe_generate_recommendation_narrative(
+            response, user_key=llm_user_key
+        )
+        response["ai_narrative_status"] = narrative_result.status
+        if narrative_result.narrative is not None:
+            response["ai_narrative"] = narrative_result.narrative
         return response
     except RecommendationServiceError:
         raise

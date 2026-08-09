@@ -1,8 +1,9 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from flipradar.api.dependencies.auth import decode_access_token
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
     AnalyzeRequest,
@@ -24,12 +25,16 @@ logger = logging.getLogger(__name__)
     description="Return BUY/PASS/WATCH/SELL/HOLD advice using stored market snapshots.",
 )
 async def analyze_set(
-    payload: AnalyzeRequest, db: AsyncSession = Depends(get_db_session)
+    payload: AnalyzeRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """Analyze a LEGO set for BUY/PASS/SELL/HOLD/WATCH guidance."""
     logger.info("request started route=analyze_set set_number=%s", payload.set_number)
     try:
-        response = await recommendation_service.analyze_set(db, payload)
+        response = await recommendation_service.analyze_set(
+            db, payload, llm_user_key=_llm_rate_limit_key(request)
+        )
     except recommendation_service.RecommendationServiceError as exc:
         logger.warning(
             "major validation failure route=analyze_set set_number=%s status_code=%s error_type=%s detail=%s",
@@ -50,6 +55,22 @@ async def analyze_set(
         response.get("confidence"),
     )
     return response
+
+
+def _llm_rate_limit_key(request: Request) -> str:
+    """Prefer a verified account identifier, falling back to the client address."""
+
+    authorization = request.headers.get("Authorization", "")
+    if authorization.lower().startswith("bearer "):
+        try:
+            subject = decode_access_token(authorization[7:].strip()).get("sub")
+            if subject:
+                return f"user:{subject}"
+        except HTTPException:
+            pass
+    if request.client is not None:
+        return f"client:{request.client.host}"
+    return "client:unknown"
 
 
 # Fetches the latest recommendation for a set. It accepts a set number and returns the newest recommendation.

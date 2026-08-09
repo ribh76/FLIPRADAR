@@ -46,8 +46,10 @@ from flipradar.api.schemas.listing_schema import (
     MarketplaceResponse,
 )
 from flipradar.api.schemas.llm_analysis_schema import (
+    RECOMMENDATION_NARRATIVE_PROMPT_VERSION,
     LlmFactCard,
     LlmFactMetric,
+    LlmNarrativeStatus,
     LlmRecommendationNarrative,
     LlmUncertaintyCard,
     LlmUncertaintyCode,
@@ -136,9 +138,11 @@ __all__ = [
     "ListingResponse",
     "LlmFactCard",
     "LlmFactMetric",
+    "LlmNarrativeStatus",
     "LlmRecommendationNarrative",
     "LlmUncertaintyCard",
     "LlmUncertaintyCode",
+    "RECOMMENDATION_NARRATIVE_PROMPT_VERSION",
     "ManualListingEntry",
     "NotificationMarkAllReadResponse",
     "NotificationPreferenceResponse",

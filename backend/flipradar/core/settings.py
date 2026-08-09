@@ -115,6 +115,13 @@ class LlmSettings(BaseModel):
     model: str
     timeout_seconds: int
     max_tokens: int
+    max_retries: int
+    retry_backoff_seconds: float
+    user_rate_limit: int
+    global_rate_limit: int
+    rate_limit_window_seconds: int
+    input_cost_per_million_tokens: float
+    output_cost_per_million_tokens: float
 
     @property
     def configured(self) -> bool:
@@ -253,9 +260,24 @@ class Settings(BaseSettings):
         default=LlmProviderName.ANTHROPIC, alias="LLM_PROVIDER"
     )
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
-    llm_model: str = Field(default="claude-sonnet-4-20250514", alias="LLM_MODEL")
+    llm_model: str = Field(default="claude-sonnet-4-6", alias="LLM_MODEL")
     llm_timeout_seconds: int = Field(default=30, ge=1, alias="LLM_TIMEOUT_SECONDS")
     llm_max_tokens: int = Field(default=1500, ge=1, alias="LLM_MAX_TOKENS")
+    llm_max_retries: int = Field(default=2, ge=0, le=5, alias="LLM_MAX_RETRIES")
+    llm_retry_backoff_seconds: float = Field(
+        default=0.25, ge=0, le=10, alias="LLM_RETRY_BACKOFF_SECONDS"
+    )
+    llm_user_rate_limit: int = Field(default=10, ge=1, alias="LLM_USER_RATE_LIMIT")
+    llm_global_rate_limit: int = Field(default=100, ge=1, alias="LLM_GLOBAL_RATE_LIMIT")
+    llm_rate_limit_window_seconds: int = Field(
+        default=60, ge=1, alias="LLM_RATE_LIMIT_WINDOW_SECONDS"
+    )
+    llm_input_cost_per_million_tokens: float = Field(
+        default=3.0, ge=0, alias="LLM_INPUT_COST_PER_MILLION_TOKENS"
+    )
+    llm_output_cost_per_million_tokens: float = Field(
+        default=15.0, ge=0, alias="LLM_OUTPUT_COST_PER_MILLION_TOKENS"
+    )
 
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
     celery_broker_url: str | None = Field(default=None, alias="CELERY_BROKER_URL")
@@ -424,6 +446,13 @@ class Settings(BaseSettings):
             model=self.llm_model,
             timeout_seconds=self.llm_timeout_seconds,
             max_tokens=self.llm_max_tokens,
+            max_retries=self.llm_max_retries,
+            retry_backoff_seconds=self.llm_retry_backoff_seconds,
+            user_rate_limit=self.llm_user_rate_limit,
+            global_rate_limit=self.llm_global_rate_limit,
+            rate_limit_window_seconds=self.llm_rate_limit_window_seconds,
+            input_cost_per_million_tokens=self.llm_input_cost_per_million_tokens,
+            output_cost_per_million_tokens=self.llm_output_cost_per_million_tokens,
         )
 
     @property

@@ -132,6 +132,13 @@ export type AnalyzeResponse = {
   listing_count: number | null;
   valuation_source: "market" | "manual_override" | string;
   ai_narrative?: LlmRecommendationNarrative | null;
+  ai_narrative_status?:
+    | "available"
+    | "disabled"
+    | "rate_limited"
+    | "timed_out"
+    | "failed"
+    | "invalid_response";
 };
 
 export type LlmFactCard = {
@@ -148,6 +155,7 @@ export type LlmRecommendationNarrative = {
   summary: string;
   facts: LlmFactCard[];
   uncertainties: LlmUncertaintyCard[];
+  prompt_version: string;
 };
 
 export type PortfolioItem = {

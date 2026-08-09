@@ -779,17 +779,17 @@ Classification: MUST SHIP
 1. Create an LLM provider interface. - (Complete) 
 2. Add one provider. - (Complete) 
 3. Store keys only in backend secrets. - (Complete) 
-4. Define strict structured-output schemas.
-5. Pass calculated metrics instead of uncontrolled raw data.
-6. Require the model to distinguish facts from uncertainty.
-7. Prohibit invented prices and marketplace facts.
-8. Add timeouts and retries.
-9. Add user and global rate limits.
-10. Track tokens and cost.
-11. Track prompt versions.
-12. Validate every model response.
-13. Fall back to deterministic results.
-14. Add mocked tests.
+4. Define strict structured-output schemas. - (Complete) 
+5. Pass calculated metrics instead of uncontrolled raw data. - (Complete) 
+6. Require the model to distinguish facts from uncertainty. - (Complete) 
+7. Prohibit invented prices and marketplace facts. - (Complete) 
+8. Add timeouts and retries. - (Complete) 
+9. Add user and global rate limits. - (Complete) 
+10. Track tokens and cost. - (Complete) 
+11. Track prompt versions. - (Complete) 
+12. Validate every model response. - (Complete) 
+13. Fall back to deterministic results. - (Complete) 
+14. Add mocked tests. - (Complete) 
 15. Document AI limitations.
 
 PHASE 40: ANALYZE PORTFOLIO FEATURE

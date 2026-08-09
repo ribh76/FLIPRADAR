@@ -205,6 +205,9 @@ export function AnalyzePage() {
                 <p className="mt-2 text-sm text-[var(--color-text-muted)]">
                   {result.ai_narrative.summary}
                 </p>
+                <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+                  AI explanation · {result.ai_narrative.prompt_version}
+                </p>
                 <div className="mt-4 space-y-3">
                   {result.ai_narrative.facts.map((fact) => (
                     <div
@@ -249,6 +252,17 @@ export function AnalyzePage() {
                   )}
                 </div>
               </Card>
+            </div>
+          ) : result && result.ai_narrative_status !== "disabled" ? (
+            <div className="page-card border-[var(--color-accent-warm)] text-sm text-[var(--color-text-muted)]">
+              The deterministic recommendation is available. Its optional AI
+              explanation was not shown because it was
+              {result.ai_narrative_status === "rate_limited"
+                ? " rate limited"
+                : result.ai_narrative_status === "timed_out"
+                  ? " timed out"
+                  : " not validated"}
+              .
             </div>
           ) : null}
         </section>
