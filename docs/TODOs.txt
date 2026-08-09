@@ -776,9 +776,9 @@ Classification: MUST SHIP
 PHASE 39: LLM INTEGRATION FOUNDATION
 Classification: MUST SHIP
 
-1. Create an LLM provider interface.
-2. Add one provider.
-3. Store keys only in backend secrets.
+1. Create an LLM provider interface. - (Complete) 
+2. Add one provider. - (Complete) 
+3. Store keys only in backend secrets. - (Complete) 
 4. Define strict structured-output schemas.
 5. Pass calculated metrics instead of uncontrolled raw data.
 6. Require the model to distinguish facts from uncertainty.

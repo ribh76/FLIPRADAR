@@ -30,7 +30,10 @@ class AnthropicLlmProvider(LlmProvider):
     def complete(self, request: LlmCompletionRequest) -> LlmCompletion:
         payload: dict[str, Any] = {
             "model": request.model or self._settings.model,
-            "max_tokens": request.max_tokens or self._settings.max_tokens,
+            "max_tokens": min(
+                request.max_tokens or self._settings.max_tokens,
+                self._settings.max_tokens,
+            ),
             "messages": [{"role": "user", "content": request.prompt}],
         }
         if request.system_prompt:

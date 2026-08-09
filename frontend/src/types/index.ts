@@ -131,6 +131,23 @@ export type AnalyzeResponse = {
   market_high: number | null;
   listing_count: number | null;
   valuation_source: "market" | "manual_override" | string;
+  ai_narrative?: LlmRecommendationNarrative | null;
+};
+
+export type LlmFactCard = {
+  source_metric: string;
+  text: string;
+};
+
+export type LlmUncertaintyCard = {
+  code: string;
+  text: string;
+};
+
+export type LlmRecommendationNarrative = {
+  summary: string;
+  facts: LlmFactCard[];
+  uncertainties: LlmUncertaintyCard[];
 };
 
 export type PortfolioItem = {

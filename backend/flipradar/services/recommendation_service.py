@@ -27,6 +27,9 @@ from flipradar.domain.engines import (
     hold_sell_engine,
     price_estimator,
 )
+from flipradar.services.llm_recommendation_service import (
+    maybe_generate_recommendation_narrative,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -482,7 +485,7 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
             },
         )
 
-        return {
+        response = {
             "set_number": payload.set_number,
             "user_goal": payload.user_goal,
             "asking_price": _money(payload.asking_price),
@@ -495,8 +498,15 @@ async def analyze_set(db: AsyncSession, payload: AnalyzeRequest) -> dict:
             "market_high": _money(estimate["market_high"]),
             "listing_count": estimate["listing_count"],
             "valuation_source": estimate["valuation_source"],
+            # Used solely to determine the allowed uncertainty cards. It is not
+            # included in the LLM's calculated-metrics payload.
+            "condition": payload.condition,
             **analysis_details,
         }
+        narrative = await maybe_generate_recommendation_narrative(response)
+        if narrative is not None:
+            response["ai_narrative"] = narrative
+        return response
     except RecommendationServiceError:
         raise
     except SQLAlchemyError as exc:

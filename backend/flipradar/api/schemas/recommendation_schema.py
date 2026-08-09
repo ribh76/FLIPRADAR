@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from flipradar.api.schemas.llm_analysis_schema import LlmRecommendationNarrative
 from flipradar.api.schemas.validation import (
     Money,
     OptionalMoney,
@@ -101,6 +102,7 @@ class AnalyzeResponse(BaseModel):
     reasons: list[dict] | None = None
     warnings: list[str] | None = None
     valuation_source: str = "market"
+    ai_narrative: LlmRecommendationNarrative | None = None
 
 
 class RecommendationResponse(BaseModel):

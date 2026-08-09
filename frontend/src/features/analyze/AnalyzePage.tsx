@@ -197,6 +197,60 @@ export function AnalyzePage() {
                 "Run an analysis to see how fair value, asking price, confidence, and listing depth shaped the recommendation."}
             </p>
           </div>
+
+          {result?.ai_narrative ? (
+            <div className="grid gap-5 xl:grid-cols-2">
+              <Card>
+                <CardTitle>Grounded facts</CardTitle>
+                <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                  {result.ai_narrative.summary}
+                </p>
+                <div className="mt-4 space-y-3">
+                  {result.ai_narrative.facts.map((fact) => (
+                    <div
+                      className="rounded-[var(--radius-control)] border border-[var(--color-border-soft)] p-3"
+                      key={`${fact.source_metric}-${fact.text}`}
+                    >
+                      <p className="metric-label">
+                        {fact.source_metric.split("_").join(" ")}
+                      </p>
+                      <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+                        {fact.text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+              <Card>
+                <CardTitle>Known uncertainty</CardTitle>
+                <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                  These limitations come from the deterministic analysis inputs.
+                </p>
+                <div className="mt-4 space-y-3">
+                  {result.ai_narrative.uncertainties.length ? (
+                    result.ai_narrative.uncertainties.map((uncertainty) => (
+                      <div
+                        className="rounded-[var(--radius-control)] border border-[var(--color-accent-warm)] p-3"
+                        key={`${uncertainty.code}-${uncertainty.text}`}
+                      >
+                        <p className="metric-label">
+                          {uncertainty.code.replace(/_/g, " ")}
+                        </p>
+                        <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+                          {uncertainty.text}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-[var(--color-text-muted)]">
+                      No additional limitations were identified by the supplied
+                      deterministic metrics.
+                    </p>
+                  )}
+                </div>
+              </Card>
+            </div>
+          ) : null}
         </section>
       </div>
     </section>

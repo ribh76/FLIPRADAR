@@ -69,6 +69,22 @@ def test_anthropic_provider_requires_enabled_configuration() -> None:
 
 
 @patch("flipradar.integrations.anthropic_provider.requests.post")
+def test_anthropic_provider_caps_request_tokens_at_configured_limit(post: Mock) -> None:
+    post.return_value = Mock(
+        status_code=200,
+        json=lambda: {
+            "model": "claude-test",
+            "content": [{"type": "text", "text": "Response."}],
+        },
+    )
+    provider = AnthropicLlmProvider(configured_settings())
+
+    provider.complete(LlmCompletionRequest(prompt="Hello", max_tokens=600))
+
+    assert post.call_args.kwargs["json"]["max_tokens"] == 123
+
+
+@patch("flipradar.integrations.anthropic_provider.requests.post")
 def test_anthropic_provider_maps_timeouts(post: Mock) -> None:
     post.side_effect = requests.Timeout()
     provider = AnthropicLlmProvider(configured_settings())
