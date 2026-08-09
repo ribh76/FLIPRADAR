@@ -39,6 +39,13 @@ Production must provide:
 
 Optional integrations such as email, eBay, BrickLink, and LLM providers remain disabled unless both enabled and configured. Startup logs report disabled optional integrations clearly.
 
+## Anthropic
+
+FlipRadar's LLM integration currently supports Anthropic only. Set
+`LLM_ENABLED=true` and provide `ANTHROPIC_API_KEY` through the backend runtime
+environment (or the ignored `backend/.env` file for local development). Never
+place the API key in source files, frontend configuration, or Docker Compose.
+
 ## Tests
 
 Pytest configures `APP_ENV=test`, a test JWT secret, SQLite `DATABASE_URL`, and test CORS origins before app creation. Tests override the database dependency with in-memory SQLite sessions, so they do not require production credentials or live provider APIs.

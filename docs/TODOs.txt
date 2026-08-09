@@ -754,7 +754,7 @@ Classification: MUST SHIP
 14. Document methodology. - (Complete) 
 15. Add deterministic tests. - (Complete) 
 
-PHASE 38: HOLD/SELL RECOMMENDATION ENGINE
+PHASE 38: HOLD/SELL RECOMMENDATION ENGINE - (Complete) 
 Classification: MUST SHIP
 
 1. Define Hold, Watch, Consider Selling, and Insufficient Data categories.  - (Complete) 
@@ -770,8 +770,8 @@ Classification: MUST SHIP
 11. Produce structured reasons and warnings. - (Complete) 
 12. Avoid guaranteed financial claims. - (Complete) 
 13. Version the method. (Skip) 
-14. Store recommendations and inputs.
-15. Add rule-boundary tests.
+14. Store recommendations and inputs. - (Complete) 
+15. Add rule-boundary tests. - (Complete) 
 
 PHASE 39: LLM INTEGRATION FOUNDATION
 Classification: MUST SHIP

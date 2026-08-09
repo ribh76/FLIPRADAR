@@ -17,6 +17,10 @@ class AppEnvironment(StrEnum):
     PRODUCTION = "production"
 
 
+class LlmProviderName(StrEnum):
+    ANTHROPIC = "anthropic"
+
+
 class ApplicationSettings(BaseModel):
     name: str
     environment: AppEnvironment
@@ -106,7 +110,7 @@ class MarketplaceApiSettings(BaseModel):
 
 class LlmSettings(BaseModel):
     enabled: bool
-    provider: str
+    provider: LlmProviderName
     api_key: str | None
     model: str
     timeout_seconds: int
@@ -245,10 +249,11 @@ class Settings(BaseSettings):
     )
 
     llm_enabled: bool = Field(default=False, alias="LLM_ENABLED")
-    llm_provider: str = Field(default="openai", alias="LLM_PROVIDER")
-    llm_api_key: str | None = Field(default=None, alias="LLM_API_KEY")
-    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
-    llm_model: str = Field(default="gpt-5-mini", alias="LLM_MODEL")
+    llm_provider: LlmProviderName = Field(
+        default=LlmProviderName.ANTHROPIC, alias="LLM_PROVIDER"
+    )
+    anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
+    llm_model: str = Field(default="claude-sonnet-4-20250514", alias="LLM_MODEL")
     llm_timeout_seconds: int = Field(default=30, ge=1, alias="LLM_TIMEOUT_SECONDS")
     llm_max_tokens: int = Field(default=1500, ge=1, alias="LLM_MAX_TOKENS")
 
@@ -290,8 +295,7 @@ class Settings(BaseSettings):
         "bricklink_consumer_secret",
         "bricklink_token_value",
         "bricklink_token_secret",
-        "llm_api_key",
-        "openai_api_key",
+        "anthropic_api_key",
         mode="before",
     )
     @classmethod
@@ -416,7 +420,7 @@ class Settings(BaseSettings):
         return LlmSettings(
             enabled=self.llm_enabled,
             provider=self.llm_provider,
-            api_key=self.llm_api_key or self.openai_api_key,
+            api_key=self.anthropic_api_key,
             model=self.llm_model,
             timeout_seconds=self.llm_timeout_seconds,
             max_tokens=self.llm_max_tokens,

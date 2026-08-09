@@ -80,13 +80,6 @@ services:
       BRICKLINK_TOKEN_VALUE: ""
       BRICKLINK_TOKEN_SECRET: ""
       BRICKLINK_API_TIMEOUT_SECONDS: "10"
-      LLM_ENABLED: "false"
-      LLM_PROVIDER: openai
-      LLM_API_KEY: ""
-      OPENAI_API_KEY: ""
-      LLM_MODEL: gpt-5-mini
-      LLM_TIMEOUT_SECONDS: "30"
-      LLM_MAX_TOKENS: "1500"
       REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"

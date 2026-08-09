@@ -10,6 +10,8 @@ os.environ.setdefault("APP_DEBUG", "true")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-for-tests")
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("CORS_ALLOWED_ORIGINS", "http://testserver")
+os.environ.setdefault("LLM_ENABLED", "false")
+os.environ.setdefault("ANTHROPIC_API_KEY", "")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
