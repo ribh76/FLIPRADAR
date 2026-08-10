@@ -820,15 +820,15 @@ Classification: SHIP LATER
 4. Display previous analyses. - (Complete)
 5. Compare recommendation changes by set. - (Complete)
 6. Highlight recommendation reversals. - (Complete)
-7. Explain which metrics changed.
-8. Show timestamps and freshness.
-9. Allow labels and annotations.
-10. Add deletion.
-11. Compare two selected dates.
-12. Add trend summaries.
-13. Prevent stale analyses from appearing current.
-14. Add pagination.
-15. Add tests.
+7. Explain which metrics changed. - (Complete)
+8. Show timestamps and freshness. - (Complete)
+9. Allow labels and annotations. - (Complete)
+10. Add deletion. - (Complete)
+11. Compare two selected dates. - (Complete)
+12. Add trend summaries. - (Complete)
+13. Prevent stale analyses from appearing current. - (Complete)
+14. Add pagination. - (Complete)
+15. Add tests. - (Complete)
 
 ==================================================
 PART XI - V1 COMPLETION AND LAUNCH

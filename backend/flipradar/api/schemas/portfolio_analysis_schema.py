@@ -163,6 +163,21 @@ class PortfolioAnalysisHistoryEntry(BaseModel):
     item_recommendations: list[PortfolioItemRecommendation]
     confidence_summary: PortfolioConfidenceSummary
     data_quality_warnings: list[PortfolioDataQualityWarning]
+    labels: list[str] = Field(default_factory=list)
+    annotation: str | None = None
+    is_current: bool
+    is_stale: bool
+    freshness_expires_at: datetime
+
+
+class PortfolioAnalysisMetadataUpdate(BaseModel):
+    labels: list[str] = Field(default_factory=list, max_length=12)
+    annotation: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("labels")
+    @classmethod
+    def normalize_labels(cls, values: list[str]) -> list[str]:
+        return list(dict.fromkeys(value.strip() for value in values if value.strip()))
 
 
 class PortfolioRecommendationChange(BaseModel):
@@ -176,9 +191,28 @@ class PortfolioRecommendationChange(BaseModel):
     is_reversal: bool
 
 
+class PortfolioMetricChange(BaseModel):
+    metric: str
+    label: str
+    previous_value: float | int | None
+    current_value: float | int | None
+    delta: float | int | None
+    explanation: str
+
+
+class PortfolioAnalysisTrendSummary(BaseModel):
+    changed_recommendation_count: int
+    reversal_count: int
+    added_holding_count: int
+    removed_holding_count: int
+    metric_change_count: int
+
+
 class PortfolioAnalysisComparisonResponse(BaseModel):
     previous_analysis_id: UUID
     current_analysis_id: UUID
     previous_generated_at: datetime
     current_generated_at: datetime
     changes: list[PortfolioRecommendationChange]
+    metric_changes: list[PortfolioMetricChange]
+    trend_summary: PortfolioAnalysisTrendSummary

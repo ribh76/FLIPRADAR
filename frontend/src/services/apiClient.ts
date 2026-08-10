@@ -352,6 +352,20 @@ export const apiClient = {
         }),
       );
     },
+    updateAnalysisMetadata(
+      analysisId: string,
+      data: { labels: string[]; annotation: string | null },
+    ) {
+      return requestData(
+        api.patch<PortfolioAnalysisHistoryEntry>(
+          `/portfolio/analyses/${analysisId}`,
+          data,
+        ),
+      );
+    },
+    deleteAnalysis(analysisId: string) {
+      return requestData(api.delete(`/portfolio/analyses/${analysisId}`));
+    },
     detail(itemId: string) {
       return requestData(
         api.get<PortfolioHoldingDetail>(`/portfolio/items/${itemId}/detail`),

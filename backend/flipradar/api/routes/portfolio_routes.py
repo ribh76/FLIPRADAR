@@ -11,6 +11,7 @@ from flipradar.api.schemas import (
     CollectionResponse,
     PortfolioAnalysisComparisonResponse,
     PortfolioAnalysisHistoryEntry,
+    PortfolioAnalysisMetadataUpdate,
     PortfolioAnalysisResponse,
     PortfolioAnalyticsResponse,
     PortfolioDashboardResponse,
@@ -93,6 +94,42 @@ async def compare_portfolio_analyses(
         previous_analysis_id=previous_analysis_id,
         current_analysis_id=current_analysis_id,
     )
+
+
+@router.patch(
+    "/analyses/{analysis_id}",
+    response_model=PortfolioAnalysisHistoryEntry,
+    summary="Label or annotate a portfolio analysis",
+)
+async def update_portfolio_analysis_metadata(
+    analysis_id: UUID,
+    update: PortfolioAnalysisMetadataUpdate,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    return await portfolio_analysis_service.update_analysis_metadata(
+        db,
+        current_user.id,
+        analysis_id,
+        labels=update.labels,
+        annotation=update.annotation,
+    )
+
+
+@router.delete(
+    "/analyses/{analysis_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove a portfolio analysis from history",
+)
+async def delete_portfolio_analysis(
+    analysis_id: UUID,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> Response:
+    await portfolio_analysis_service.remove_portfolio_analysis(
+        db, current_user.id, analysis_id
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

@@ -3,6 +3,7 @@ import {
   ArrowUpRight,
   RefreshCw,
   ShieldAlert,
+  Trash2,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -136,9 +137,13 @@ export function AnalyzePortfolioPage() {
   const [currentAnalysisId, setCurrentAnalysisId] = useState("");
   const [comparison, setComparison] =
     useState<PortfolioAnalysisComparison | null>(null);
+  const [historyOffset, setHistoryOffset] = useState(0);
   const historyQuery = useServerQuery(
-    ["portfolio-analysis-history"],
-    useCallback(() => apiClient.portfolio.analyses(), []),
+    ["portfolio-analysis-history", historyOffset],
+    useCallback(
+      () => apiClient.portfolio.analyses({ limit: 10, offset: historyOffset }),
+      [historyOffset],
+    ),
   );
   const analyzeMutation = useServerMutation(apiClient.portfolio.analyze, {
     onSuccess: async (result) => {
@@ -150,6 +155,28 @@ export function AnalyzePortfolioPage() {
     ({ previousId, currentId }: { previousId: string; currentId: string }) =>
       apiClient.portfolio.compareAnalyses(previousId, currentId),
     { onSuccess: (result) => setComparison(result) },
+  );
+  const metadataMutation = useServerMutation(
+    ({
+      id,
+      labels,
+      annotation,
+    }: {
+      id: string;
+      labels: string[];
+      annotation: string | null;
+    }) =>
+      apiClient.portfolio.updateAnalysisMetadata(id, { labels, annotation }),
+    { onSuccess: async () => void (await historyQuery.refetch()) },
+  );
+  const deleteMutation = useServerMutation(
+    (id: string) => apiClient.portfolio.deleteAnalysis(id),
+    {
+      onSuccess: async () => {
+        setComparison(null);
+        await historyQuery.refetch();
+      },
+    },
   );
   const rows = useMemo(
     () => analysisRows(analysis?.item_recommendations ?? [], sort),
@@ -450,8 +477,12 @@ export function AnalyzePortfolioPage() {
         currentAnalysisId={currentAnalysisId}
         error={historyQuery.error || compareMutation.error}
         history={history}
+        hasMore={historyQuery.data?.pagination.has_more ?? false}
+        historyOffset={historyOffset}
         isComparing={compareMutation.isPending}
+        isDeleting={deleteMutation.isPending}
         isLoading={historyQuery.isLoading}
+        isSavingMetadata={metadataMutation.isPending}
         onCompare={() =>
           void compareMutation.mutate({
             previousId: previousAnalysisId,
@@ -459,7 +490,12 @@ export function AnalyzePortfolioPage() {
           })
         }
         onCurrentAnalysisChange={setCurrentAnalysisId}
+        onDelete={(id) => void deleteMutation.mutate(id)}
+        onHistoryOffsetChange={setHistoryOffset}
         onPreviousAnalysisChange={setPreviousAnalysisId}
+        onSaveMetadata={(id, labels, annotation) =>
+          void metadataMutation.mutate({ id, labels, annotation })
+        }
         previousAnalysisId={previousAnalysisId}
       />
 
@@ -481,25 +517,49 @@ function PortfolioAnalysisHistory({
   comparison,
   currentAnalysisId,
   error,
+  hasMore,
   history,
+  historyOffset,
   isComparing,
+  isDeleting,
   isLoading,
+  isSavingMetadata,
   onCompare,
   onCurrentAnalysisChange,
+  onDelete,
+  onHistoryOffsetChange,
   onPreviousAnalysisChange,
+  onSaveMetadata,
   previousAnalysisId,
 }: {
   comparison: PortfolioAnalysisComparison | null;
   currentAnalysisId: string;
   error: string;
+  hasMore: boolean;
   history: PortfolioAnalysisHistoryEntry[];
+  historyOffset: number;
   isComparing: boolean;
+  isDeleting: boolean;
   isLoading: boolean;
+  isSavingMetadata: boolean;
   onCompare: () => void;
   onCurrentAnalysisChange: (id: string) => void;
+  onDelete: (id: string) => void;
+  onHistoryOffsetChange: (offset: number) => void;
   onPreviousAnalysisChange: (id: string) => void;
+  onSaveMetadata: (
+    id: string,
+    labels: string[],
+    annotation: string | null,
+  ) => void;
   previousAnalysisId: string;
 }) {
+  const [metadataAnalysisId, setMetadataAnalysisId] = useState("");
+  const [labelsText, setLabelsText] = useState("");
+  const [annotation, setAnnotation] = useState("");
+  const selectedMetadata = history.find(
+    (entry) => entry.id === metadataAnalysisId,
+  );
   const historyColumns = [
     {
       header: "Analysis date",
@@ -525,6 +585,16 @@ function PortfolioAnalysisHistory({
       key: "recommendations",
       render: (entry: PortfolioAnalysisHistoryEntry) =>
         `${entry.item_recommendations.length} holdings`,
+    },
+    {
+      header: "Freshness",
+      key: "freshness",
+      render: (entry: PortfolioAnalysisHistoryEntry) => (
+        <span className={entry.is_stale ? "semantic-warning" : "semantic-gain"}>
+          {entry.is_current ? "Current" : "Historical"}
+          {entry.is_stale ? " · stale" : " · fresh"}
+        </span>
+      ),
     },
     {
       header: "Data warnings",
@@ -556,7 +626,116 @@ function PortfolioAnalysisHistory({
           minWidth="720px"
           rows={history}
         />
+        <div className="flex items-center justify-between gap-3 border-t border-[var(--color-border-soft)] p-4">
+          <button
+            className="secondary-button"
+            disabled={historyOffset === 0 || isLoading}
+            onClick={() =>
+              onHistoryOffsetChange(Math.max(0, historyOffset - 10))
+            }
+            type="button"
+          >
+            Newer analyses
+          </button>
+          <span className="text-sm text-[var(--color-text-muted)]">
+            Showing {historyOffset + 1}–{historyOffset + history.length}
+          </span>
+          <button
+            className="secondary-button"
+            disabled={!hasMore || isLoading}
+            onClick={() => onHistoryOffsetChange(historyOffset + 10)}
+            type="button"
+          >
+            Older analyses
+          </button>
+        </div>
       </Card>
+
+      {history.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Labels and annotations</CardTitle>
+          </CardHeader>
+          <div className="grid gap-4 md:grid-cols-2">
+            <SelectField
+              label="Analysis"
+              onChange={(event) => {
+                const entry = history.find(
+                  (item) => item.id === event.target.value,
+                );
+                setMetadataAnalysisId(event.target.value);
+                setLabelsText(entry?.labels.join(", ") ?? "");
+                setAnnotation(entry?.annotation ?? "");
+              }}
+              value={metadataAnalysisId}
+            >
+              <option value="">Select an analysis</option>
+              {history.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {new Date(entry.generated_at).toLocaleString()}
+                </option>
+              ))}
+            </SelectField>
+            {selectedMetadata ? (
+              <div className="rounded-lg border border-[var(--color-border-soft)] p-3 text-sm">
+                <strong>
+                  {selectedMetadata.is_current
+                    ? "Current analysis"
+                    : "Historical analysis"}
+                </strong>
+                <p className="mt-1 text-[var(--color-text-muted)]">
+                  {selectedMetadata.is_stale
+                    ? "Stale — do not treat these recommendations as current."
+                    : `Fresh until ${new Date(selectedMetadata.freshness_expires_at).toLocaleString()}.`}
+                </p>
+              </div>
+            ) : null}
+          </div>
+          <label className="mt-4 block text-sm font-medium">
+            Labels (comma-separated)
+            <input
+              className="mt-1 w-full"
+              onChange={(event) => setLabelsText(event.target.value)}
+              value={labelsText}
+            />
+          </label>
+          <label className="mt-4 block text-sm font-medium">
+            Annotation
+            <textarea
+              className="mt-1 min-h-24 w-full"
+              onChange={(event) => setAnnotation(event.target.value)}
+              value={annotation}
+            />
+          </label>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              className="primary-button"
+              disabled={!metadataAnalysisId || isSavingMetadata}
+              onClick={() =>
+                onSaveMetadata(
+                  metadataAnalysisId,
+                  labelsText
+                    .split(",")
+                    .map((label) => label.trim())
+                    .filter(Boolean),
+                  annotation || null,
+                )
+              }
+              type="button"
+            >
+              Save labels and annotation
+            </button>
+            <button
+              className="secondary-button text-red-700"
+              disabled={!metadataAnalysisId || isDeleting}
+              onClick={() => onDelete(metadataAnalysisId)}
+              type="button"
+            >
+              <Trash2 size={16} /> Delete analysis
+            </button>
+          </div>
+        </Card>
+      ) : null}
 
       {history.length >= 2 ? (
         <Card>
@@ -658,6 +837,40 @@ function PortfolioAnalysisHistory({
             minWidth="720px"
             rows={comparison.changes}
           />
+          <div className="grid gap-3 border-t border-[var(--color-border-soft)] p-5 md:grid-cols-4">
+            <MetricCard
+              label="Label changes"
+              value={String(
+                comparison.trend_summary.changed_recommendation_count,
+              )}
+            />
+            <MetricCard
+              label="Reversals"
+              value={String(comparison.trend_summary.reversal_count)}
+            />
+            <MetricCard
+              label="Added / removed"
+              value={`${comparison.trend_summary.added_holding_count} / ${comparison.trend_summary.removed_holding_count}`}
+            />
+            <MetricCard
+              label="Metric changes"
+              value={String(comparison.trend_summary.metric_change_count)}
+            />
+          </div>
+          <div className="border-t border-[var(--color-border-soft)] p-5">
+            <h3 className="font-semibold">What changed in the portfolio</h3>
+            {comparison.metric_changes.length ? (
+              <ul className="mt-3 space-y-2 text-sm text-[var(--color-text-muted)]">
+                {comparison.metric_changes.map((change) => (
+                  <li key={change.metric}>{change.explanation}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                No tracked portfolio metrics changed between these dates.
+              </p>
+            )}
+          </div>
         </Card>
       ) : null}
     </section>

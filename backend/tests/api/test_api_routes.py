@@ -3635,6 +3635,9 @@ def test_portfolio_analytics_refresh_persists_holdings_allocations_and_signals(
     assert history_body["data"][0]["method_version"] == "portfolio-analysis-method-v1"
     assert history_body["data"][0]["prompt_version"] == "portfolio-analysis-v1"
     assert history_body["data"][0]["portfolio_context"]["holding_count"] == 2
+    assert history_body["data"][0]["is_current"] is False
+    assert history_body["data"][0]["is_stale"] is True
+    assert history_body["data"][1]["is_stale"] is True
 
     comparison = client.get(
         "/portfolio/analyses/compare",
@@ -3649,3 +3652,21 @@ def test_portfolio_analytics_refresh_persists_holdings_allocations_and_signals(
         "910001",
         "910002",
     }
+    assert "trend_summary" in comparison.json()
+    assert "metric_changes" in comparison.json()
+
+    update = client.patch(
+        f"/portfolio/analyses/{analysis_body['id']}",
+        headers=headers,
+        json={"labels": ["review"], "annotation": "Keep for comparison."},
+    )
+    assert update.status_code == 200, update.text
+    assert update.json()["labels"] == ["review"]
+
+    deletion = client.delete(
+        f"/portfolio/analyses/{analysis_body['id']}", headers=headers
+    )
+    assert deletion.status_code == 204, deletion.text
+    remaining_history = client.get("/portfolio/analyses", headers=headers)
+    assert remaining_history.status_code == 200, remaining_history.text
+    assert remaining_history.json()["pagination"]["count"] == 1

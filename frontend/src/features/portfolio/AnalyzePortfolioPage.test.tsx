@@ -13,6 +13,8 @@ vi.mock("../../services/apiClient", () => ({
       analyze: vi.fn(),
       analyses: vi.fn(),
       compareAnalyses: vi.fn(),
+      updateAnalysisMetadata: vi.fn(),
+      deleteAnalysis: vi.fn(),
     },
   },
   getApiError: (error: unknown) =>
@@ -117,6 +119,11 @@ const history = {
       item_recommendations: analysis.item_recommendations,
       confidence_summary: analysis.confidence_summary,
       data_quality_warnings: analysis.data_quality_warnings,
+      labels: ["monthly review"],
+      annotation: "Review after the next refresh.",
+      is_current: true,
+      is_stale: false,
+      freshness_expires_at: "2026-08-11T12:00:00Z",
     },
     {
       id: "analysis-1",
@@ -128,6 +135,11 @@ const history = {
       item_recommendations: analysis.item_recommendations,
       confidence_summary: analysis.confidence_summary,
       data_quality_warnings: [],
+      labels: [],
+      annotation: null,
+      is_current: false,
+      is_stale: true,
+      freshness_expires_at: "2026-08-10T12:00:00Z",
     },
   ],
   pagination: { count: 2, has_more: false, limit: 25, offset: 0 },
@@ -165,7 +177,29 @@ describe("AnalyzePortfolioPage", () => {
           is_reversal: false,
         },
       ],
+      metric_changes: [
+        {
+          metric: "holding_count",
+          label: "Holdings",
+          previous_value: 1,
+          current_value: 2,
+          delta: 1,
+          explanation:
+            "Holdings increased by 1.00 between the selected analyses.",
+        },
+      ],
+      trend_summary: {
+        changed_recommendation_count: 1,
+        reversal_count: 0,
+        added_holding_count: 0,
+        removed_holding_count: 0,
+        metric_change_count: 1,
+      },
     });
+    vi.mocked(apiClient.portfolio.updateAnalysisMetadata).mockResolvedValue(
+      history.data[0],
+    );
+    vi.mocked(apiClient.portfolio.deleteAnalysis).mockResolvedValue(undefined);
   });
 
   it("shows the summary, risks, opportunities, actions, and disclaimer", async () => {
@@ -229,5 +263,39 @@ describe("AnalyzePortfolioPage", () => {
       "analysis-2",
     );
     expect(screen.getAllByText("changed").length).toBeGreaterThan(0);
+  });
+
+  it("saves analysis metadata and removes an analysis", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Previous analyses");
+
+    await user.selectOptions(screen.getByLabelText("Analysis"), "analysis-2");
+    await user.clear(screen.getByLabelText("Labels (comma-separated)"));
+    await user.type(
+      screen.getByLabelText("Labels (comma-separated)"),
+      "review, q3",
+    );
+    await user.clear(screen.getByLabelText("Annotation"));
+    await user.type(
+      screen.getByLabelText("Annotation"),
+      "Revisit this result.",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Save labels and annotation" }),
+    );
+
+    await waitFor(() => {
+      expect(apiClient.portfolio.updateAnalysisMetadata).toHaveBeenCalledWith(
+        "analysis-2",
+        { labels: ["review", "q3"], annotation: "Revisit this result." },
+      );
+    });
+    await user.click(screen.getByRole("button", { name: /Delete analysis/ }));
+    await waitFor(() => {
+      expect(apiClient.portfolio.deleteAnalysis).toHaveBeenCalledWith(
+        "analysis-2",
+      );
+    });
   });
 });

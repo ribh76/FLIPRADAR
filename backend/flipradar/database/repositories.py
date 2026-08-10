@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import UUID
 
@@ -1258,6 +1258,7 @@ async def list_portfolio_analyses(
     result = await db.execute(
         select(PortfolioAnalysis)
         .where(PortfolioAnalysis.user_id == user_id)
+        .where(PortfolioAnalysis.deleted_at.is_(None))
         .order_by(
             PortfolioAnalysis.generated_at.desc(), PortfolioAnalysis.created_at.desc()
         )
@@ -1274,9 +1275,30 @@ async def get_portfolio_analysis_for_user(
         select(PortfolioAnalysis).where(
             PortfolioAnalysis.id == analysis_id,
             PortfolioAnalysis.user_id == user_id,
+            PortfolioAnalysis.deleted_at.is_(None),
         )
     )
     return result.scalar_one_or_none()
+
+
+async def update_portfolio_analysis_metadata(
+    db: AsyncSession,
+    analysis: PortfolioAnalysis,
+    *,
+    labels: list[str],
+    annotation: str | None,
+) -> PortfolioAnalysis:
+    analysis.labels = labels
+    analysis.annotation = annotation
+    await db.flush()
+    return analysis
+
+
+async def delete_portfolio_analysis(
+    db: AsyncSession, analysis: PortfolioAnalysis
+) -> None:
+    analysis.deleted_at = datetime.now(UTC)
+    await db.flush()
 
 
 async def get_user_ids_with_portfolio_set(

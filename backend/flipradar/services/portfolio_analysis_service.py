@@ -1,6 +1,6 @@
 """Orchestrate a refreshable portfolio analysis and its optional LLM narration."""
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -14,8 +14,10 @@ from flipradar.api.schemas.portfolio_analysis_schema import (
 )
 from flipradar.database.repositories import (
     create_portfolio_analysis,
+    delete_portfolio_analysis,
     get_portfolio_analysis_for_user,
     list_portfolio_analyses,
+    update_portfolio_analysis_metadata,
 )
 from flipradar.services import portfolio_analytics_service
 from flipradar.services.llm_portfolio_analysis_service import (
@@ -23,6 +25,7 @@ from flipradar.services.llm_portfolio_analysis_service import (
 )
 
 PORTFOLIO_ANALYSIS_METHOD_VERSION = "portfolio-analysis-method-v1"
+ANALYSIS_FRESHNESS_WINDOW = timedelta(hours=24)
 
 
 async def analyze_portfolio(db: AsyncSession, user_id: UUID) -> dict:
@@ -68,6 +71,8 @@ async def analyze_portfolio(db: AsyncSession, user_id: UUID) -> dict:
             "item_recommendations": _json_value(recommendations),
             "confidence_summary": confidence_summary,
             "data_quality_warnings": data_quality_warnings,
+            "labels": [],
+            "annotation": None,
         },
     )
     response["id"] = stored.id
@@ -79,7 +84,40 @@ async def get_portfolio_analysis_history(
     db: AsyncSession, user_id: UUID, *, limit: int, offset: int
 ) -> list[dict]:
     analyses = await list_portfolio_analyses(db, user_id, limit=limit, offset=offset)
-    return [_history_entry(analysis) for analysis in analyses]
+    newest_id = analyses[0].id if analyses else None
+    return [
+        _history_entry(analysis, is_current=analysis.id == newest_id)
+        for analysis in analyses
+    ]
+
+
+async def update_analysis_metadata(
+    db: AsyncSession,
+    user_id: UUID,
+    analysis_id: UUID,
+    *,
+    labels: list[str],
+    annotation: str | None,
+) -> dict:
+    analysis = await get_portfolio_analysis_for_user(db, user_id, analysis_id)
+    if analysis is None:
+        raise _analysis_not_found()
+    updated = await update_portfolio_analysis_metadata(
+        db, analysis, labels=labels, annotation=annotation
+    )
+    newest = await list_portfolio_analyses(db, user_id, limit=1, offset=0)
+    return _history_entry(
+        updated, is_current=bool(newest and newest[0].id == updated.id)
+    )
+
+
+async def remove_portfolio_analysis(
+    db: AsyncSession, user_id: UUID, analysis_id: UUID
+) -> None:
+    analysis = await get_portfolio_analysis_for_user(db, user_id, analysis_id)
+    if analysis is None:
+        raise _analysis_not_found()
+    await delete_portfolio_analysis(db, analysis)
 
 
 async def compare_portfolio_analyses(
@@ -92,10 +130,7 @@ async def compare_portfolio_analyses(
     previous = await get_portfolio_analysis_for_user(db, user_id, previous_analysis_id)
     current = await get_portfolio_analysis_for_user(db, user_id, current_analysis_id)
     if previous is None or current is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Portfolio analysis not found.",
-        )
+        raise _analysis_not_found()
     previous_by_set = {
         recommendation["set_number"]: recommendation
         for recommendation in previous.item_recommendations
@@ -110,12 +145,29 @@ async def compare_portfolio_analyses(
         )
         for set_number in sorted(set(previous_by_set) | set(current_by_set))
     ]
+    metric_changes = _metric_changes(
+        previous.portfolio_context, current.portfolio_context
+    )
     return {
         "previous_analysis_id": previous.id,
         "current_analysis_id": current.id,
         "previous_generated_at": previous.generated_at,
         "current_generated_at": current.generated_at,
         "changes": changes,
+        "metric_changes": metric_changes,
+        "trend_summary": {
+            "changed_recommendation_count": sum(
+                change["change_type"] == "changed" for change in changes
+            ),
+            "reversal_count": sum(change["is_reversal"] for change in changes),
+            "added_holding_count": sum(
+                change["change_type"] == "added" for change in changes
+            ),
+            "removed_holding_count": sum(
+                change["change_type"] == "removed" for change in changes
+            ),
+            "metric_change_count": len(metric_changes),
+        },
     }
 
 
@@ -134,10 +186,12 @@ def _item_recommendation(holding: dict) -> dict:
     }
 
 
-def _history_entry(analysis) -> dict:
+def _history_entry(analysis, *, is_current: bool) -> dict:
+    generated_at = _as_utc(analysis.generated_at)
+    freshness_expires_at = generated_at + ANALYSIS_FRESHNESS_WINDOW
     return {
         "id": analysis.id,
-        "generated_at": analysis.generated_at,
+        "generated_at": generated_at,
         "method_version": analysis.method_version,
         "prompt_version": analysis.prompt_version,
         "ai_narrative_status": analysis.ai_narrative_status,
@@ -145,7 +199,90 @@ def _history_entry(analysis) -> dict:
         "item_recommendations": analysis.item_recommendations,
         "confidence_summary": analysis.confidence_summary,
         "data_quality_warnings": analysis.data_quality_warnings,
+        "labels": analysis.labels,
+        "annotation": analysis.annotation,
+        "is_current": is_current and freshness_expires_at > datetime.now(UTC),
+        "is_stale": not is_current or freshness_expires_at <= datetime.now(UTC),
+        "freshness_expires_at": freshness_expires_at,
     }
+
+
+def _analysis_not_found() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio analysis not found."
+    )
+
+
+def _metric_changes(previous: dict, current: dict) -> list[dict]:
+    previous_summary = previous.get("summary_metrics", {})
+    current_summary = current.get("summary_metrics", {})
+    metric_specs = [
+        (
+            "total_market_value",
+            "Portfolio value",
+            previous.get("total_market_value"),
+            current.get("total_market_value"),
+        ),
+        (
+            "holding_count",
+            "Holdings",
+            previous.get("holding_count"),
+            current.get("holding_count"),
+        ),
+        (
+            "valued_holding_count",
+            "Valued holdings",
+            previous.get("valued_holding_count"),
+            current.get("valued_holding_count"),
+        ),
+        (
+            "largest_holding_percent",
+            "Largest holding concentration",
+            previous_summary.get("concentration", {}).get("largest_holding_percent"),
+            current_summary.get("concentration", {}).get("largest_holding_percent"),
+        ),
+        (
+            "top_three_percent",
+            "Top-three concentration",
+            previous_summary.get("concentration", {}).get("top_three_percent"),
+            current_summary.get("concentration", {}).get("top_three_percent"),
+        ),
+        (
+            "distinct_sets",
+            "Distinct sets",
+            previous_summary.get("diversification", {}).get("distinct_sets"),
+            current_summary.get("diversification", {}).get("distinct_sets"),
+        ),
+    ]
+    changes = []
+    for metric, label, previous_value, current_value in metric_specs:
+        old = _number_or_none(previous_value)
+        new = _number_or_none(current_value)
+        if old is None or new is None or old == new:
+            continue
+        delta = new - old
+        direction = "increased" if delta > 0 else "decreased"
+        changes.append(
+            {
+                "metric": metric,
+                "label": label,
+                "previous_value": old,
+                "current_value": new,
+                "delta": delta,
+                "explanation": f"{label} {direction} by {abs(delta):.2f} between the selected analyses.",
+            }
+        )
+    return changes
+
+
+def _number_or_none(value) -> float | int | None:
+    if value is None:
+        return None
+    return float(value)
+
+
+def _as_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
 def _recommendation_change(previous: dict | None, current: dict | None) -> dict:

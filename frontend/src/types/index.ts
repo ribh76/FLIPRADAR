@@ -415,6 +415,11 @@ export type PortfolioAnalysisHistoryEntry = {
   item_recommendations: PortfolioItemRecommendation[];
   confidence_summary: PortfolioAnalysis["confidence_summary"];
   data_quality_warnings: PortfolioDataQualityWarning[];
+  labels: string[];
+  annotation: string | null;
+  is_current: boolean;
+  is_stale: boolean;
+  freshness_expires_at: string;
 };
 
 export type PortfolioRecommendationChange = {
@@ -434,6 +439,25 @@ export type PortfolioAnalysisComparison = {
   previous_generated_at: string;
   current_generated_at: string;
   changes: PortfolioRecommendationChange[];
+  metric_changes: PortfolioMetricChange[];
+  trend_summary: PortfolioAnalysisTrendSummary;
+};
+
+export type PortfolioMetricChange = {
+  metric: string;
+  label: string;
+  previous_value: number | null;
+  current_value: number | null;
+  delta: number | null;
+  explanation: string;
+};
+
+export type PortfolioAnalysisTrendSummary = {
+  changed_recommendation_count: number;
+  reversal_count: number;
+  added_holding_count: number;
+  removed_holding_count: number;
+  metric_change_count: number;
 };
 
 export type PortfolioHistoryPoint = {

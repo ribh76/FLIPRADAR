@@ -162,6 +162,11 @@ class PortfolioAnalysis(Base):
     data_quality_warnings: Mapped[list[dict]] = mapped_column(
         JsonDocument, nullable=False
     )
+    labels: Mapped[list[str]] = mapped_column(
+        JsonDocument, nullable=False, default=list
+    )
+    annotation: Mapped[str | None] = mapped_column(String(1000))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

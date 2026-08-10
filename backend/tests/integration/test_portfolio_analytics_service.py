@@ -383,3 +383,21 @@ async def test_history_retrieval_and_comparison_preserve_context_and_changes(
     )
     assert changed["change_type"] == "changed"
     assert changed["is_reversal"] is True
+    assert comparison["trend_summary"]["changed_recommendation_count"] >= 1
+
+    updated = await portfolio_analysis_service.update_analysis_metadata(
+        db_session,
+        user.id,
+        first["id"],
+        labels=["monthly review"],
+        annotation="Check again after valuation refresh.",
+    )
+    assert updated["labels"] == ["monthly review"]
+    assert updated["annotation"] == "Check again after valuation refresh."
+    await portfolio_analysis_service.remove_portfolio_analysis(
+        db_session, user.id, first["id"]
+    )
+    remaining = await portfolio_analysis_service.get_portfolio_analysis_history(
+        db_session, user.id, limit=25, offset=0
+    )
+    assert [entry["id"] for entry in remaining] == [second["id"]]
