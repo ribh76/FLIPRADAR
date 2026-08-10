@@ -862,16 +862,16 @@ Classification: MUST SHIP
 5. Create a demo watchlist. - (complete) 
 6. Create sample analysis output. - (complete) 
 7. Add first-login onboarding. - (complete) 
-8. Explain cost basis and estimated value.
-9. Explain confidence, freshness, and data limits.
-10. Offer sample holdings.
-11. Add useful empty states.
-12. Add contextual help.
-13. Add a reset-demo-data script.
-14. Mark demo data clearly.
-15. Test the full first-time experience.
-16. Update backend and frontend READMEs to current codebase standings. 
-17. Update runtime configuration docs to current standing. 
+8. Explain cost basis and estimated value. - (Complete) 
+9. Explain confidence, freshness, and data limits. - (Complete) 
+10. Offer sample holdings. - (Complete) 
+11. Add useful empty states. - (Complete) 
+12. Add contextual help. - (Complete) 
+13. Add a reset-demo-data script. - (Complete) 
+14. Mark demo data clearly. - (Complete) 
+15. Test the full first-time experience. - (Complete) 
+16. Update backend and frontend READMEs to current codebase  - (Complete) standings.  - (Complete) 
+17. Update runtime configuration docs to current standing.  - (Complete) 
 
 PHASE 44: ACCESSIBILITY AND RESPONSIVE QUALITY
 Classification: MUST SHIP
