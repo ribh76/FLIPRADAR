@@ -1,12 +1,12 @@
 # FlipRadar
 
-FlipRadar is a LEGO collecting and resale analysis app. It combines a FastAPI backend, a React/Vite frontend, pricing and recommendation engines, marketplace integrations, and planning documentation for the product roadmap.
+FlipRadar is a LEGO collecting and resale analysis app. It combines a FastAPI backend, a React/Vite frontend, pricing and recommendation engines, marketplace integrations, and a repeatable local demo.
 
 ## Project Structure
 
 - `backend/` - FastAPI app, SQLAlchemy models, services, engines, integrations, Alembic migrations, backend tests, and Python dependency files.
 - `frontend/` - React, TypeScript, Vite, Tailwind, static assets, and frontend build configuration.
-- `docs/` - Product roadmap, UML/mockups, architecture notes, API/database references, and deployment planning.
+- `docs/` - Product, architecture, valuation, data-limit, demo, and local-development references.
 - `scripts/` - Root-level helper scripts for setup, seed data, migrations, and automation tasks.
 - `.github/` - GitHub Actions and repository automation configuration.
 
@@ -59,6 +59,16 @@ npm run dev
 
 The Vite dev server proxies `/api/*` requests to `http://127.0.0.1:8000`.
 
+## Demo
+
+The Docker stack automatically migrates and seeds representative local data.
+Sign in at `http://127.0.0.1:5173` with `demo@flipradar.com` / `DemoPass1!`.
+The seeded data includes catalog sets, price trends, listings, a portfolio,
+watchlist observations, and a saved analysis. See [Demo Data](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/demo-data.md) for scenarios and reset instructions.
+
+To rebuild the disposable local demo baseline, run `make reset-demo-data` and
+confirm with `RESET`.
+
 ## Product Scope
 
-The current V1 direction includes account auth, LEGO set lookup, stored market snapshots, buy/pass/watch/hold/sell guidance, portfolio tracking, and set detail views. The full roadmap is maintained in [docs/TODOs.txt](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/TODOs.txt).
+The current V1 direction includes account auth, LEGO set lookup, stored market snapshots, buy/pass/watch/hold/sell guidance, portfolio tracking, and set detail views. The full roadmap is maintained in [docs/TODOs.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/TODOs.md).

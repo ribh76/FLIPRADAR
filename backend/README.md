@@ -2,7 +2,7 @@
 
 The backend is a FastAPI API backed by async SQLAlchemy, Alembic migrations, and PostgreSQL in normal development.
 
-For the complete Docker stack, see [docs/local-development.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/local-development.md).
+For the complete Docker stack, see [local development](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/local-development.md). For the seeded account and demo scenarios, see [demo data](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/demo-data.md).
 
 ## Setup
 
@@ -84,7 +84,11 @@ python3 scripts/create_database_tables.py
 python3 scripts/seed_database.py
 ```
 
-Demo sets include `42071`, `75192`, and `75313`.
+The idempotent seed covers catalog sets, multi-date price snapshots, listings,
+portfolio holdings, watchlist observations, and a saved portfolio analysis.
+Use `./scripts/migrate_and_seed.sh` to apply it; use `make reset-demo-data` to
+delete the local Docker data and recreate the full baseline. The demo login is
+`demo@flipradar.com` / `DemoPass1!`.
 
 ## Tests
 
@@ -138,3 +142,6 @@ make format
 - `GET /sets/{set_number}/listings`
 - `GET /listings/{set_number}`
 - `POST /marketplace/update/{set_number}`
+
+For how cost basis, estimated value, confidence, freshness, and limitations are
+presented, see [the documentation index](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/README.md).

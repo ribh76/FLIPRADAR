@@ -2,7 +2,7 @@
 
 The frontend is a React, TypeScript, Vite, and Tailwind application.
 
-For the complete Docker stack, see [docs/local-development.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/local-development.md).
+For the complete Docker stack, see [local development](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/local-development.md). For the seeded account, walkthrough data, and reset procedure, see [demo data](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/demo-data.md).
 
 ## Install
 
@@ -30,6 +30,14 @@ npm run dev
 ```
 
 The app runs at `http://127.0.0.1:5173` by default.
+
+## Demo Walkthrough
+
+Sign in with `demo@flipradar.com` / `DemoPass1!` after starting the Docker
+stack. The demo portfolio, watchlist, listings, and saved portfolio analysis are
+already available. Portfolio screens include contextual guidance for cost basis,
+estimated value, stale data, and empty/filter-result states; the supporting
+definitions live in [the docs index](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/README.md).
 
 ## Build
 

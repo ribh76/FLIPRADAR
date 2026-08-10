@@ -1,4 +1,4 @@
-.PHONY: dev start stop inspect reset setup migrate-seed reset-db refresh-prices prune-prices snapshot-portfolios quality format format-check backend-quality frontend-quality
+.PHONY: dev start stop inspect reset setup migrate-seed reset-db reset-demo-data refresh-prices prune-prices snapshot-portfolios quality format format-check backend-quality frontend-quality
 
 dev:
 	./scripts/run_local_app.sh
@@ -22,6 +22,9 @@ migrate-seed:
 	./scripts/migrate_and_seed.sh
 
 reset-db:
+	./scripts/reset_database.sh
+
+reset-demo-data:
 	./scripts/reset_database.sh
 
 refresh-prices:

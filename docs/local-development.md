@@ -32,6 +32,8 @@ make dev
 
 This builds images, starts PostgreSQL and Redis, waits for database readiness, runs migrations, seeds demo data, starts the backend, and starts the Vite frontend.
 
+For the seeded account, scenarios, and reset behavior, see [Demo Data](demo-data.md).
+
 ## Stack Commands
 
 ```bash
@@ -88,7 +90,12 @@ Make alias:
 
 ```bash
 make reset-db
+make reset-demo-data
 ```
+
+`make reset-demo-data` is the clearest way to start over before a demo. It asks
+for confirmation, destroys only the local Docker volumes, rebuilds the database,
+and reseeds the stable demo data.
 
 ## Services
 

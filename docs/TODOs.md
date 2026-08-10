@@ -855,13 +855,13 @@ Classification: MUST SHIP
 PHASE 43: DEMO DATA AND ONBOARDING
 Classification: MUST SHIP
 
-1. Create representative seed sets.
-2. Create representative price snapshots.
-3. Create representative listings.
-4. Create a demo portfolio.
-5. Create a demo watchlist.
-6. Create sample analysis output.
-7. Add first-login onboarding.
+1. Create representative seed sets. - (complete) 
+2. Create representative price snapshots. - (complete) 
+3. Create representative listings. - (complete) 
+4. Create a demo portfolio. - (complete) 
+5. Create a demo watchlist. - (complete) 
+6. Create sample analysis output. - (complete) 
+7. Add first-login onboarding. - (complete) 
 8. Explain cost basis and estimated value.
 9. Explain confidence, freshness, and data limits.
 10. Offer sample holdings.
@@ -870,6 +870,8 @@ Classification: MUST SHIP
 13. Add a reset-demo-data script.
 14. Mark demo data clearly.
 15. Test the full first-time experience.
+16. Update backend and frontend READMEs to current codebase standings. 
+17. Update runtime configuration docs to current standing. 
 
 PHASE 44: ACCESSIBILITY AND RESPONSIVE QUALITY
 Classification: MUST SHIP

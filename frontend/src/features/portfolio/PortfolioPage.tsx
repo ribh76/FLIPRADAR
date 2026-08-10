@@ -17,6 +17,7 @@ import {
   FormAlert,
   MetricCard,
   Modal,
+  PageState,
   SelectField,
   TextField,
 } from "../../components/ui";
@@ -47,7 +48,9 @@ function ItemForm({
   onCancel,
   onSubmit,
 }: ItemFormProps) {
-  const [setNumber, setSetNumber] = useState(initial?.set_number ?? defaultSetNumber);
+  const [setNumber, setSetNumber] = useState(
+    initial?.set_number ?? defaultSetNumber,
+  );
   const [quantity, setQuantity] = useState(initial?.quantity ?? 1);
   const [purchasePrice, setPurchasePrice] = useState(
     String(initial?.purchase_price ?? ""),
@@ -210,6 +213,9 @@ export function PortfolioPage() {
     }),
     [filters],
   );
+  const hasActiveFilters = Boolean(
+    filters.condition || filters.theme || filters.year || filters.performance,
+  );
 
   const columns = [
     {
@@ -308,6 +314,14 @@ export function PortfolioPage() {
           <FormAlert>{error}</FormAlert>
         </div>
       ) : null}
+      <div className="mb-5">
+        <PageState title="How portfolio values work">
+          Cost basis is what you recorded as paid. Estimated value uses the
+          latest condition-matched market snapshot and can be unavailable,
+          stale, or revised as new market data arrives. Gain/loss is an
+          estimate, before selling costs.
+        </PageState>
+      </div>
       <div
         className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5"
         data-testid="portfolio-metrics"
@@ -352,6 +366,10 @@ export function PortfolioPage() {
         <CardHeader className="mb-4">
           <CardTitle>Add set</CardTitle>
         </CardHeader>
+        <p className="mb-4 text-sm text-[var(--color-text-muted)]">
+          Record the price paid per set and its condition. Use notes for costs
+          or details that affect how you interpret the estimate later.
+        </p>
         <ItemForm
           defaultSetNumber={prefilledSetNumber}
           isBusy={addMutation.isPending}
@@ -455,7 +473,11 @@ export function PortfolioPage() {
         </div>
         <DataTable
           columns={columns}
-          emptyMessage="Add a LEGO set holding to begin tracking value."
+          emptyMessage={
+            hasActiveFilters
+              ? "No holdings match these filters. Clear or adjust filters to see other portfolio items."
+              : "Add a LEGO set holding to begin tracking value."
+          }
           getRowKey={(item) => item.id}
           isLoading={dashboardQuery.isLoading}
           minWidth="980px"
