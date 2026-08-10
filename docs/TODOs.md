@@ -846,11 +846,11 @@ Classification: MUST SHIP
 7. Add Move to Portfolio from the watchlist. - (Complete) 
 8. Link recommendations to holdings. - (Complete) 
 9. Add breadcrumbs and return navigation. - (Complete) 
-10. Preserve useful filter and search state.
-11. Add recent searches.
-12. Add not-found pages.
-13. Add unauthorized and expired-session redirects.
-14. Test primary user journeys.
+10. Preserve useful filter and search state. - (Complete) 
+11. Add recent searches. - (Complete) 
+12. Add not-found pages. - (Complete) 
+13. Add unauthorized and expired-session redirects. - (Complete) 
+14. Test primary user journeys. - (Complete) 
 
 PHASE 43: DEMO DATA AND ONBOARDING
 Classification: MUST SHIP
