@@ -1252,6 +1252,33 @@ async def create_portfolio_analysis(
     return analysis
 
 
+async def list_portfolio_analyses(
+    db: AsyncSession, user_id: UUID, *, limit: int, offset: int
+) -> list[PortfolioAnalysis]:
+    result = await db.execute(
+        select(PortfolioAnalysis)
+        .where(PortfolioAnalysis.user_id == user_id)
+        .order_by(
+            PortfolioAnalysis.generated_at.desc(), PortfolioAnalysis.created_at.desc()
+        )
+        .offset(offset)
+        .limit(limit)
+    )
+    return list(result.scalars())
+
+
+async def get_portfolio_analysis_for_user(
+    db: AsyncSession, user_id: UUID, analysis_id: UUID
+) -> PortfolioAnalysis | None:
+    result = await db.execute(
+        select(PortfolioAnalysis).where(
+            PortfolioAnalysis.id == analysis_id,
+            PortfolioAnalysis.user_id == user_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def get_user_ids_with_portfolio_set(
     db: AsyncSession, lego_set_id: UUID
 ) -> list[UUID]:

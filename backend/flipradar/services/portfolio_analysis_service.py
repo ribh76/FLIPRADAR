@@ -1,7 +1,10 @@
 """Orchestrate a refreshable portfolio analysis and its optional LLM narration."""
 
+from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas.portfolio_analysis_schema import (
@@ -9,11 +12,17 @@ from flipradar.api.schemas.portfolio_analysis_schema import (
     PortfolioRecommendationLabel,
     portfolio_recommendation_label,
 )
-from flipradar.database.repositories import create_portfolio_analysis
+from flipradar.database.repositories import (
+    create_portfolio_analysis,
+    get_portfolio_analysis_for_user,
+    list_portfolio_analyses,
+)
 from flipradar.services import portfolio_analytics_service
 from flipradar.services.llm_portfolio_analysis_service import (
     maybe_generate_portfolio_narrative,
 )
+
+PORTFOLIO_ANALYSIS_METHOD_VERSION = "portfolio-analysis-method-v1"
 
 
 async def analyze_portfolio(db: AsyncSession, user_id: UUID) -> dict:
@@ -47,7 +56,9 @@ async def analyze_portfolio(db: AsyncSession, user_id: UUID) -> dict:
             "user_id": user_id,
             "analytics_snapshot_id": analytics["id"],
             "generated_at": analytics["generated_at"],
+            "method_version": PORTFOLIO_ANALYSIS_METHOD_VERSION,
             "prompt_version": PORTFOLIO_ANALYSIS_PROMPT_VERSION,
+            "portfolio_context": _json_value(analytics),
             "ai_narrative_status": response["ai_narrative_status"],
             "ai_narrative": (
                 response["ai_narrative"].model_dump(mode="json")
@@ -64,6 +75,50 @@ async def analyze_portfolio(db: AsyncSession, user_id: UUID) -> dict:
     return response
 
 
+async def get_portfolio_analysis_history(
+    db: AsyncSession, user_id: UUID, *, limit: int, offset: int
+) -> list[dict]:
+    analyses = await list_portfolio_analyses(db, user_id, limit=limit, offset=offset)
+    return [_history_entry(analysis) for analysis in analyses]
+
+
+async def compare_portfolio_analyses(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    previous_analysis_id: UUID,
+    current_analysis_id: UUID,
+) -> dict:
+    previous = await get_portfolio_analysis_for_user(db, user_id, previous_analysis_id)
+    current = await get_portfolio_analysis_for_user(db, user_id, current_analysis_id)
+    if previous is None or current is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Portfolio analysis not found.",
+        )
+    previous_by_set = {
+        recommendation["set_number"]: recommendation
+        for recommendation in previous.item_recommendations
+    }
+    current_by_set = {
+        recommendation["set_number"]: recommendation
+        for recommendation in current.item_recommendations
+    }
+    changes = [
+        _recommendation_change(
+            previous_by_set.get(set_number), current_by_set.get(set_number)
+        )
+        for set_number in sorted(set(previous_by_set) | set(current_by_set))
+    ]
+    return {
+        "previous_analysis_id": previous.id,
+        "current_analysis_id": current.id,
+        "previous_generated_at": previous.generated_at,
+        "current_generated_at": current.generated_at,
+        "changes": changes,
+    }
+
+
 def _item_recommendation(holding: dict) -> dict:
     signal = holding["metrics"]["signal"]
     label = portfolio_recommendation_label(signal["category"])
@@ -76,6 +131,45 @@ def _item_recommendation(holding: dict) -> dict:
         "confidence": signal["confidence"],
         "reason_codes": signal["reason_codes"],
         "data_quality_flags": holding["flags"],
+    }
+
+
+def _history_entry(analysis) -> dict:
+    return {
+        "id": analysis.id,
+        "generated_at": analysis.generated_at,
+        "method_version": analysis.method_version,
+        "prompt_version": analysis.prompt_version,
+        "ai_narrative_status": analysis.ai_narrative_status,
+        "portfolio_context": analysis.portfolio_context,
+        "item_recommendations": analysis.item_recommendations,
+        "confidence_summary": analysis.confidence_summary,
+        "data_quality_warnings": analysis.data_quality_warnings,
+    }
+
+
+def _recommendation_change(previous: dict | None, current: dict | None) -> dict:
+    if previous is None:
+        change_type = "added"
+    elif current is None:
+        change_type = "removed"
+    elif previous["label"] != current["label"]:
+        change_type = "changed"
+    else:
+        change_type = "unchanged"
+    previous_label = previous["label"] if previous is not None else None
+    current_label = current["label"] if current is not None else None
+    return {
+        "set_number": (current or previous)["set_number"],
+        "set_name": (current or previous).get("set_name"),
+        "previous_label": previous_label,
+        "current_label": current_label,
+        "previous_confidence": (
+            previous["confidence"] if previous is not None else None
+        ),
+        "current_confidence": current["confidence"] if current is not None else None,
+        "change_type": change_type,
+        "is_reversal": {previous_label, current_label} == {"hold", "consider_selling"},
     }
 
 
@@ -123,6 +217,10 @@ def _data_quality_warnings(holdings: list[dict]) -> list[dict]:
 def _json_value(value):
     if isinstance(value, UUID):
         return str(value)
+    if isinstance(value, Decimal):
+        return format(value, ".2f")
+    if isinstance(value, datetime):
+        return value.isoformat()
     if isinstance(value, dict):
         return {key: _json_value(item) for key, item in value.items()}
     if isinstance(value, list):

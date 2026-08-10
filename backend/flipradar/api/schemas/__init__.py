@@ -69,8 +69,11 @@ from flipradar.api.schemas.portfolio_analysis_schema import (
     LlmPortfolioNarrative,
     LlmPortfolioObservation,
     LlmPortfolioUncertainty,
+    PortfolioAnalysisComparisonResponse,
+    PortfolioAnalysisHistoryEntry,
     PortfolioAnalysisResponse,
     PortfolioItemRecommendation,
+    PortfolioRecommendationChange,
 )
 from flipradar.api.schemas.portfolio_schema import (
     PortfolioAnalyticsHoldingResponse,
@@ -169,6 +172,8 @@ __all__ = [
     "PasswordResetResponse",
     "PortfolioDashboardResponse",
     "PortfolioAnalysisResponse",
+    "PortfolioAnalysisHistoryEntry",
+    "PortfolioAnalysisComparisonResponse",
     "PortfolioAnalyticsHoldingResponse",
     "PortfolioAnalyticsResponse",
     "PortfolioHoldingDetailResponse",
@@ -178,6 +183,7 @@ __all__ = [
     "PortfolioItemCreate",
     "PortfolioItemResponse",
     "PortfolioItemRecommendation",
+    "PortfolioRecommendationChange",
     "PortfolioItemUpdate",
     "PortfolioSummaryResponse",
     "PortfolioValuationHistoryResponse",

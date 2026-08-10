@@ -405,6 +405,37 @@ export type PortfolioAnalysis = {
     | "invalid_response";
 };
 
+export type PortfolioAnalysisHistoryEntry = {
+  id: string;
+  generated_at: string;
+  method_version: string;
+  prompt_version: string;
+  ai_narrative_status: PortfolioAnalysis["ai_narrative_status"];
+  portfolio_context: Record<string, unknown>;
+  item_recommendations: PortfolioItemRecommendation[];
+  confidence_summary: PortfolioAnalysis["confidence_summary"];
+  data_quality_warnings: PortfolioDataQualityWarning[];
+};
+
+export type PortfolioRecommendationChange = {
+  set_number: string;
+  set_name: string | null;
+  previous_label: PortfolioRecommendationLabel | null;
+  current_label: PortfolioRecommendationLabel | null;
+  previous_confidence: string | null;
+  current_confidence: string | null;
+  change_type: "added" | "removed" | "changed" | "unchanged";
+  is_reversal: boolean;
+};
+
+export type PortfolioAnalysisComparison = {
+  previous_analysis_id: string;
+  current_analysis_id: string;
+  previous_generated_at: string;
+  current_generated_at: string;
+  changes: PortfolioRecommendationChange[];
+};
+
 export type PortfolioHistoryPoint = {
   timestamp: string;
   cost_basis: string | number;

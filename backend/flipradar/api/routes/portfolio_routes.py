@@ -8,6 +8,9 @@ from flipradar.api.dependencies.auth import AuthenticatedUser
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.dependencies.ownership import OwnedPortfolioItem
 from flipradar.api.schemas import (
+    CollectionResponse,
+    PortfolioAnalysisComparisonResponse,
+    PortfolioAnalysisHistoryEntry,
     PortfolioAnalysisResponse,
     PortfolioAnalyticsResponse,
     PortfolioDashboardResponse,
@@ -53,6 +56,43 @@ async def analyze_portfolio(
         response["ai_narrative_status"],
     )
     return response
+
+
+@router.get(
+    "/analyses",
+    response_model=CollectionResponse[PortfolioAnalysisHistoryEntry],
+    summary="List completed portfolio analyses",
+    description="Return authenticated portfolio analysis history, newest first.",
+)
+async def list_portfolio_analyses(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+    limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> dict:
+    analyses = await portfolio_analysis_service.get_portfolio_analysis_history(
+        db, current_user.id, limit=limit + 1, offset=offset
+    )
+    return collection_response(analyses, limit=limit, offset=offset)
+
+
+@router.get(
+    "/analyses/compare",
+    response_model=PortfolioAnalysisComparisonResponse,
+    summary="Compare recommendation changes between two analyses",
+)
+async def compare_portfolio_analyses(
+    previous_analysis_id: UUID,
+    current_analysis_id: UUID,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    return await portfolio_analysis_service.compare_portfolio_analyses(
+        db,
+        current_user.id,
+        previous_analysis_id=previous_analysis_id,
+        current_analysis_id=current_analysis_id,
+    )
 
 
 @router.get(

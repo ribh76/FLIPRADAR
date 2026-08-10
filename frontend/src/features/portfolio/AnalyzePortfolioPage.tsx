@@ -4,7 +4,7 @@ import {
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import {
@@ -19,10 +19,12 @@ import {
   SelectField,
   StatusBadge,
 } from "../../components/ui";
-import { useServerMutation } from "../../hooks/serverState";
+import { useServerMutation, useServerQuery } from "../../hooks/serverState";
 import { apiClient } from "../../services/apiClient";
 import type {
   PortfolioAnalysis,
+  PortfolioAnalysisComparison,
+  PortfolioAnalysisHistoryEntry,
   PortfolioItemRecommendation,
 } from "../../types";
 import { currency, numberValue, percent } from "../../utils/format";
@@ -130,9 +132,25 @@ function ObservationList({
 export function AnalyzePortfolioPage() {
   const [analysis, setAnalysis] = useState<PortfolioAnalysis | null>(null);
   const [sort, setSort] = useState<SortKey>("priority");
+  const [previousAnalysisId, setPreviousAnalysisId] = useState("");
+  const [currentAnalysisId, setCurrentAnalysisId] = useState("");
+  const [comparison, setComparison] =
+    useState<PortfolioAnalysisComparison | null>(null);
+  const historyQuery = useServerQuery(
+    ["portfolio-analysis-history"],
+    useCallback(() => apiClient.portfolio.analyses(), []),
+  );
   const analyzeMutation = useServerMutation(apiClient.portfolio.analyze, {
-    onSuccess: (result) => setAnalysis(result),
+    onSuccess: async (result) => {
+      setAnalysis(result);
+      await historyQuery.refetch();
+    },
   });
+  const compareMutation = useServerMutation(
+    ({ previousId, currentId }: { previousId: string; currentId: string }) =>
+      apiClient.portfolio.compareAnalyses(previousId, currentId),
+    { onSuccess: (result) => setComparison(result) },
+  );
   const rows = useMemo(
     () => analysisRows(analysis?.item_recommendations ?? [], sort),
     [analysis, sort],
@@ -141,6 +159,7 @@ export function AnalyzePortfolioPage() {
   const opportunityCount = analysis?.item_recommendations.filter(
     (item) => item.label === "consider_selling" || item.label === "watch",
   ).length;
+  const history = historyQuery.data?.data ?? [];
 
   const columns = [
     {
@@ -426,6 +445,24 @@ export function AnalyzePortfolioPage() {
         </>
       ) : null}
 
+      <PortfolioAnalysisHistory
+        comparison={comparison}
+        currentAnalysisId={currentAnalysisId}
+        error={historyQuery.error || compareMutation.error}
+        history={history}
+        isComparing={compareMutation.isPending}
+        isLoading={historyQuery.isLoading}
+        onCompare={() =>
+          void compareMutation.mutate({
+            previousId: previousAnalysisId,
+            currentId: currentAnalysisId,
+          })
+        }
+        onCurrentAnalysisChange={setCurrentAnalysisId}
+        onPreviousAnalysisChange={setPreviousAnalysisId}
+        previousAnalysisId={previousAnalysisId}
+      />
+
       <PageState
         icon={<AlertTriangle size={20} />}
         title="Collectibles-market disclaimer"
@@ -436,6 +473,193 @@ export function AnalyzePortfolioPage() {
         resale value or liquidity, and may not reflect fees, condition, demand,
         or realised sale proceeds.
       </PageState>
+    </section>
+  );
+}
+
+function PortfolioAnalysisHistory({
+  comparison,
+  currentAnalysisId,
+  error,
+  history,
+  isComparing,
+  isLoading,
+  onCompare,
+  onCurrentAnalysisChange,
+  onPreviousAnalysisChange,
+  previousAnalysisId,
+}: {
+  comparison: PortfolioAnalysisComparison | null;
+  currentAnalysisId: string;
+  error: string;
+  history: PortfolioAnalysisHistoryEntry[];
+  isComparing: boolean;
+  isLoading: boolean;
+  onCompare: () => void;
+  onCurrentAnalysisChange: (id: string) => void;
+  onPreviousAnalysisChange: (id: string) => void;
+  previousAnalysisId: string;
+}) {
+  const historyColumns = [
+    {
+      header: "Analysis date",
+      key: "date",
+      render: (entry: PortfolioAnalysisHistoryEntry) => (
+        <div>
+          <strong>{new Date(entry.generated_at).toLocaleString()}</strong>
+          <div className="text-xs text-[var(--color-text-muted)]">
+            {entry.method_version} · {entry.prompt_version}
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: "Confidence",
+      key: "confidence",
+      render: (entry: PortfolioAnalysisHistoryEntry) => (
+        <span className="capitalize">{entry.confidence_summary.overall}</span>
+      ),
+    },
+    {
+      header: "Recommendations",
+      key: "recommendations",
+      render: (entry: PortfolioAnalysisHistoryEntry) =>
+        `${entry.item_recommendations.length} holdings`,
+    },
+    {
+      header: "Data warnings",
+      key: "warnings",
+      render: (entry: PortfolioAnalysisHistoryEntry) =>
+        entry.data_quality_warnings.length || "None",
+    },
+  ];
+
+  return (
+    <section className="space-y-5">
+      <Card className="overflow-hidden p-0">
+        <div className="border-b border-[var(--color-border-soft)] p-5">
+          <CardTitle>Previous analyses</CardTitle>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+            Each entry preserves its method, prompt, recommendations, and
+            portfolio context at the time it was generated.
+          </p>
+        </div>
+        <DataTable
+          columns={historyColumns}
+          emptyMessage={
+            isLoading
+              ? "Loading completed analyses..."
+              : "Run an analysis to start your history."
+          }
+          getRowKey={(entry) => entry.id}
+          isLoading={isLoading}
+          minWidth="720px"
+          rows={history}
+        />
+      </Card>
+
+      {history.length >= 2 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Compare recommendation changes</CardTitle>
+          </CardHeader>
+          <p className="text-sm text-[var(--color-text-muted)]">
+            Compare two completed analyses to see how each set's recommendation
+            changed over time.
+          </p>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <SelectField
+              label="Earlier analysis"
+              onChange={(event) => onPreviousAnalysisChange(event.target.value)}
+              value={previousAnalysisId}
+            >
+              <option value="">Select an analysis</option>
+              {history.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {new Date(entry.generated_at).toLocaleString()}
+                </option>
+              ))}
+            </SelectField>
+            <SelectField
+              label="Later analysis"
+              onChange={(event) => onCurrentAnalysisChange(event.target.value)}
+              value={currentAnalysisId}
+            >
+              <option value="">Select an analysis</option>
+              {history.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {new Date(entry.generated_at).toLocaleString()}
+                </option>
+              ))}
+            </SelectField>
+          </div>
+          <button
+            className="primary-button mt-4"
+            disabled={
+              isComparing ||
+              !previousAnalysisId ||
+              !currentAnalysisId ||
+              previousAnalysisId === currentAnalysisId
+            }
+            onClick={onCompare}
+            type="button"
+          >
+            Compare analyses
+          </button>
+          {error ? <FormAlert>{error}</FormAlert> : null}
+        </Card>
+      ) : null}
+
+      {comparison ? (
+        <Card className="overflow-hidden p-0">
+          <div className="border-b border-[var(--color-border-soft)] p-5">
+            <CardTitle>Recommendation changes by set</CardTitle>
+            <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+              {new Date(comparison.previous_generated_at).toLocaleString()} to{" "}
+              {new Date(comparison.current_generated_at).toLocaleString()}
+            </p>
+          </div>
+          <DataTable
+            columns={[
+              {
+                header: "Set",
+                key: "set",
+                render: (change) =>
+                  `${change.set_number} · ${change.set_name ?? "Unknown set"}`,
+              },
+              {
+                header: "Previous",
+                key: "previous",
+                render: (change) => change.previous_label ?? "Not held",
+              },
+              {
+                header: "Current",
+                key: "current",
+                render: (change) => change.current_label ?? "Removed",
+              },
+              {
+                header: "Change",
+                key: "change",
+                render: (change) => (
+                  <span
+                    className={
+                      change.is_reversal
+                        ? "semantic-loss font-bold"
+                        : "capitalize"
+                    }
+                  >
+                    {change.is_reversal ? "Reversal" : change.change_type}
+                  </span>
+                ),
+              },
+            ]}
+            emptyMessage="No holdings were available in either selected analysis."
+            getRowKey={(change) => change.set_number}
+            minWidth="720px"
+            rows={comparison.changes}
+          />
+        </Card>
+      ) : null}
     </section>
   );
 }

@@ -149,3 +149,36 @@ class PortfolioAnalysisResponse(BaseModel):
     data_quality_warnings: list[PortfolioDataQualityWarning]
     ai_narrative: LlmPortfolioNarrative | None = None
     ai_narrative_status: LlmNarrativeStatus = "disabled"
+
+
+class PortfolioAnalysisHistoryEntry(BaseModel):
+    """Immutable analysis metadata and context available for historical comparison."""
+
+    id: UUID
+    generated_at: datetime
+    method_version: str
+    prompt_version: str
+    ai_narrative_status: LlmNarrativeStatus
+    portfolio_context: dict
+    item_recommendations: list[PortfolioItemRecommendation]
+    confidence_summary: PortfolioConfidenceSummary
+    data_quality_warnings: list[PortfolioDataQualityWarning]
+
+
+class PortfolioRecommendationChange(BaseModel):
+    set_number: str
+    set_name: str | None
+    previous_label: PortfolioRecommendationLabel | None
+    current_label: PortfolioRecommendationLabel | None
+    previous_confidence: str | None
+    current_confidence: str | None
+    change_type: Literal["added", "removed", "changed", "unchanged"]
+    is_reversal: bool
+
+
+class PortfolioAnalysisComparisonResponse(BaseModel):
+    previous_analysis_id: UUID
+    current_analysis_id: UUID
+    previous_generated_at: datetime
+    current_generated_at: datetime
+    changes: list[PortfolioRecommendationChange]

@@ -150,7 +150,9 @@ class PortfolioAnalysis(Base):
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+    method_version: Mapped[str] = mapped_column(String(64), nullable=False)
     prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    portfolio_context: Mapped[dict] = mapped_column(JsonDocument, nullable=False)
     ai_narrative_status: Mapped[str] = mapped_column(String(32), nullable=False)
     ai_narrative: Mapped[dict | None] = mapped_column(JsonDocument)
     item_recommendations: Mapped[list[dict]] = mapped_column(

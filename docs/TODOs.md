@@ -809,17 +809,17 @@ Classification: MUST SHIP
 12. Display portfolio-wide risks and opportunities. - (Complete)
 13. Display sortable item recommendations. - (Complete)
 14. Add a collectibles-market disclaimer. - (Complete)
-15. Add end-to-end tests + debug open files 
+15. Add end-to-end tests + debug open files - (Complete) 
 
 PHASE 41: RECOMMENDATION HISTORY
 Classification: SHIP LATER
 
-1. Add analysis-history retrieval.
-2. Store method and prompt versions.
-3. Store portfolio context at analysis time.
-4. Display previous analyses.
-5. Compare recommendation changes by set.
-6. Highlight recommendation reversals.
+1. Add analysis-history retrieval. - (Complete)
+2. Store method and prompt versions. - (Complete)
+3. Store portfolio context at analysis time. - (Complete)
+4. Display previous analyses. - (Complete)
+5. Compare recommendation changes by set. - (Complete)
+6. Highlight recommendation reversals. - (Complete)
 7. Explain which metrics changed.
 8. Show timestamps and freshness.
 9. Allow labels and annotations.

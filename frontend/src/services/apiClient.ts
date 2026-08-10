@@ -17,6 +17,8 @@ import type {
   PortfolioFilters,
   PortfolioDashboard,
   PortfolioAnalysis,
+  PortfolioAnalysisComparison,
+  PortfolioAnalysisHistoryEntry,
   PortfolioHoldingDetail,
   PortfolioHistory,
   PortfolioSummary,
@@ -331,6 +333,24 @@ export const apiClient = {
   portfolio: {
     analyze() {
       return requestData(api.post<PortfolioAnalysis>("/portfolio/analyze"));
+    },
+    analyses(options: { limit?: number; offset?: number } = {}) {
+      return requestData(
+        api.get<CollectionResponse<PortfolioAnalysisHistoryEntry>>(
+          "/portfolio/analyses",
+          { params: { limit: 25, offset: 0, ...options } },
+        ),
+      );
+    },
+    compareAnalyses(previousAnalysisId: string, currentAnalysisId: string) {
+      return requestData(
+        api.get<PortfolioAnalysisComparison>("/portfolio/analyses/compare", {
+          params: {
+            previous_analysis_id: previousAnalysisId,
+            current_analysis_id: currentAnalysisId,
+          },
+        }),
+      );
     },
     detail(itemId: string) {
       return requestData(

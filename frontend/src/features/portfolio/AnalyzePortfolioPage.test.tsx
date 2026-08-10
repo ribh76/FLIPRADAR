@@ -8,7 +8,13 @@ import { apiClient } from "../../services/apiClient";
 import { AnalyzePortfolioPage } from "./AnalyzePortfolioPage";
 
 vi.mock("../../services/apiClient", () => ({
-  apiClient: { portfolio: { analyze: vi.fn() } },
+  apiClient: {
+    portfolio: {
+      analyze: vi.fn(),
+      analyses: vi.fn(),
+      compareAnalyses: vi.fn(),
+    },
+  },
   getApiError: (error: unknown) =>
     error instanceof Error ? error.message : "Request failed",
 }));
@@ -99,6 +105,34 @@ const analysis: PortfolioAnalysis = {
   ai_narrative_status: "available",
 };
 
+const history = {
+  data: [
+    {
+      id: "analysis-2",
+      generated_at: "2026-08-10T12:00:00Z",
+      method_version: "portfolio-analysis-method-v1",
+      prompt_version: "portfolio-analysis-v1",
+      ai_narrative_status: "available" as const,
+      portfolio_context: {},
+      item_recommendations: analysis.item_recommendations,
+      confidence_summary: analysis.confidence_summary,
+      data_quality_warnings: analysis.data_quality_warnings,
+    },
+    {
+      id: "analysis-1",
+      generated_at: "2026-08-09T12:00:00Z",
+      method_version: "portfolio-analysis-method-v1",
+      prompt_version: "portfolio-analysis-v1",
+      ai_narrative_status: "disabled" as const,
+      portfolio_context: {},
+      item_recommendations: analysis.item_recommendations,
+      confidence_summary: analysis.confidence_summary,
+      data_quality_warnings: [],
+    },
+  ],
+  pagination: { count: 2, has_more: false, limit: 25, offset: 0 },
+};
+
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -113,6 +147,25 @@ describe("AnalyzePortfolioPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(apiClient.portfolio.analyze).mockResolvedValue(analysis);
+    vi.mocked(apiClient.portfolio.analyses).mockResolvedValue(history);
+    vi.mocked(apiClient.portfolio.compareAnalyses).mockResolvedValue({
+      previous_analysis_id: "analysis-1",
+      current_analysis_id: "analysis-2",
+      previous_generated_at: "2026-08-09T12:00:00Z",
+      current_generated_at: "2026-08-10T12:00:00Z",
+      changes: [
+        {
+          set_number: "900001",
+          set_name: "Hold Set",
+          previous_label: "hold",
+          current_label: "watch",
+          previous_confidence: "low",
+          current_confidence: "medium",
+          change_type: "changed",
+          is_reversal: false,
+        },
+      ],
+    });
   });
 
   it("shows the summary, risks, opportunities, actions, and disclaimer", async () => {
@@ -131,6 +184,7 @@ describe("AnalyzePortfolioPage", () => {
     expect(
       screen.getByText("Collectibles-market disclaimer"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Previous analyses")).toBeInTheDocument();
     expect(apiClient.portfolio.analyze).toHaveBeenCalledOnce();
   });
 
@@ -150,5 +204,30 @@ describe("AnalyzePortfolioPage", () => {
       expect(rows[1]).toHaveTextContent("900001");
       expect(rows[2]).toHaveTextContent("900002");
     });
+  });
+
+  it("compares recommendation changes by set between prior analyses", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Previous analyses");
+
+    await user.selectOptions(
+      screen.getByLabelText("Earlier analysis"),
+      "analysis-1",
+    );
+    await user.selectOptions(
+      screen.getByLabelText("Later analysis"),
+      "analysis-2",
+    );
+    await user.click(screen.getByRole("button", { name: "Compare analyses" }));
+
+    expect(
+      await screen.findByText("Recommendation changes by set"),
+    ).toBeInTheDocument();
+    expect(apiClient.portfolio.compareAnalyses).toHaveBeenCalledWith(
+      "analysis-1",
+      "analysis-2",
+    );
+    expect(screen.getAllByText("changed").length).toBeGreaterThan(0);
   });
 });

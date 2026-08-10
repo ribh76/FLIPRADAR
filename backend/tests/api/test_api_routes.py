@@ -3625,3 +3625,27 @@ def test_portfolio_analytics_refresh_persists_holdings_allocations_and_signals(
     }
     assert labels["910001"] in {"hold", "watch", "consider_selling"}
     assert labels["910002"] in {"hold", "watch", "consider_selling"}
+
+    second_analysis = client.post("/portfolio/analyze", headers=headers)
+    assert second_analysis.status_code == 201, second_analysis.text
+    history = client.get("/portfolio/analyses", headers=headers)
+    assert history.status_code == 200, history.text
+    history_body = history.json()
+    assert history_body["pagination"]["count"] == 2
+    assert history_body["data"][0]["method_version"] == "portfolio-analysis-method-v1"
+    assert history_body["data"][0]["prompt_version"] == "portfolio-analysis-v1"
+    assert history_body["data"][0]["portfolio_context"]["holding_count"] == 2
+
+    comparison = client.get(
+        "/portfolio/analyses/compare",
+        headers=headers,
+        params={
+            "previous_analysis_id": analysis_body["id"],
+            "current_analysis_id": second_analysis.json()["id"],
+        },
+    )
+    assert comparison.status_code == 200, comparison.text
+    assert {change["set_number"] for change in comparison.json()["changes"]} == {
+        "910001",
+        "910002",
+    }

@@ -317,6 +317,9 @@ async def test_completed_portfolio_analysis_persists_confidence_and_data_quality
     assert len(stored) == 1
     assert stored[0].id == result["id"]
     assert stored[0].analytics_snapshot_id == result["analytics"]["id"]
+    assert stored[0].method_version == "portfolio-analysis-method-v1"
+    assert stored[0].prompt_version == "portfolio-analysis-v1"
+    assert stored[0].portfolio_context["id"] == str(result["analytics"]["id"])
     assert stored[0].confidence_summary == result["confidence_summary"]
     assert stored[0].data_quality_warnings == result["data_quality_warnings"]
     assert stored[0].item_recommendations[0]["priority"] >= 1
@@ -325,3 +328,58 @@ async def test_completed_portfolio_analysis_persists_confidence_and_data_quality
         warning["code"] == "insufficient_market_data"
         for warning in result["data_quality_warnings"]
     )
+
+
+@pytest.mark.asyncio
+async def test_history_retrieval_and_comparison_preserve_context_and_changes(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+):
+    user = await _seed_analytics_data(db_session)
+
+    async def fixed_value_map(_db, items):
+        del _db
+        values = {
+            "900001": (Decimal("200.00"), "valued", "high"),
+            "900002": (Decimal("120.00"), "valued", "low"),
+            "900003": (None, "missing_market_data", "missing_market_data"),
+        }
+        return {
+            (item.set_number, item.condition): values[item.set_number] for item in items
+        }
+
+    monkeypatch.setattr(
+        portfolio_analytics_service, "_current_unit_value_map", fixed_value_map
+    )
+    first = await portfolio_analysis_service.analyze_portfolio(db_session, user.id)
+    second = await portfolio_analysis_service.analyze_portfolio(db_session, user.id)
+
+    second_record = await db_session.get(PortfolioAnalysis, second["id"])
+    assert second_record is not None
+    second_recommendations = [dict(item) for item in second_record.item_recommendations]
+    target = next(
+        item for item in second_recommendations if item["set_number"] == "900001"
+    )
+    target["label"] = (
+        "hold" if target["label"] == "consider_selling" else "consider_selling"
+    )
+    second_record.item_recommendations = second_recommendations
+    await db_session.flush()
+
+    history = await portfolio_analysis_service.get_portfolio_analysis_history(
+        db_session, user.id, limit=25, offset=0
+    )
+    comparison = await portfolio_analysis_service.compare_portfolio_analyses(
+        db_session,
+        user.id,
+        previous_analysis_id=first["id"],
+        current_analysis_id=second["id"],
+    )
+
+    assert [entry["id"] for entry in history] == [second["id"], first["id"]]
+    assert history[0]["method_version"] == "portfolio-analysis-method-v1"
+    assert history[0]["portfolio_context"]["holding_count"] == 3
+    changed = next(
+        change for change in comparison["changes"] if change["set_number"] == "900001"
+    )
+    assert changed["change_type"] == "changed"
+    assert changed["is_reversal"] is True
