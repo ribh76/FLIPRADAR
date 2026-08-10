@@ -1,5 +1,7 @@
+import { cloneElement, isValidElement, useId } from "react";
 import type {
   InputHTMLAttributes,
+  ReactElement,
   ReactNode,
   SelectHTMLAttributes,
 } from "react";
@@ -17,7 +19,7 @@ export function ValidationMessage({ children }: { children?: ReactNode }) {
     return null;
   }
   return (
-    <p className="text-sm font-semibold text-[var(--color-warning)]">
+    <p className="text-sm font-semibold text-[var(--color-warning)]" role="alert">
       {children}
     </p>
   );
@@ -30,14 +32,24 @@ export function FieldShell({
   helpText,
   label,
 }: FieldShellProps) {
+  const helpId = useId();
+  const errorId = useId();
+  const describedBy = error ? errorId : helpText ? helpId : undefined;
   return (
     <label className={`block space-y-2 ${className}`}>
       <span className="field-label">{label}</span>
-      {children}
+      {isValidElement<{ "aria-describedby"?: string }>(children)
+        ? cloneElement(
+            children as ReactElement<{ "aria-describedby"?: string }>,
+            { "aria-describedby": describedBy },
+          )
+        : children}
       {error ? (
-        <ValidationMessage>{error}</ValidationMessage>
+        <span id={errorId}>
+          <ValidationMessage>{error}</ValidationMessage>
+        </span>
       ) : helpText ? (
-        <p className="text-xs font-medium text-[var(--color-text-muted)]">
+        <p className="text-xs font-medium text-[var(--color-text-muted)]" id={helpId}>
           {helpText}
         </p>
       ) : null}
@@ -128,7 +140,10 @@ export function FormAlert({
       "border-[var(--color-accent)] bg-[rgba(73,252,226,0.12)] text-[var(--color-gain)]",
   }[tone];
   return (
-    <div className={`rounded-md border p-3 text-sm font-semibold ${className}`}>
+    <div
+      className={`rounded-md border p-3 text-sm font-semibold ${className}`}
+      role={tone === "error" ? "alert" : "status"}
+    >
       {children}
     </div>
   );

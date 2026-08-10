@@ -90,13 +90,15 @@ export function PortfolioInsights({
   );
   const themeAllocation = allocation(items, "theme");
   const conditionAllocation = allocation(items, "condition");
+  const firstPoint = points[0];
+  const latestPoint = points[points.length - 1];
 
   return (
     <>
       <Card className="mb-5">
         <CardHeader
           action={
-            <div className="flex flex-wrap gap-1">
+            <div aria-label="History range" className="flex flex-wrap gap-1" role="group">
               {ranges.map((option) => (
                 <button
                   className={
@@ -105,6 +107,7 @@ export function PortfolioInsights({
                       : "secondary-button px-2 py-1 text-xs"
                   }
                   key={option.value}
+                  aria-pressed={range === option.value}
                   onClick={() => onRangeChange(option.value)}
                   type="button"
                 >
@@ -131,8 +134,9 @@ export function PortfolioInsights({
               title="No valuation history yet"
             />
           ) : (
-            <ResponsiveContainer height="100%" width="100%">
-              <AreaChart data={points}>
+            <figure className="h-full" aria-label="Portfolio value history chart">
+              <ResponsiveContainer height="100%" width="100%">
+                <AreaChart data={points}>
                 <CartesianGrid
                   stroke="var(--color-border-soft)"
                   strokeDasharray="3 3"
@@ -167,8 +171,12 @@ export function PortfolioInsights({
                   stroke="var(--color-accent)"
                   type="monotone"
                 />
-              </AreaChart>
-            </ResponsiveContainer>
+                </AreaChart>
+              </ResponsiveContainer>
+              <figcaption className="sr-only">
+                {points.length} valuation snapshots. Market value changed from {currency(firstPoint.marketValue)} to {currency(latestPoint?.marketValue ?? firstPoint.marketValue)}; cost basis changed from {currency(firstPoint.costBasis)} to {currency(latestPoint?.costBasis ?? firstPoint.costBasis)}.
+              </figcaption>
+            </figure>
           )}
         </div>
       </Card>

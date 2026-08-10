@@ -876,14 +876,14 @@ Classification: MUST SHIP
 PHASE 44: ACCESSIBILITY AND RESPONSIVE QUALITY
 Classification: MUST SHIP
 
-1. Audit heading structure.
-2. Add accessible control labels.
-3. Add keyboard support.
-4. Add focus management.
-5. Add screen-reader-friendly messages.
-6. Add accessible table support.
-7. Provide text summaries for charts.
-8. Avoid using color as the only status signal.
+1. Audit heading structure. - (Complete)
+2. Add accessible control labels. - (Complete)
+3. Add keyboard support. - (Complete)
+4. Add focus management. - (Complete)
+5. Add screen-reader-friendly messages. - (Complete)
+6. Add accessible table support. - (Complete)
+7. Provide text summaries for charts. - (Complete)
+8. Avoid using color as the only status signal. - (Complete)
 9. Test mobile layouts.
 10. Test tablet layouts.
 11. Test large desktop layouts.

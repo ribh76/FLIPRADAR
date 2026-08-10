@@ -108,7 +108,7 @@ export function WatchlistPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="metric-label">Manual watchlist</p>
-          <h1 className="text-2xl font-bold">Saved sets and listings</h1>
+          <h2 className="text-2xl font-bold">Saved sets and listings</h2>
         </div>
         <button
           className="secondary-button"
@@ -121,7 +121,9 @@ export function WatchlistPage() {
         </button>
       </div>
       {message ? (
-        <p className="text-sm text-[var(--color-text-muted)]">{message}</p>
+        <p className="text-sm text-[var(--color-text-muted)]" role="status">
+          {message}
+        </p>
       ) : null}
       {query.data?.length === 0 ? (
         <EmptyState
@@ -314,7 +316,7 @@ function PriceHistoryChart({ points }: { points: WatchlistHistoryPoint[] }) {
         />
       </svg>
       <p className="text-xs text-[var(--color-text-muted)]">
-        {points.length} observations · {currency(low)}–{currency(high)}
+        {points.length} observations. Prices range from {currency(low)} to {currency(high)}.
       </p>
     </div>
   );

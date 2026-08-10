@@ -40,6 +40,7 @@ function ValueHistoryChart({
       })
       .join(" ");
   }, [points]);
+  const values = points.map((point) => Number(point.value)).filter(Number.isFinite);
 
   if (points.length < 2) {
     return (
@@ -49,7 +50,8 @@ function ValueHistoryChart({
     );
   }
   return (
-    <svg
+    <figure>
+      <svg
       aria-label="Marketplace value history"
       className="h-52 w-full"
       role="img"
@@ -71,7 +73,11 @@ function ValueHistoryChart({
         strokeWidth="2.5"
         vectorEffect="non-scaling-stroke"
       />
-    </svg>
+      </svg>
+      <figcaption className="mt-2 text-xs text-[var(--color-text-muted)]">
+        {points.length} marketplace snapshots. Value ranges from {currency(Math.min(...values))} to {currency(Math.max(...values))}.
+      </figcaption>
+    </figure>
   );
 }
 

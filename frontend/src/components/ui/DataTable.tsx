@@ -10,6 +10,7 @@ export type DataTableColumn<TRow> = {
 };
 
 export function DataTable<TRow>({
+  caption,
   columns,
   emptyMessage,
   getRowKey,
@@ -17,6 +18,7 @@ export function DataTable<TRow>({
   minWidth = "720px",
   rows,
 }: {
+  caption?: string;
   columns: DataTableColumn<TRow>[];
   emptyMessage?: string;
   getRowKey: (row: TRow) => string;
@@ -67,12 +69,16 @@ export function DataTable<TRow>({
           className="w-full border-collapse text-left text-sm"
           style={{ minWidth }}
         >
+          {caption ? (
+            <caption className="sr-only">Data table: {caption}</caption>
+          ) : null}
           <thead className="bg-[var(--color-surface-muted)] text-xs uppercase tracking-normal text-[var(--color-text-muted)]">
             <tr>
               {columns.map((column) => (
                 <th
                   className={`px-4 py-3 ${column.align === "right" ? "text-right" : ""}`}
                   key={column.key}
+                  scope="col"
                 >
                   {column.header}
                 </th>

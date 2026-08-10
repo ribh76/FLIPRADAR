@@ -462,6 +462,7 @@ export function AnalyzePortfolioPage() {
               </SelectField>
             </div>
             <DataTable
+              caption="Portfolio item recommendations"
               columns={columns}
               emptyMessage="No portfolio holdings were available for this analysis."
               getRowKey={(item) => item.portfolio_item_id}
@@ -615,6 +616,7 @@ function PortfolioAnalysisHistory({
           </p>
         </div>
         <DataTable
+          caption="Previous portfolio analyses"
           columns={historyColumns}
           emptyMessage={
             isLoading
@@ -799,6 +801,7 @@ function PortfolioAnalysisHistory({
             </p>
           </div>
           <DataTable
+            caption="Recommendation changes by set"
             columns={[
               {
                 header: "Set",

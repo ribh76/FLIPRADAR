@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { apiClient, getApiError } from "../services/apiClient";
@@ -158,6 +158,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const mainRef = useRef<HTMLElement>(null);
   const routeMeta = useMemo(
     () => getRouteMeta(location.pathname),
     [location.pathname],
@@ -201,6 +202,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+    mainRef.current?.focus();
+  }, [location.pathname]);
+
   const navContent = (
     <>
       {navItems.map((item) => {
@@ -242,6 +248,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="space-y-3 border-t border-white/10 pt-4">
           <button
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+            aria-pressed={theme === "dark"}
             className="secondary-button w-full border-white/15 bg-white/5 text-[var(--color-text-inverse)] hover:bg-white/10"
             onClick={toggleTheme}
             type="button"
@@ -280,7 +288,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           <div className="flex items-center gap-2">
             <button
-              aria-label="Toggle theme"
+              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+              aria-pressed={theme === "dark"}
               className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] text-[var(--color-text-inverse)] transition hover:bg-white/10"
               onClick={toggleTheme}
               type="button"
@@ -293,6 +302,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
             <button
               aria-expanded={isMobileNavOpen}
+              aria-controls="mobile-primary-navigation"
               aria-label="Toggle navigation"
               className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] text-[var(--color-text-inverse)] transition hover:bg-white/10"
               onClick={() => setIsMobileNavOpen((current) => !current)}
@@ -307,7 +317,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         {isMobileNavOpen ? (
-          <nav className="mt-4 flex flex-col gap-2" aria-label="Mobile primary">
+          <nav
+            className="mt-4 flex flex-col gap-2"
+            id="mobile-primary-navigation"
+            aria-label="Mobile primary"
+          >
             {navContent}
             <button
               className="inline-flex min-h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 py-2 text-sm font-bold text-[rgba(255,247,237,0.78)] transition hover:bg-white/10 hover:text-white"
@@ -331,7 +345,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </span>
               <div className="flex flex-wrap items-center gap-3">
                 {verificationMessage ? (
-                  <span>{verificationMessage}</span>
+                  <span role="status">{verificationMessage}</span>
                 ) : null}
                 <button
                   type="button"
@@ -348,6 +362,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main
           className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
           id="main-content"
+          ref={mainRef}
+          tabIndex={-1}
         >
           <PageHeader {...routeMeta} action={<GlobalSetSearch />} />
           {children}

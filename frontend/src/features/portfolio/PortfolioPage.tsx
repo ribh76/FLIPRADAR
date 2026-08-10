@@ -472,6 +472,7 @@ export function PortfolioPage() {
           </div>
         </div>
         <DataTable
+          caption="Portfolio holdings"
           columns={columns}
           emptyMessage={
             hasActiveFilters

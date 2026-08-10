@@ -201,6 +201,7 @@ export function ShowcasePage() {
           <CardTitle>Responsive Table and Card Behavior</CardTitle>
         </div>
         <DataTable
+          caption="Example responsive set data"
           columns={[
             {
               header: "Set",

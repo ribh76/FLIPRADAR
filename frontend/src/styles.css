@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: light;
   --color-background: #050000;
   --color-surface: #ffffff;
   --color-surface-muted: #f8fafc;
@@ -37,6 +38,7 @@
 }
 
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --color-background: #050000;
   --color-surface: #120909;
   --color-surface-muted: #1b1111;
