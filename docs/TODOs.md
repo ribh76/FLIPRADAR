@@ -809,7 +809,7 @@ Classification: MUST SHIP
 12. Display portfolio-wide risks and opportunities. - (Complete)
 13. Display sortable item recommendations. - (Complete)
 14. Add a collectibles-market disclaimer. - (Complete)
-15. Add end-to-end tests.
+15. Add end-to-end tests + debug open files 
 
 PHASE 41: RECOMMENDATION HISTORY
 Classification: SHIP LATER

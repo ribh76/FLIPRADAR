@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 import flipradar.domain.models  # noqa: F401
+from flipradar.api.schemas.portfolio_analysis_schema import LlmPortfolioNarrative
 from flipradar.core.settings import get_settings
 from flipradar.database import Base, get_db_session, repositories
 from flipradar.domain.engines import price_estimator
@@ -27,11 +28,15 @@ from flipradar.services import (
     auth_service,
     listing_evaluation_service,
     marketplace_service,
+    portfolio_analysis_service,
     portfolio_analytics_service,
     portfolio_service,
     recommendation_service,
 )
 from flipradar.services.errors import ServiceProviderError, ServiceProviderTimeoutError
+from flipradar.services.llm_portfolio_analysis_service import (
+    PortfolioLlmNarrativeResult,
+)
 
 logger = logging.getLogger(__name__)
 VALID_PASSWORD = "Str0ng!Pass"
@@ -3562,6 +3567,43 @@ def test_portfolio_analytics_refresh_persists_holdings_allocations_and_signals(
     unauthenticated = client.post("/portfolio/analyze")
     assert unauthenticated.status_code == 401
 
+    async def available_narrative(analysis, *, user_key):
+        assert user_key.startswith("user:")
+        first = analysis["item_recommendations"][0]
+        return PortfolioLlmNarrativeResult(
+            status="available",
+            narrative=LlmPortfolioNarrative(
+                executive_summary="The calculated portfolio merits careful review.",
+                diversification_observations=[
+                    {
+                        "source_metric": "portfolio.diversification",
+                        "text": "The calculated mix has room for further review.",
+                    }
+                ],
+                concentration_observations=[
+                    {
+                        "source_metric": "portfolio.concentration",
+                        "text": "The calculated concentration merits attention.",
+                    }
+                ],
+                prioritized_actions=[
+                    {
+                        "item_key": str(first["portfolio_item_id"]),
+                        "label": first["label"],
+                        "priority": first["priority"],
+                        "text": "Keep this holding under review.",
+                    }
+                ],
+                uncertainties=[],
+            ),
+        )
+
+    monkeypatch.setattr(
+        portfolio_analysis_service,
+        "maybe_generate_portfolio_narrative",
+        available_narrative,
+    )
+
     analyzed = client.post("/portfolio/analyze", headers=headers)
     assert analyzed.status_code == 201, analyzed.text
     analysis_body = analyzed.json()
@@ -3569,8 +3611,14 @@ def test_portfolio_analytics_refresh_persists_holdings_allocations_and_signals(
     assert analysis_body["analytics"]["holding_count"] == 2
     assert analysis_body["confidence_summary"]["overall"] in {"low", "medium", "high"}
     assert analysis_body["data_quality_warnings"]
-    assert analysis_body["ai_narrative"] is None
-    assert analysis_body["ai_narrative_status"] == "disabled"
+    assert analysis_body["ai_narrative_status"] == "available"
+    assert (
+        analysis_body["ai_narrative"]["executive_summary"]
+        == "The calculated portfolio merits careful review."
+    )
+    assert analysis_body["ai_narrative"]["diversification_observations"]
+    assert analysis_body["ai_narrative"]["concentration_observations"]
+    assert analysis_body["ai_narrative"]["prioritized_actions"]
     labels = {
         item["set_number"]: item["label"]
         for item in analysis_body["item_recommendations"]

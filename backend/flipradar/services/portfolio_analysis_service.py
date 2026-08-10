@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas.portfolio_analysis_schema import (
     PORTFOLIO_ANALYSIS_PROMPT_VERSION,
+    PortfolioRecommendationLabel,
+    portfolio_recommendation_label,
 )
 from flipradar.database.repositories import create_portfolio_analysis
 from flipradar.services import portfolio_analytics_service
@@ -64,19 +66,20 @@ async def analyze_portfolio(db: AsyncSession, user_id: UUID) -> dict:
 
 def _item_recommendation(holding: dict) -> dict:
     signal = holding["metrics"]["signal"]
+    label = portfolio_recommendation_label(signal["category"])
     return {
         "portfolio_item_id": holding["portfolio_item_id"],
         "set_number": holding["set_number"],
         "set_name": holding["metrics"].get("set_name"),
-        "label": signal["category"],
-        "priority": _priority_for_label(signal["category"]),
+        "label": label,
+        "priority": _priority_for_label(label),
         "confidence": signal["confidence"],
         "reason_codes": signal["reason_codes"],
         "data_quality_flags": holding["flags"],
     }
 
 
-def _priority_for_label(label: str) -> int:
+def _priority_for_label(label: PortfolioRecommendationLabel) -> int:
     return {
         "consider_selling": 1,
         "watch": 2,

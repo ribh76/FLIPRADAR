@@ -77,4 +77,25 @@ describe("routing authentication", () => {
       screen.getByText("Workspace overview and shortcuts."),
     ).toBeInTheDocument();
   });
+
+  it("renders the authenticated portfolio analysis workflow route", async () => {
+    authState.isAuthenticated = true;
+    authState.user = {
+      display_name: "Collector",
+      is_email_verified: true,
+      username: "collector",
+    };
+
+    renderRoute("/portfolio/analyze");
+
+    expect(
+      await screen.findByRole("heading", { name: "Analyze portfolio" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Analyze portfolio" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Collectibles-market disclaimer"),
+    ).toBeInTheDocument();
+  });
 });

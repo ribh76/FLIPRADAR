@@ -1,8 +1,13 @@
 import json
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from flipradar.api.schemas.portfolio_analysis_schema import (
+    portfolio_recommendation_label,
+)
 from flipradar.integrations.llm_provider import (
     LlmCompletion,
     LlmCompletionRequest,
@@ -31,6 +36,12 @@ class FakeProvider(LlmProvider):
             stop_reason="end_turn",
             usage=None,
         )
+
+
+def test_portfolio_recommendation_label_narrows_only_supported_categories() -> None:
+    assert portfolio_recommendation_label("watch") == "watch"
+    with pytest.raises(ValueError, match="Unsupported portfolio recommendation label"):
+        portfolio_recommendation_label("sell_consideration")
 
 
 def portfolio_analysis_payload() -> dict:
@@ -237,7 +248,8 @@ async def test_portfolio_analysis_derives_labels_before_calling_llm(
     )
     monkeypatch.setattr(portfolio_analysis_service, "create_portfolio_analysis", store)
 
-    response = await portfolio_analysis_service.analyze_portfolio(None, item_id)
+    db_session = AsyncMock(spec=AsyncSession)
+    response = await portfolio_analysis_service.analyze_portfolio(db_session, item_id)
 
     assert captured["user_key"] == f"user:{item_id}"
     assert captured["analysis"]["item_recommendations"] == [

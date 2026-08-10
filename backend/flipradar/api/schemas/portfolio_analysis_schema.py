@@ -2,7 +2,7 @@
 
 import re
 from datetime import datetime
-from typing import Literal
+from typing import Literal, cast
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -12,9 +12,21 @@ from flipradar.api.schemas.portfolio_schema import PortfolioAnalyticsResponse
 
 PORTFOLIO_ANALYSIS_PROMPT_VERSION = "portfolio-analysis-v1"
 
-PortfolioRecommendationLabel = Literal[
+type PortfolioRecommendationLabel = Literal[
     "hold", "watch", "consider_selling", "insufficient_data"
 ]
+PORTFOLIO_RECOMMENDATION_LABELS: frozenset[PortfolioRecommendationLabel] = frozenset(
+    {"hold", "watch", "consider_selling", "insufficient_data"}
+)
+
+
+def portfolio_recommendation_label(value: str) -> PortfolioRecommendationLabel:
+    """Narrow a rule-engine category to the public recommendation label type."""
+
+    if value not in PORTFOLIO_RECOMMENDATION_LABELS:
+        raise ValueError(f"Unsupported portfolio recommendation label: {value}")
+    return cast(PortfolioRecommendationLabel, value)
+
 
 _UNSUPPORTED_OUTPUT_PATTERN = re.compile(
     r"(?:[$€£]|\b(?:usd|dollars?|eur|euros?|gbp|pounds?)\b|"
