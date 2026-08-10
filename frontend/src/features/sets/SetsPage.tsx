@@ -12,6 +12,7 @@ import {
 import { useServerQuery } from "../../hooks/serverState";
 import { apiClient } from "../../services/apiClient";
 import { SetCatalogCard } from "./SetCatalogCard";
+import { saveRecentSetSearch } from "../../utils/navigationState";
 
 export function SetsPage() {
   const navigate = useNavigate();
@@ -55,6 +56,7 @@ export function SetsPage() {
       return;
     }
     setValidationMessage("");
+    saveRecentSetSearch(query);
     navigate(`/sets?query=${encodeURIComponent(query)}`);
   }
 

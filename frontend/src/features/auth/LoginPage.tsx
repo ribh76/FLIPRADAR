@@ -28,8 +28,12 @@ export function LoginPage() {
 
   useEffect(() => {
     setMode(location.pathname === "/register" ? "register" : "login");
-    setError(defaultAuthMessage);
-  }, [location.pathname]);
+    setError(
+      new URLSearchParams(location.search).get("reason") === "session-expired"
+        ? "Your session expired. Please sign in again."
+        : defaultAuthMessage,
+    );
+  }, [location.pathname, location.search]);
 
   const fromPath =
     typeof location.state === "object" &&

@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const { isAuthenticated, isLoadingUser } = useAuth();
+  const { isAuthenticated, isLoadingUser, isSessionExpired } = useAuth();
 
   if (isLoadingUser) {
     return (
@@ -15,7 +15,13 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    return (
+      <Navigate
+        to={isSessionExpired ? "/login?reason=session-expired" : "/login"}
+        replace
+        state={{ from: location }}
+      />
+    );
   }
 
   return children;

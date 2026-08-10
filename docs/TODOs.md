@@ -837,15 +837,15 @@ PART XI - V1 COMPLETION AND LAUNCH
 PHASE 42: CROSS-FEATURE NAVIGATION
 Classification: MUST SHIP
 
-1. Add global set search.
-2. Link search results to set details.
-3. Add Add to Portfolio throughout the app.
-4. Add Add to Watchlist throughout the app.
-5. Add Find Deals from set and holding pages.
-6. Add Evaluate Listing from deal results.
-7. Add Move to Portfolio from the watchlist.
-8. Link recommendations to holdings.
-9. Add breadcrumbs and return navigation.
+1. Add global set search. - (Complete) 
+2. Link search results to set details. - (Complete) 
+3. Add Add to Portfolio throughout the app. - (Complete) 
+4. Add Add to Watchlist throughout the app. - (Complete) 
+5. Add Find Deals from set and holding pages. - (Complete) 
+6. Add Evaluate Listing from deal results. - (Complete) 
+7. Add Move to Portfolio from the watchlist. - (Complete) 
+8. Link recommendations to holdings. - (Complete) 
+9. Add breadcrumbs and return navigation. - (Complete) 
 10. Preserve useful filter and search state.
 11. Add recent searches.
 12. Add not-found pages.

@@ -20,6 +20,8 @@ import { SetDetailPage } from "./features/sets/SetDetailPage";
 import { SetsPage } from "./features/sets/SetsPage";
 import { ShowcasePage } from "./features/showcase/ShowcasePage";
 import { WatchlistPage } from "./features/watchlist/WatchlistPage";
+import { NotFoundPage } from "./features/errors/NotFoundPage";
+import { UnauthorizedPage } from "./features/errors/UnauthorizedPage";
 import { AuthenticatedLayout } from "./layouts/AuthenticatedLayout";
 import { ErrorLayout } from "./layouts/ErrorLayout";
 import { PublicLayout } from "./layouts/PublicLayout";
@@ -36,6 +38,7 @@ export const appRoutes: RouteObject[] = [
           { path: "/register", element: <LoginPage /> },
           { path: "/reset-password", element: <ResetPasswordPage /> },
           { path: "/verify-email", element: <VerifyEmailPage /> },
+          { path: "/unauthorized", element: <UnauthorizedPage /> },
         ],
       },
       {
@@ -60,7 +63,7 @@ export const appRoutes: RouteObject[] = [
           { path: "/settings", element: <AccountSettingsPage /> },
         ],
       },
-      { path: "*", element: <ErrorLayout /> },
+      { path: "*", element: <NotFoundPage /> },
     ],
   },
 ];

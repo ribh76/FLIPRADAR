@@ -3,11 +3,16 @@ import { useCallback, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useServerQuery } from "../hooks/serverState";
 import { apiClient } from "../services/apiClient";
+import {
+  getRecentSetSearches,
+  saveRecentSetSearch,
+} from "../utils/navigationState";
 
 export function GlobalSetSearch() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const [recentSearches, setRecentSearches] = useState(getRecentSetSearches);
   const trimmedQuery = query.trim();
   const resultsQuery = useServerQuery(
     ["global-set-search", trimmedQuery],
@@ -28,6 +33,8 @@ export function GlobalSetSearch() {
         ? `/sets/${encodeURIComponent(exactMatch.set_number)}`
         : `/sets?query=${encodeURIComponent(trimmedQuery)}`,
     );
+    saveRecentSetSearch(trimmedQuery);
+    setRecentSearches(getRecentSetSearches());
     setIsFocused(false);
   }
 
@@ -54,9 +61,30 @@ export function GlobalSetSearch() {
           />
         </div>
       </form>
-      {isOpen ? (
+      {isFocused && (isOpen || recentSearches.length) ? (
         <div className="absolute right-0 z-40 mt-2 w-full overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border-soft)] bg-[var(--color-surface)] shadow-[var(--shadow-lifted)]">
-          {resultsQuery.isLoading ? (
+          {!trimmedQuery ? (
+            <>
+              <p className="px-4 pt-3 text-xs font-bold uppercase text-[var(--color-text-muted)]">
+                Recent searches
+              </p>
+              {recentSearches.map((recentQuery) => (
+                <button
+                  className="block w-full border-t border-[var(--color-border-soft)] px-4 py-3 text-left text-sm font-semibold hover:bg-[var(--color-surface-muted)]"
+                  key={recentQuery}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    setQuery(recentQuery);
+                    navigate(`/sets?query=${encodeURIComponent(recentQuery)}`);
+                    setIsFocused(false);
+                  }}
+                  type="button"
+                >
+                  {recentQuery}
+                </button>
+              ))}
+            </>
+          ) : resultsQuery.isLoading ? (
             <p className="px-4 py-3 text-sm text-[var(--color-text-muted)]">
               Searching catalog…
             </p>
@@ -65,7 +93,10 @@ export function GlobalSetSearch() {
               <Link
                 className="block border-b border-[var(--color-border-soft)] px-4 py-3 last:border-b-0 hover:bg-[var(--color-surface-muted)]"
                 key={set.id}
-                onMouseDown={(event) => event.preventDefault()}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  saveRecentSetSearch(set.set_number);
+                }}
                 onClick={() => setIsFocused(false)}
                 to={`/sets/${encodeURIComponent(set.set_number)}`}
               >

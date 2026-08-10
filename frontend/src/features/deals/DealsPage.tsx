@@ -1,5 +1,5 @@
 import { RefreshCw, X } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Card,
@@ -14,6 +14,7 @@ import { useServerQuery } from "../../hooks/serverState";
 import { apiClient, getApiError } from "../../services/apiClient";
 import type { DealFilters, DealsResponse, SavedSearch } from "../../types";
 import { DealCard } from "./DealCard";
+import { getSavedDealFilters, saveDealFilters } from "../../utils/navigationState";
 
 const numberFilters = new Set([
   "min_budget",
@@ -57,8 +58,23 @@ function parseFilters(searchParams: URLSearchParams): DealFilters {
 
 export function DealsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const restoringFilters = useRef(false);
   const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
   const filterKey = searchParams.toString();
+  useEffect(() => {
+    if (filterKey || restoringFilters.current) return;
+    const savedFilters = getSavedDealFilters();
+    if (!savedFilters) return;
+    restoringFilters.current = true;
+    setSearchParams(new URLSearchParams(savedFilters), { replace: true });
+  }, [filterKey, setSearchParams]);
+  useEffect(() => {
+    if (restoringFilters.current) {
+      restoringFilters.current = false;
+      return;
+    }
+    saveDealFilters(filterKey);
+  }, [filterKey]);
   const loadDeals = useCallback(() => apiClient.deals.list(filters), [filters]);
   const dealsQuery = useServerQuery<DealsResponse>(
     ["deals", filterKey],
@@ -402,7 +418,10 @@ export function DealsPage() {
           ))}
           <button
             className="text-sm font-bold text-[var(--color-accent)] hover:underline"
-            onClick={() => setSearchParams({})}
+            onClick={() => {
+              saveDealFilters("");
+              setSearchParams({});
+            }}
             type="button"
           >
             Clear all

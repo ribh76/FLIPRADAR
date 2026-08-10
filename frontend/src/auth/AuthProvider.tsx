@@ -18,6 +18,7 @@ import type { AuthSession, CurrentUser } from "../types";
 type AuthContextValue = {
   isAuthenticated: boolean;
   isLoadingUser: boolean;
+  isSessionExpired: boolean;
   user: CurrentUser | null;
   login: (session: AuthSession) => void;
   logout: () => Promise<void>;
@@ -32,12 +33,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     Boolean(getStoredAccessToken()),
   );
   const [isLoadingUser, setIsLoadingUser] = useState(hasToken);
+  const [isSessionExpired, setIsSessionExpired] = useState(false);
 
   const refreshUser = useCallback(async () => {
     if (!getStoredAccessToken()) {
       setUser(null);
       setHasToken(false);
       setIsLoadingUser(false);
+      setIsSessionExpired(false);
       return null;
     }
 
@@ -46,11 +49,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = await apiClient.users.me();
       setUser(currentUser);
       setHasToken(true);
+      setIsSessionExpired(false);
       return currentUser;
     } catch {
       clearAuthSession();
       setUser(null);
       setHasToken(false);
+      setIsSessionExpired(true);
       return null;
     } finally {
       setIsLoadingUser(false);
@@ -61,10 +66,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refreshUser();
   }, [refreshUser]);
 
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      clearAuthSession();
+      setUser(null);
+      setHasToken(false);
+      setIsLoadingUser(false);
+      setIsSessionExpired(true);
+    };
+    window.addEventListener("flipradar:session-expired", handleSessionExpired);
+    return () =>
+      window.removeEventListener(
+        "flipradar:session-expired",
+        handleSessionExpired,
+      );
+  }, []);
+
   const login = useCallback((session: AuthSession) => {
     storeAuthSession(session);
     setHasToken(true);
     setUser(session.user ?? null);
+    setIsSessionExpired(false);
   }, []);
 
   const logout = useCallback(async () => {
@@ -73,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       setHasToken(false);
+      setIsSessionExpired(false);
     }
   }, []);
 
@@ -80,12 +103,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       isAuthenticated: hasToken,
       isLoadingUser,
+      isSessionExpired,
       login,
       logout,
       refreshUser,
       user,
     }),
-    [hasToken, isLoadingUser, login, logout, refreshUser, user],
+    [hasToken, isLoadingUser, isSessionExpired, login, logout, refreshUser, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -71,6 +71,7 @@ const deals: DealsResponse = {
 describe("DealsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     invalidateServerState(["deals", ""]);
     invalidateServerState(["deals", "theme=Star+Wars&min_discount=20"]);
     vi.mocked(apiClient.deals.list).mockResolvedValue(deals);
@@ -143,6 +144,24 @@ describe("DealsPage", () => {
     await waitFor(() => {
       expect(screen.queryByText("Active filters")).not.toBeInTheDocument();
     });
+  });
+
+  it("restores the most recent deal filters when returning without a URL", async () => {
+    sessionStorage.setItem(
+      "flipradar_deal_filters",
+      "theme=Star+Wars&min_discount=20",
+    );
+    render(<DealsPage />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      expect(apiClient.deals.list).toHaveBeenCalledWith({
+        min_discount: 20,
+        theme: "Star Wars",
+      });
+    });
+    expect(
+      screen.getByRole("button", { name: /theme: star wars/i }),
+    ).toBeInTheDocument();
   });
 
   it("saves the current URL filter configuration", async () => {

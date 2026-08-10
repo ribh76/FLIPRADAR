@@ -159,9 +159,14 @@ async function refreshAccessToken(): Promise<string | null> {
 api.interceptors.response.use(
   (response) => response,
   async (error: unknown) => {
-    if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+    if (!axios.isAxiosError(error)) {
       throw error;
     }
+    if (error.response?.status === 403) {
+      window.dispatchEvent(new Event("flipradar:unauthorized"));
+      throw error;
+    }
+    if (error.response?.status !== 401) throw error;
 
     const originalRequest = error.config as RetriableRequestConfig | undefined;
     if (!originalRequest || originalRequest._retry) {
@@ -181,6 +186,7 @@ api.interceptors.response.use(
     originalRequest._retry = true;
     const accessToken = await refreshAccessToken();
     if (!accessToken) {
+      window.dispatchEvent(new Event("flipradar:session-expired"));
       throw error;
     }
 
