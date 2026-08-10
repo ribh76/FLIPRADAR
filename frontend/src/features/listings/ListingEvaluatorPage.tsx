@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { apiClient, getApiError } from "../../services/apiClient";
 import {
   Card,
@@ -29,8 +30,11 @@ function detectedMarketplace(url: string) {
 }
 
 export function ListingEvaluatorPage() {
-  const [url, setUrl] = useState("");
-  const [setNumber, setSetNumber] = useState("");
+  const [searchParams] = useSearchParams();
+  const [url, setUrl] = useState(() => searchParams.get("url") ?? "");
+  const [setNumber, setSetNumber] = useState(
+    () => searchParams.get("set_number") ?? "",
+  );
   const [listing, setListing] = useState<Listing | null>(null);
   const [analysis, setAnalysis] = useState<ListingAnalysis | null>(null);
   const [stage, setStage] = useState(-1);

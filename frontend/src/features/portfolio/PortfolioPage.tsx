@@ -1,6 +1,6 @@
 import type { FormEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { apiClient } from "../../services/apiClient";
 import {
   invalidateServerState,
@@ -33,14 +33,21 @@ const portfolioDashboardKey = ["portfolio-dashboard"];
 const pageSize = 25;
 
 type ItemFormProps = {
+  defaultSetNumber?: string;
   initial?: PortfolioItem | null;
   isBusy: boolean;
   onCancel?: () => void;
   onSubmit: (payload: PortfolioItemCreate) => void;
 };
 
-function ItemForm({ initial, isBusy, onCancel, onSubmit }: ItemFormProps) {
-  const [setNumber, setSetNumber] = useState(initial?.set_number ?? "");
+function ItemForm({
+  defaultSetNumber = "",
+  initial,
+  isBusy,
+  onCancel,
+  onSubmit,
+}: ItemFormProps) {
+  const [setNumber, setSetNumber] = useState(initial?.set_number ?? defaultSetNumber);
   const [quantity, setQuantity] = useState(initial?.quantity ?? 1);
   const [purchasePrice, setPurchasePrice] = useState(
     String(initial?.purchase_price ?? ""),
@@ -143,6 +150,8 @@ function ItemForm({ initial, isBusy, onCancel, onSubmit }: ItemFormProps) {
 }
 
 export function PortfolioPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const prefilledSetNumber = searchParams.get("set_number")?.trim() ?? "";
   const [filters, setFilters] = useState<PortfolioFilters>({
     order: "purchase_date_desc",
     limit: pageSize,
@@ -344,8 +353,14 @@ export function PortfolioPage() {
           <CardTitle>Add set</CardTitle>
         </CardHeader>
         <ItemForm
+          defaultSetNumber={prefilledSetNumber}
           isBusy={addMutation.isPending}
-          onSubmit={(payload) => void addMutation.mutate(payload)}
+          key={prefilledSetNumber}
+          onSubmit={(payload) =>
+            void addMutation.mutate(payload).then(() => {
+              if (prefilledSetNumber) setSearchParams({});
+            })
+          }
         />
       </Card>
       <section className="page-card overflow-hidden p-0">

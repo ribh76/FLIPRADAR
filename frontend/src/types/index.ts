@@ -61,6 +61,7 @@ export type DealsResponse = CollectionResponse<Deal> & {
 };
 
 export type DealFilters = {
+  set_number?: string;
   min_budget?: number;
   max_budget?: number;
   theme?: string;

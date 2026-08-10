@@ -1,6 +1,6 @@
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Card,
   ErrorState,
@@ -77,6 +77,7 @@ function ValueHistoryChart({
 
 export function HoldingDetailPage() {
   const { itemId = "" } = useParams();
+  const navigate = useNavigate();
   const detailQuery = useServerQuery(
     ["portfolio-holding-detail", itemId],
     useCallback(() => apiClient.portfolio.detail(itemId), [itemId]),
@@ -85,6 +86,7 @@ export function HoldingDetailPage() {
   const [notes, setNotes] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
+  const [watchlistMessage, setWatchlistMessage] = useState("");
   const updateMutation = useServerMutation(
     (payload: PortfolioItemUpdate) =>
       apiClient.portfolio.updateItem(itemId, payload),
@@ -109,6 +111,17 @@ export function HoldingDetailPage() {
         ? new Date(`${purchaseDate}T00:00:00`).toISOString()
         : null,
     });
+  }
+
+  async function addToWatchlist() {
+    if (!holding) return;
+    setWatchlistMessage("");
+    try {
+      await apiClient.watchlist.addSet(holding.set_number);
+      setWatchlistMessage("Saved to watchlist.");
+    } catch {
+      setWatchlistMessage("Could not save this set to your watchlist.");
+    }
   }
 
   if (detailQuery.isLoading)
@@ -143,13 +156,7 @@ export function HoldingDetailPage() {
     <section>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link
-            className="text-sm font-bold text-[var(--color-link)]"
-            to="/portfolio"
-          >
-            ← Back to portfolio
-          </Link>
-          <h2 className="mt-2 text-2xl font-black text-[var(--color-text)]">
+          <h2 className="text-2xl font-black text-[var(--color-text)]">
             {holding.set_name ?? holding.set_number}
           </h2>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
@@ -158,14 +165,32 @@ export function HoldingDetailPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button className="secondary-button" type="button">
+          <button
+            className="secondary-button"
+            onClick={() =>
+              navigate(`/deals?set_number=${encodeURIComponent(holding.set_number)}`)
+            }
+            type="button"
+          >
             Find deals
+          </button>
+          <button
+            className="secondary-button"
+            onClick={() => void addToWatchlist()}
+            type="button"
+          >
+            Add to watchlist
           </button>
           <button className="primary-button" type="button">
             Analyze holding
           </button>
         </div>
       </div>
+      {watchlistMessage ? (
+        <p className="-mt-2 mb-5 text-sm text-[var(--color-text-muted)]">
+          {watchlistMessage}
+        </p>
+      ) : null}
 
       <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard

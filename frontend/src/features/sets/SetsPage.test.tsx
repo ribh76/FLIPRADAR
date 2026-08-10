@@ -123,7 +123,7 @@ describe("SetsPage", () => {
     expect(await screen.findByText("Extreme Adventure")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Add to portfolio" }),
-    ).toBeDisabled();
+    ).toBeEnabled();
     expect(
       screen.getByRole("button", { name: "Add to watchlist" }),
     ).toBeEnabled();

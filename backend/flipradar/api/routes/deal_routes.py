@@ -32,6 +32,7 @@ async def list_deals(
         le=deal_finder_service.MAX_UNIVERSE_SIZE,
     ),
     refresh: bool = Query(default=False),
+    set_number: str | None = Query(default=None, min_length=1, max_length=32),
     min_budget: Decimal | None = Query(default=None, ge=0),
     max_budget: Decimal | None = Query(default=None, ge=0),
     theme: str | None = Query(default=None, min_length=1, max_length=120),
@@ -55,6 +56,7 @@ async def list_deals(
         refresh,
     )
     filters = deal_finder_service.DealFilters(
+        set_number=set_number,
         min_budget=min_budget,
         max_budget=max_budget,
         theme=theme,

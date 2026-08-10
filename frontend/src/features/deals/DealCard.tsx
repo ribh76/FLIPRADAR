@@ -1,11 +1,13 @@
 import { ExternalLink } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Badge, Card, MetricCard } from "../../components/ui";
 import { apiClient, getApiError } from "../../services/apiClient";
 import type { Deal } from "../../types";
 import { currency, percent } from "../../utils/format";
 
 export function DealCard({ deal }: { deal: Deal }) {
+  const navigate = useNavigate();
   const [message, setMessage] = useState("");
   return (
     <Card>
@@ -70,6 +72,28 @@ export function DealCard({ deal }: { deal: Deal }) {
           type="button"
         >
           Save to watchlist
+        </button>
+        <button
+          className="secondary-button"
+          onClick={() =>
+            navigate(
+              `/listing-evaluator?set_number=${encodeURIComponent(deal.set_number)}&url=${encodeURIComponent(deal.url)}`,
+            )
+          }
+          type="button"
+        >
+          Evaluate listing
+        </button>
+        <button
+          className="secondary-button"
+          onClick={() =>
+            navigate(
+              `/portfolio?set_number=${encodeURIComponent(deal.set_number)}`,
+            )
+          }
+          type="button"
+        >
+          Add to portfolio
         </button>
       </div>
       {message ? (

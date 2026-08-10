@@ -24,6 +24,7 @@ import { useTheme } from "../theme/ThemeProvider";
 import { Dropdown, DropdownItem, PageHeader } from "./ui";
 import type { BreadcrumbItem } from "./ui";
 import { Logo } from "./Logo";
+import { GlobalSetSearch } from "./GlobalSetSearch";
 
 const navItems = [
   {
@@ -100,6 +101,8 @@ function getRouteMeta(pathname: string) {
       description:
         "Value performance, market evidence, and risk for one holding.",
       eyebrow: "Portfolio intelligence",
+      returnLabel: "Back to portfolio",
+      returnTo: "/portfolio",
       title: "Holding Analytics",
     };
   }
@@ -113,6 +116,8 @@ function getRouteMeta(pathname: string) {
       ],
       description: "Metadata and current valuation for a single LEGO set.",
       eyebrow: "Set intelligence",
+      returnLabel: "Back to set search",
+      returnTo: "/sets",
       title: "Set Detail Lookup",
     };
   }
@@ -344,7 +349,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
           id="main-content"
         >
-          <PageHeader {...routeMeta} />
+          <PageHeader {...routeMeta} action={<GlobalSetSearch />} />
           {children}
         </main>
       </div>

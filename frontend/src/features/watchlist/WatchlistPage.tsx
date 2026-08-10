@@ -1,5 +1,6 @@
 import { RefreshCw, Search, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   EmptyState,
   ErrorState,
@@ -21,6 +22,7 @@ function checkedAt(value: string | null) {
 }
 
 export function WatchlistPage() {
+  const navigate = useNavigate();
   const query = useServerQuery<WatchlistItem[]>(
     ["watchlist"],
     useCallback(() => apiClient.watchlist.list(), []),
@@ -184,6 +186,28 @@ export function WatchlistPage() {
                 Move to portfolio
               </button>
             ) : null}
+            {item.entry_type === "set" ? (
+              <button
+                className="primary-button"
+                onClick={() =>
+                  navigate(
+                    `/portfolio?set_number=${encodeURIComponent(item.set_number)}`,
+                  )
+                }
+                type="button"
+              >
+                Add to portfolio
+              </button>
+            ) : null}
+            <button
+              className="secondary-button"
+              onClick={() =>
+                navigate(`/sets/${encodeURIComponent(item.set_number)}`)
+              }
+              type="button"
+            >
+              View set
+            </button>
             {item.last_known_listing_status === "ended" ||
             item.last_known_listing_status === "removed" ? (
               <p className="self-center text-sm text-[var(--color-loss)]">

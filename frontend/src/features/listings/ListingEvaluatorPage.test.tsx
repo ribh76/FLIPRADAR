@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 
 import { ListingEvaluatorPage } from "./ListingEvaluatorPage";
 
@@ -54,7 +55,11 @@ describe("ListingEvaluatorPage", () => {
       created_at: "2026-08-06T12:00:00Z",
     });
     mocks.addItem.mockResolvedValue({});
-    render(<ListingEvaluatorPage />);
+    render(
+      <MemoryRouter>
+        <ListingEvaluatorPage />
+      </MemoryRouter>,
+    );
 
     await user.type(
       screen.getByLabelText("Listing URL"),

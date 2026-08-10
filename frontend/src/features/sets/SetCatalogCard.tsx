@@ -1,5 +1,6 @@
 import { ExternalLink, PackageOpen } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, MetricCard } from "../../components/ui";
 import { apiClient, getApiError } from "../../services/apiClient";
 import type { LegoSet } from "../../types";
@@ -22,6 +23,7 @@ function updatedAt(value: string): string {
 }
 
 export function SetCatalogCard({ set, onViewDetail }: SetCatalogCardProps) {
+  const navigate = useNavigate();
   const [watchlistMessage, setWatchlistMessage] = useState("");
   const imageUrl = set.image_urls?.[0];
   const retirementStatus = set.retirement_year
@@ -101,7 +103,13 @@ export function SetCatalogCard({ set, onViewDetail }: SetCatalogCardProps) {
           </div>
 
           <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--color-border-soft)] pt-5">
-            <button className="secondary-button" disabled type="button">
+            <button
+              className="secondary-button"
+              onClick={() =>
+                navigate(`/portfolio?set_number=${encodeURIComponent(set.set_number)}`)
+              }
+              type="button"
+            >
               Add to portfolio
             </button>
             <button
@@ -117,6 +125,15 @@ export function SetCatalogCard({ set, onViewDetail }: SetCatalogCardProps) {
               type="button"
             >
               Add to watchlist
+            </button>
+            <button
+              className="secondary-button"
+              onClick={() =>
+                navigate(`/deals?set_number=${encodeURIComponent(set.set_number)}`)
+              }
+              type="button"
+            >
+              Find deals
             </button>
           </div>
           {watchlistMessage ? (

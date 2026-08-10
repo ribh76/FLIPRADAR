@@ -28,6 +28,7 @@ const numberFilters = new Set([
 ]);
 
 const filterLabels: Record<string, string> = {
+  set_number: "Set number",
   min_budget: "Min budget",
   max_budget: "Max budget",
   theme: "Theme",

@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
@@ -12,12 +12,16 @@ export function PageHeader({
   breadcrumbs,
   description,
   eyebrow,
+  returnLabel,
+  returnTo,
   title,
 }: {
   action?: ReactNode;
   breadcrumbs?: BreadcrumbItem[];
   description?: string;
   eyebrow?: string;
+  returnLabel?: string;
+  returnTo?: string;
   title: string;
 }) {
   return (
@@ -42,6 +46,15 @@ export function PageHeader({
               ))}
             </ol>
           </nav>
+        ) : null}
+        {returnTo && returnLabel ? (
+          <Link
+            className="mb-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--color-link)] hover:underline"
+            to={returnTo}
+          >
+            <ArrowLeft aria-hidden="true" size={15} />
+            {returnLabel}
+          </Link>
         ) : null}
         {eyebrow ? (
           <p className="metric-label text-brand-accent">{eyebrow}</p>

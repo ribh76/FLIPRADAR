@@ -34,6 +34,7 @@ class DealFinderResult:
 
 @dataclass(frozen=True)
 class DealFilters:
+    set_number: str | None = None
     min_budget: Decimal | None = None
     max_budget: Decimal | None = None
     theme: str | None = None
@@ -76,7 +77,7 @@ class _CachedDeals:
     deals: list[dict]
 
 
-_deal_cache: dict[int, _CachedDeals] = {}
+_deal_cache: dict[str, _CachedDeals] = {}
 _last_refresh_at: dict[int, datetime] = {}
 
 
@@ -91,8 +92,9 @@ async def find_deals(
     filters = filters or DealFilters()
     filters.validate()
     resolved_universe_size = min(max(universe_size, 1), MAX_UNIVERSE_SIZE)
+    cache_key = f"{resolved_universe_size}:{filters.set_number or ''}"
     now = datetime.now(UTC)
-    cached = _deal_cache.get(resolved_universe_size)
+    cached = _deal_cache.get(cache_key)
     if (
         not refresh
         and cached is not None
@@ -116,11 +118,15 @@ async def find_deals(
         "retry_after_seconds": None,
         "provider_errors": [],
     }
-    universe = await repositories.list_sets(
-        db,
-        pagination=repositories.Pagination(limit=resolved_universe_size, offset=0),
-        order="release_year_desc",
-    )
+    if filters.set_number:
+        lego_set = await repositories.get_set_by_number(db, filters.set_number)
+        universe = [lego_set] if lego_set is not None else []
+    else:
+        universe = await repositories.list_sets(
+            db,
+            pagination=repositories.Pagination(limit=resolved_universe_size, offset=0),
+            order="release_year_desc",
+        )
     if refresh:
         refresh_status.update(
             await _refresh_universe(
@@ -210,7 +216,7 @@ async def find_deals(
                 "explanation": scored["explanation"],
             }
         )
-    _deal_cache[resolved_universe_size] = _CachedDeals(now, deals)
+    _deal_cache[cache_key] = _CachedDeals(now, deals)
     return DealFinderResult(
         deals=_filter_and_sort_deals(deals, filters), refresh=refresh_status
     )
@@ -303,6 +309,8 @@ def _filter_and_sort_deals(deals: list[dict], filters: DealFilters) -> list[dict
     """Apply all personalized discovery filters before deterministic ordering."""
 
     def matches(deal: dict) -> bool:
+        if filters.set_number and deal["set_number"] != filters.set_number:
+            return False
         if filters.min_budget is not None and deal["total_cost"] < filters.min_budget:
             return False
         if filters.max_budget is not None and deal["total_cost"] > filters.max_budget:

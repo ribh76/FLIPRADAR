@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 
 import { invalidateServerState } from "../../hooks/serverState";
 import { WatchlistPage } from "./WatchlistPage";
@@ -67,7 +68,11 @@ describe("WatchlistPage", () => {
         listing_status: "active",
       },
     ]);
-    render(<WatchlistPage />);
+    render(
+      <MemoryRouter>
+        <WatchlistPage />
+      </MemoryRouter>,
+    );
     expect(await screen.findByText("Marketplace listing")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Refresh all" }));
     await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
@@ -96,7 +101,11 @@ describe("WatchlistPage", () => {
     mocks.list.mockResolvedValue([
       { ...item, last_known_listing_status: "ended" },
     ]);
-    render(<WatchlistPage />);
+    render(
+      <MemoryRouter>
+        <WatchlistPage />
+      </MemoryRouter>,
+    );
     expect(await screen.findByText(/no longer available/i)).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Move to portfolio" }),
