@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
@@ -25,6 +26,46 @@ async def test_refresh_skips_snapshots_inside_freshness_window(monkeypatch):
         )
         is None
     )
+
+
+@pytest.mark.asyncio
+async def test_refresh_coalesces_concurrent_provider_cache_misses(monkeypatch):
+    marketplace_service._refresh_locks.clear()
+    provider_calls = 0
+    refreshed_at: datetime | None = None
+
+    async def latest(_db, _set_number):
+        return refreshed_at
+
+    async def update(_db, _set_number):
+        nonlocal provider_calls, refreshed_at
+        provider_calls += 1
+        await asyncio.sleep(0.01)
+        refreshed_at = datetime.now(UTC)
+        return "fresh-snapshot"
+
+    monkeypatch.setattr(
+        marketplace_service.repositories, "latest_price_snapshot_retrieval_time", latest
+    )
+    monkeypatch.setattr(marketplace_service, "_update_marketplace_data", update)
+    monkeypatch.setattr(
+        marketplace_service,
+        "get_settings",
+        lambda: SimpleNamespace(pricing_freshness_hours=24),
+    )
+
+    results = await asyncio.gather(
+        *(
+            marketplace_service._refresh_marketplace_data(
+                object(), "75192", force=False
+            )
+            for _ in range(8)
+        )
+    )
+
+    assert provider_calls == 1
+    assert results.count("fresh-snapshot") == 1
+    assert results.count(None) == 7
 
 
 async def _async(value):

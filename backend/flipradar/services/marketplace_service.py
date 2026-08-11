@@ -39,6 +39,7 @@ MARKETPLACE_ADAPTERS: tuple[MarketplaceAdapter, ...] = (
 PROVIDER_MAX_ATTEMPTS = 3
 PROVIDER_TIMEOUT_SECONDS = 10
 STALE_LISTING_DAYS = 90
+_refresh_locks: dict[str, asyncio.Lock] = {}
 
 
 async def update_marketplace_data(
@@ -48,16 +49,30 @@ async def update_marketplace_data(
     if db is None:
         async with SessionLocal() as session:
             try:
-                snapshot = await _update_marketplace_data(
-                    session, normalized_set_number
+                snapshot = await _refresh_marketplace_data(
+                    session, normalized_set_number, force=False
                 )
+                if snapshot is None:
+                    snapshot = await repositories.get_latest_price_snapshot_by_set_number(
+                        session, normalized_set_number
+                    )
+                if snapshot is None:
+                    raise LookupError("No marketplace snapshot found")
                 await session.commit()
             except Exception:
                 await session.rollback()
                 raise
             return snapshot
 
-    return await _update_marketplace_data(db, normalized_set_number)
+    snapshot = await _refresh_marketplace_data(db, normalized_set_number, force=False)
+    if snapshot is not None:
+        return snapshot
+    cached_snapshot = await repositories.get_latest_price_snapshot_by_set_number(
+        db, normalized_set_number
+    )
+    if cached_snapshot is None:
+        raise LookupError("No marketplace snapshot found")
+    return cached_snapshot
 
 
 async def refresh_marketplace_data(
@@ -82,20 +97,25 @@ async def refresh_marketplace_data(
 async def _refresh_marketplace_data(
     db: AsyncSession, set_number: str, *, force: bool
 ) -> PriceSnapshot | None:
-    freshness_hours = get_settings().pricing_freshness_hours
-    latest_retrieval = await repositories.latest_price_snapshot_retrieval_time(
-        db, set_number
-    )
-    if not force and latest_retrieval is not None:
-        cutoff = datetime.now(UTC) - timedelta(hours=freshness_hours)
-        if latest_retrieval >= cutoff:
-            logger.info(
-                "marketplace refresh skipped fresh_snapshot set_number=%s retrieval_time=%s",
-                set_number,
-                latest_retrieval,
-            )
-            return None
-    return await _update_marketplace_data(db, set_number)
+    # A provider refresh is expensive and can be triggered by several web
+    # requests or workers at once. Recheck freshness inside a per-set lock so
+    # only one request crosses the provider boundary for a cache miss.
+    lock = _refresh_locks.setdefault(set_number, asyncio.Lock())
+    async with lock:
+        freshness_hours = get_settings().pricing_freshness_hours
+        latest_retrieval = await repositories.latest_price_snapshot_retrieval_time(
+            db, set_number
+        )
+        if not force and latest_retrieval is not None:
+            cutoff = datetime.now(UTC) - timedelta(hours=freshness_hours)
+            if latest_retrieval >= cutoff:
+                logger.info(
+                    "marketplace refresh cache hit set_number=%s retrieval_time=%s",
+                    set_number,
+                    latest_retrieval,
+                )
+                return None
+        return await _update_marketplace_data(db, set_number)
 
 
 async def _update_marketplace_data(db: AsyncSession, set_number: str) -> PriceSnapshot:
@@ -318,6 +338,7 @@ async def _save_snapshots_by_marketplace(
             db, lego_set.id
         ):
             await portfolio_service.create_user_valuation_snapshot(db, user_id)
+            portfolio_service.portfolio_dashboard_cache.invalidate_user(user_id)
     return snapshots
 
 

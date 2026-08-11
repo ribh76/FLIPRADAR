@@ -7,6 +7,7 @@ from flipradar.api.schemas import PriceSnapshotCreate
 from flipradar.database import repositories
 from flipradar.database.repositories import Pagination
 from flipradar.domain.models import Marketplace, PriceSnapshot
+from flipradar.services import portfolio_dashboard_cache
 from flipradar.services.errors import (
     ServiceConflictError,
     ServiceNotFoundError,
@@ -40,7 +41,7 @@ async def create_price_snapshot(
     )
     try:
         async with db.begin_nested():
-            return await repositories.create_price_snapshot(
+            snapshot = await repositories.create_price_snapshot(
                 db,
                 lego_set_id=lego_set.id,
                 marketplace_id=marketplace.id,
@@ -48,6 +49,9 @@ async def create_price_snapshot(
             )
     except repositories.DuplicateRecordError as exc:
         raise ServiceConflictError(str(exc)) from exc
+    for user_id in await repositories.get_user_ids_with_portfolio_set(db, lego_set.id):
+        portfolio_dashboard_cache.invalidate_user(user_id)
+    return snapshot
 
 
 async def list_price_snapshots_for_set(

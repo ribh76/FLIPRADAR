@@ -14,6 +14,7 @@ type ServerMutationOptions<TData, TVariables> = {
 };
 
 const queryCache = new Map<string, unknown>();
+const inFlightQueries = new Map<string, Promise<unknown>>();
 
 function serializeKey(key: ServerStateKey): string {
   return JSON.stringify(key);
@@ -21,6 +22,22 @@ function serializeKey(key: ServerStateKey): string {
 
 export function invalidateServerState(key: ServerStateKey): void {
   queryCache.delete(serializeKey(key));
+}
+
+async function loadQuery<TData>(
+  cacheKey: string,
+  queryFn: () => Promise<TData>,
+): Promise<TData> {
+  const existing = inFlightQueries.get(cacheKey);
+  if (existing) {
+    return existing as Promise<TData>;
+  }
+
+  const request = queryFn().finally(() => {
+    inFlightQueries.delete(cacheKey);
+  });
+  inFlightQueries.set(cacheKey, request);
+  return request;
 }
 
 export function useServerQuery<TData>(
@@ -48,7 +65,7 @@ export function useServerQuery<TData>(
     setIsLoading(data === undefined);
     setError("");
     try {
-      const result = await queryFn();
+      const result = await loadQuery(cacheKey, queryFn);
       queryCache.set(cacheKey, result);
       setData(result);
       return result;

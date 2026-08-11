@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Callable
 from typing import Protocol
 
@@ -55,6 +56,7 @@ class LegoSetCatalogService:
     ) -> None:
         self._repository_factory = repository_factory
         self._cache = cache
+        self._hydration_locks: dict[tuple[str, str], asyncio.Lock] = {}
 
     async def get(self, db: AsyncSession, set_number: str) -> LegoSet | None:
         normalized = set_number.strip().upper()
@@ -186,18 +188,46 @@ async def search_lego_sets(
             "results": local_results,
         }
 
-    try:
-        record, source_url = _provider_metadata(normalized_query, normalized_provider)
-    except ServiceNotFoundError as exc:
-        if exact_set is None:
-            raise
-        missing_fields = ", ".join(_missing_catalog_fields(exact_set))
-        raise ServiceIncompleteDataError(
-            f"Local LEGO set '{normalized_query}' is incomplete; missing: {missing_fields}. "
-            f"{normalized_provider} could not supply the missing data."
-        ) from exc
-    payload = _normalize_provider_set(record, normalized_provider, source_url)
-    lego_set = await upsert_lego_set(db, payload)
+    # Recheck after acquiring a per-set lock. This makes a cold exact lookup
+    # single-flight, avoiding duplicate provider calls and competing upserts.
+    lock_key = (normalized_provider, normalized_query)
+    lock = catalog_service._hydration_locks.setdefault(lock_key, asyncio.Lock())
+    async with lock:
+        refreshed_results = await list_lego_sets(
+            db, limit=limit, query=normalized_query, order="set_number"
+        )
+        refreshed_exact_set = next(
+            (
+                lego_set
+                for lego_set in refreshed_results
+                if lego_set.set_number == normalized_query
+            ),
+            None,
+        )
+        if refreshed_exact_set is not None and not _missing_catalog_fields(
+            refreshed_exact_set
+        ):
+            return {
+                "query": normalized_query,
+                "provider": None,
+                "source": "local",
+                "exact_match": True,
+                "results": refreshed_results,
+            }
+        try:
+            record, source_url = _provider_metadata(
+                normalized_query, normalized_provider
+            )
+        except ServiceNotFoundError as exc:
+            if refreshed_exact_set is None:
+                raise
+            missing_fields = ", ".join(_missing_catalog_fields(refreshed_exact_set))
+            raise ServiceIncompleteDataError(
+                f"Local LEGO set '{normalized_query}' is incomplete; missing: {missing_fields}. "
+                f"{normalized_provider} could not supply the missing data."
+            ) from exc
+        payload = _normalize_provider_set(record, normalized_provider, source_url)
+        lego_set = await upsert_lego_set(db, payload)
     return {
         "query": normalized_query,
         "provider": normalized_provider,
