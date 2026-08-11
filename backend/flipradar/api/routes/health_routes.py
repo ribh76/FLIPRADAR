@@ -1,13 +1,26 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
+from flipradar.core.observability import capture_exception, record_metric
 from flipradar.services import health_service
 
 router = APIRouter(tags=["system"])
 logger = logging.getLogger(__name__)
+
+
+class FrontendErrorReport(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    message: str = Field(min_length=1, max_length=1000)
+    stack: str | None = Field(default=None, max_length=8000)
+    url: str = Field(min_length=1, max_length=2000)
+
+
+class ReportedFrontendError(Exception):
+    """A sanitized browser error forwarded to backend exception monitoring."""
 
 
 # Reports process-level API health. It takes no inputs and returns a simple status payload.
@@ -18,6 +31,19 @@ async def health_check() -> dict[str, str]:
     response = {"status": "ok", "service": "FlipRadar API"}
     logger.info("request finished route=health_check")
     return response
+
+
+@router.post("/client-errors", status_code=status.HTTP_202_ACCEPTED)
+async def report_client_error(report: FrontendErrorReport) -> dict[str, str]:
+    """Forward sanitized browser failures to the configured error monitor."""
+    exc = ReportedFrontendError(f"{report.name}: {report.message}")
+    capture_exception(
+        exc,
+        context={"url": report.url, "stack": report.stack or ""},
+    )
+    record_metric("frontend.error", tags={"error_type": report.name})
+    logger.warning("frontend error reported error_type=%s url=%s", report.name, report.url)
+    return {"status": "accepted"}
 
 
 @router.get("/health/live")

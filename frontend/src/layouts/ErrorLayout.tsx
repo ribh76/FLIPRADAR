@@ -1,9 +1,14 @@
 import { AlertTriangle, Home } from "lucide-react";
+import { useEffect } from "react";
 import { Link, isRouteErrorResponse, useRouteError } from "react-router-dom";
 import { Logo } from "../components/Logo";
+import { reportFrontendError } from "../services/errorReporting";
 
 export function ErrorLayout() {
   const error = useRouteError();
+  useEffect(() => {
+    reportFrontendError(error);
+  }, [error]);
   const title = isRouteErrorResponse(error)
     ? `${error.status} ${error.statusText}`
     : "Page not found";

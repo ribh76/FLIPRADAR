@@ -5,6 +5,27 @@ logger = logging.getLogger(__name__)
 _monitoring_enabled = False
 
 
+def record_metric(
+    name: str,
+    value: int | float = 1,
+    *,
+    unit: str = "count",
+    tags: dict[str, str] | None = None,
+) -> None:
+    """Emit a structured metric event that can be aggregated by log monitoring."""
+    logger.info(
+        "metric recorded name=%s value=%s unit=%s", name, value, unit,
+        extra={
+            "metric": {
+                "name": name,
+                "value": value,
+                "unit": unit,
+                "tags": tags or {},
+            }
+        },
+    )
+
+
 def configure_exception_monitoring(
     *, dsn: str | None, environment: str, release: str
 ) -> None:

@@ -21,6 +21,7 @@ def test_structured_logs_include_runtime_and_request_context():
             args=(),
             exc_info=None,
         )
+        record.metric = {"name": "database.health.check", "value": 1}
         payload = json.loads(formatter.format(record))
     finally:
         request_id_context.reset(token)
@@ -29,6 +30,7 @@ def test_structured_logs_include_runtime_and_request_context():
     assert payload["release"] == "2026.08.11"
     assert payload["request_id"] == "request-123"
     assert payload["message"] == "request completed"
+    assert payload["metric"]["name"] == "database.health.check"
 
 
 def test_request_id_is_preserved_and_returned_by_the_api():
@@ -39,3 +41,21 @@ def test_request_id_is_preserved_and_returned_by_the_api():
 
     assert response.status_code == 200
     assert response.headers["X-Request-ID"] == "request-123"
+
+
+def test_frontend_errors_are_accepted_without_a_database_dependency():
+    app = create_app(Settings())
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/client-errors",
+            json={
+                "name": "TypeError",
+                "message": "Cannot read properties of undefined",
+                "stack": "TypeError: Cannot read properties of undefined",
+                "url": "https://app.flipradar.test/dashboard",
+            },
+        )
+
+    assert response.status_code == 202
+    assert response.json() == {"status": "accepted"}

@@ -32,6 +32,9 @@ class JsonFormatter(logging.Formatter):
             payload["request_id"] = request_id
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
+        metric = getattr(record, "metric", None)
+        if metric is not None:
+            payload["metric"] = metric
         return json.dumps(payload, default=str, ensure_ascii=False)
 
 

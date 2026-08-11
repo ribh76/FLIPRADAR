@@ -1,9 +1,11 @@
 """Anthropic Messages API implementation of the LLM provider contract."""
 
+from time import perf_counter
 from typing import Any
 
 import requests
 
+from flipradar.core.observability import record_metric
 from flipradar.core.settings import LlmSettings
 from flipradar.integrations.llm_provider import (
     LlmCompletion,
@@ -30,8 +32,10 @@ class AnthropicLlmProvider(LlmProvider):
         self._api_key = api_key
 
     def complete(self, request: LlmCompletionRequest) -> LlmCompletion:
+        started_at = perf_counter()
+        model = request.model or self._settings.model
         payload: dict[str, Any] = {
-            "model": request.model or self._settings.model,
+            "model": model,
             "max_tokens": min(
                 request.max_tokens or self._settings.max_tokens,
                 self._settings.max_tokens,
@@ -42,29 +46,83 @@ class AnthropicLlmProvider(LlmProvider):
             payload["system"] = request.system_prompt
 
         try:
-            response = requests.post(
-                ANTHROPIC_MESSAGES_URL,
-                headers={
-                    "x-api-key": self._api_key,
-                    "anthropic-version": ANTHROPIC_API_VERSION,
-                    "content-type": "application/json",
-                },
-                json=payload,
-                timeout=self._settings.timeout_seconds,
+            try:
+                response = requests.post(
+                    ANTHROPIC_MESSAGES_URL,
+                    headers={
+                        "x-api-key": self._api_key,
+                        "anthropic-version": ANTHROPIC_API_VERSION,
+                        "content-type": "application/json",
+                    },
+                    json=payload,
+                    timeout=self._settings.timeout_seconds,
+                )
+            except requests.Timeout as exc:
+                raise LlmProviderTimeoutError("Anthropic request timed out") from exc
+            except requests.RequestException as exc:
+                raise LlmProviderError("Anthropic request failed") from exc
+
+            if response.status_code >= 400:
+                raise LlmProviderError("Anthropic returned an error response")
+            try:
+                response_payload = response.json()
+            except ValueError as exc:
+                raise LlmProviderError("Anthropic returned an invalid response") from exc
+            completion = _parse_completion(response_payload)
+        except LlmProviderError as exc:
+            _record_llm_metrics(
+                model=model,
+                started_at=started_at,
+                outcome="failure",
+                error_type=type(exc).__name__,
+                input_cost_per_million_tokens=(
+                    self._settings.input_cost_per_million_tokens
+                ),
+                output_cost_per_million_tokens=(
+                    self._settings.output_cost_per_million_tokens
+                ),
             )
-        except requests.Timeout as exc:
-            raise LlmProviderTimeoutError("Anthropic request timed out") from exc
-        except requests.RequestException as exc:
-            raise LlmProviderError("Anthropic request failed") from exc
+            raise
 
-        if response.status_code >= 400:
-            raise LlmProviderError("Anthropic returned an error response")
+        _record_llm_metrics(
+            model=completion.model,
+            started_at=started_at,
+            outcome="success",
+            usage=completion.usage,
+            input_cost_per_million_tokens=self._settings.input_cost_per_million_tokens,
+            output_cost_per_million_tokens=(
+                self._settings.output_cost_per_million_tokens
+            ),
+        )
+        return completion
 
-        try:
-            payload = response.json()
-        except ValueError as exc:
-            raise LlmProviderError("Anthropic returned an invalid response") from exc
-        return _parse_completion(payload)
+
+def _record_llm_metrics(
+    *,
+    model: str,
+    started_at: float,
+    outcome: str,
+    usage: LlmUsage | None = None,
+    error_type: str | None = None,
+    input_cost_per_million_tokens: float,
+    output_cost_per_million_tokens: float,
+) -> None:
+    tags = {"provider": "anthropic", "model": model, "outcome": outcome}
+    if error_type:
+        tags["error_type"] = error_type
+    record_metric("llm.request", tags=tags)
+    record_metric(
+        "llm.latency", (perf_counter() - started_at) * 1000, unit="ms", tags=tags
+    )
+    if usage is None:
+        return
+    record_metric("llm.input_tokens", usage.input_tokens, tags=tags)
+    record_metric("llm.output_tokens", usage.output_tokens, tags=tags)
+    estimated_cost = (
+        usage.input_tokens * input_cost_per_million_tokens
+        + usage.output_tokens * output_cost_per_million_tokens
+    ) / 1_000_000
+    record_metric("provider.cost", estimated_cost, unit="usd", tags=tags)
 
 
 def _parse_completion(payload: Any) -> LlmCompletion:

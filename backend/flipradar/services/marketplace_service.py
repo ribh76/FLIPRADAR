@@ -2,10 +2,12 @@ import asyncio
 import logging
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
+from time import perf_counter
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas.validation import MarketplaceName, normalize_set_number
+from flipradar.core.observability import record_metric
 from flipradar.core.settings import get_settings
 from flipradar.database import repositories
 from flipradar.database.session import SessionLocal
@@ -221,6 +223,7 @@ async def _fetch_adapter_listings(
 ) -> list[dict]:
     """Fetch provider data with bounded retries and a per-attempt timeout."""
     for attempt in range(1, max_attempts + 1):
+        started_at = perf_counter()
         try:
             listings = await asyncio.wait_for(
                 asyncio.to_thread(adapter.fetch_listings, set_number),
@@ -228,8 +231,17 @@ async def _fetch_adapter_listings(
             )
             if not isinstance(listings, list):
                 raise TypeError("provider response must be a list")
+            _record_provider_metric(
+                adapter.marketplace, outcome="success", started_at=started_at
+            )
             return listings
         except TimeoutError as exc:
+            _record_provider_metric(
+                adapter.marketplace,
+                outcome="failure",
+                started_at=started_at,
+                error_type="timeout",
+            )
             if attempt == max_attempts:
                 raise ServiceProviderTimeoutError(
                     f"{adapter.marketplace} timed out after {max_attempts} attempts"
@@ -241,6 +253,12 @@ async def _fetch_adapter_listings(
                 max_attempts,
             )
         except Exception as exc:
+            _record_provider_metric(
+                adapter.marketplace,
+                outcome="failure",
+                started_at=started_at,
+                error_type=type(exc).__name__,
+            )
             if attempt == max_attempts:
                 raise ServiceProviderError(
                     f"{adapter.marketplace} failed after {max_attempts} attempts"
@@ -254,6 +272,22 @@ async def _fetch_adapter_listings(
             )
         await asyncio.sleep(0)
     raise AssertionError("unreachable")
+
+
+def _record_provider_metric(
+    provider: str,
+    *,
+    outcome: str,
+    started_at: float,
+    error_type: str | None = None,
+) -> None:
+    tags = {"provider": provider, "outcome": outcome}
+    if error_type:
+        tags["error_type"] = error_type
+    record_metric("provider.request", tags=tags)
+    record_metric(
+        "provider.latency", (perf_counter() - started_at) * 1000, unit="ms", tags=tags
+    )
 
 
 async def _mark_stale_listings(db: AsyncSession, lego_set: LegoSet) -> int:
