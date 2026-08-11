@@ -26,6 +26,8 @@ application workflows; component-specific commands live in the
   and lifecycle commands.
 - [Runtime Configuration](runtime-configuration.md) — application settings and
   environment behavior.
+- [Operations Guide](operations-guide.md) — health probes, metrics, alerts,
+  privacy controls, and incident triage.
 - [Backend Architecture](backend-architecture.md) — service and data-layer
   architecture.
 - [Portfolio Historical Tracking](portfolio-historical-tracking.md) — valuation

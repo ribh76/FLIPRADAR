@@ -5,6 +5,8 @@ from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
 
+from flipradar.core.observability import sanitize_telemetry
+
 request_id_context: ContextVar[str | None] = ContextVar(
     "request_id", default=None
 )
@@ -23,7 +25,7 @@ class JsonFormatter(logging.Formatter):
             "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": sanitize_telemetry(record.getMessage()),
             "environment": self.environment,
             "release": self.release,
         }
@@ -31,10 +33,12 @@ class JsonFormatter(logging.Formatter):
         if request_id:
             payload["request_id"] = request_id
         if record.exc_info:
-            payload["exception"] = self.formatException(record.exc_info)
+            payload["exception"] = sanitize_telemetry(
+                self.formatException(record.exc_info)
+            )
         metric = getattr(record, "metric", None)
         if metric is not None:
-            payload["metric"] = metric
+            payload["metric"] = sanitize_telemetry(metric)
         return json.dumps(payload, default=str, ensure_ascii=False)
 
 

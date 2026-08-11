@@ -26,7 +26,10 @@ from flipradar.api.routes import (
     watchlist_routes,
 )
 from flipradar.core.logging import setup_logging
-from flipradar.core.observability import configure_exception_monitoring
+from flipradar.core.observability import (
+    configure_error_rate_alerting,
+    configure_exception_monitoring,
+)
 from flipradar.core.settings import Settings, get_settings
 from flipradar.core.startup import report_startup_configuration
 
@@ -47,6 +50,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         dsn=resolved_settings.observability.sentry_dsn,
         environment=resolved_settings.application.environment.value,
         release=resolved_settings.observability.release,
+    )
+    configure_error_rate_alerting(
+        threshold_percent=(
+            resolved_settings.observability.error_rate_alert_threshold_percent
+        ),
+        minimum_requests=(
+            resolved_settings.observability.error_rate_alert_minimum_requests
+        ),
+        window_seconds=resolved_settings.observability.error_rate_alert_window_seconds,
     )
 
     @asynccontextmanager

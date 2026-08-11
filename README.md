@@ -62,7 +62,7 @@ The Vite dev server proxies `/api/*` requests to `http://127.0.0.1:8000`.
 ## Demo
 
 The Docker stack automatically migrates and seeds representative local data.
-Sign in at `http://127.0.0.1:5173` with `demo@flipradar.com` / `DemoPass1!`.
+Use the controlled local demo credentials without copying them into telemetry.
 The seeded data includes catalog sets, price trends, listings, a portfolio,
 watchlist observations, and a saved analysis. See [Demo Data](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/demo-data.md) for scenarios and reset instructions.
 

@@ -10,6 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from flipradar.api.error_handlers import error_response
 from flipradar.core.logging import request_id_context
+from flipradar.core.observability import record_http_outcome
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             response.headers["X-Request-ID"] = request_id
+            record_http_outcome(response.status_code)
             logger.info(
                 "request completed method=%s path=%s status_code=%s duration_ms=%.2f",
                 request.method,

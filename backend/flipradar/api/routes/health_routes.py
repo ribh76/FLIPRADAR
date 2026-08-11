@@ -1,6 +1,8 @@
 import logging
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,13 +25,48 @@ class ReportedFrontendError(Exception):
     """A sanitized browser error forwarded to backend exception monitoring."""
 
 
+class HealthCheck(BaseModel):
+    status: str
+    latency_ms: int | None = None
+
+
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+    timestamp: datetime
+    checks: dict[str, HealthCheck]
+
+
+async def _readiness_response(db: AsyncSession) -> HealthResponse:
+    database = await health_service.database_health(db)
+    status_value = "healthy" if database["status"] == "healthy" else "unhealthy"
+    return HealthResponse(
+        status=status_value,
+        service="FlipRadar API",
+        timestamp=datetime.now(UTC),
+        checks={
+            "application": HealthCheck(status="healthy"),
+            "database": HealthCheck(**database),
+        },
+    )
+
+
+def _unhealthy_health_response(response: HealthResponse) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content=response.model_dump(mode="json"),
+    )
+
+
 # Reports process-level API health. It takes no inputs and returns a simple status payload.
-@router.get("/health")
-async def health_check() -> dict[str, str]:
-    """Return API liveness status for load balancers and local smoke checks."""
-    logger.info("request started route=health_check")
-    response = {"status": "ok", "service": "FlipRadar API"}
-    logger.info("request finished route=health_check")
+@router.get("/health", response_model=HealthResponse)
+async def health_check(
+    db: AsyncSession = Depends(get_db_session),
+) -> HealthResponse | JSONResponse:
+    """Return a concise readiness summary for humans and deployment monitors."""
+    response = await _readiness_response(db)
+    if response.status != "healthy":
+        return _unhealthy_health_response(response)
     return response
 
 
@@ -46,34 +83,35 @@ async def report_client_error(report: FrontendErrorReport) -> dict[str, str]:
     return {"status": "accepted"}
 
 
-@router.get("/health/live")
-async def liveness_check() -> dict[str, str]:
+@router.get("/health/live", response_model=HealthResponse)
+async def liveness_check() -> HealthResponse:
     """Return process liveness without touching downstream dependencies."""
-    return {"status": "ok", "service": "FlipRadar API"}
+    return HealthResponse(
+        status="healthy",
+        service="FlipRadar API",
+        timestamp=datetime.now(UTC),
+        checks={"application": HealthCheck(status="healthy")},
+    )
 
 
-@router.get("/health/ready")
+@router.get("/health/ready", response_model=HealthResponse)
 async def readiness_check(
     db: AsyncSession = Depends(get_db_session),
-) -> dict[str, str]:
+) -> HealthResponse | JSONResponse:
     """Return readiness after verifying required dependencies."""
-    try:
-        await health_service.check_database_connection(db)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Service is not ready",
-        ) from exc
-    return {"status": "ok", "database": "connected", "service": "ready"}
+    response = await _readiness_response(db)
+    if response.status != "healthy":
+        return _unhealthy_health_response(response)
+    return response
 
 
 # Checks database connectivity. It takes no body input and returns the DB connection status.
-@router.get("/db-health")
+@router.get("/db-health", response_model=HealthResponse)
 async def db_health_check(
     db: AsyncSession = Depends(get_db_session),
-) -> dict[str, str]:
+) -> HealthResponse | JSONResponse:
     """Return database connectivity status by executing a minimal SELECT."""
-    logger.info("request started route=db_health_check")
-    response = await health_service.check_database_connection(db)
-    logger.info("request finished route=db_health_check")
+    response = await _readiness_response(db)
+    if response.status != "healthy":
+        return _unhealthy_health_response(response)
     return response

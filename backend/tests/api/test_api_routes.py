@@ -177,7 +177,10 @@ def test_health_endpoint(client: TestClient):
 
     logger.info(f"API TEST: GET /health status={response.status_code}")
     assert response.status_code == 200
-    assert response.json()["status"] == "ok"
+    body = response.json()
+    assert body["status"] == "healthy"
+    assert body["checks"]["application"]["status"] == "healthy"
+    assert body["checks"]["database"]["status"] == "healthy"
 
 
 def test_db_health_endpoint(client: TestClient):
@@ -185,7 +188,7 @@ def test_db_health_endpoint(client: TestClient):
 
     logger.info(f"API TEST: GET /db-health status={response.status_code}")
     assert response.status_code == 200
-    assert response.json()["database"] == "connected"
+    assert response.json()["checks"]["database"]["status"] == "healthy"
 
 
 def test_liveness_and_readiness_endpoints(client: TestClient):
@@ -193,9 +196,9 @@ def test_liveness_and_readiness_endpoints(client: TestClient):
     ready_response = client.get("/health/ready")
 
     assert live_response.status_code == 200
-    assert live_response.json()["status"] == "ok"
+    assert live_response.json()["status"] == "healthy"
     assert ready_response.status_code == 200
-    assert ready_response.json()["service"] == "ready"
+    assert ready_response.json()["status"] == "healthy"
 
 
 def test_create_set_endpoint(client: TestClient):

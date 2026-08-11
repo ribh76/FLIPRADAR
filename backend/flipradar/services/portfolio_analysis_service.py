@@ -296,9 +296,10 @@ def _recommendation_change(previous: dict | None, current: dict | None) -> dict:
         change_type = "unchanged"
     previous_label = previous["label"] if previous is not None else None
     current_label = current["label"] if current is not None else None
+    record = current or previous or {}
     return {
-        "set_number": (current or previous)["set_number"],
-        "set_name": (current or previous).get("set_name"),
+        "set_number": record.get("set_number"),
+        "set_name": record.get("set_name"),
         "previous_label": previous_label,
         "current_label": current_label,
         "previous_confidence": (

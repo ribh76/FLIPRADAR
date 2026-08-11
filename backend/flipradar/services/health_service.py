@@ -28,3 +28,19 @@ async def check_database_connection(db: AsyncSession) -> dict[str, str]:
         tags=tags,
     )
     return {"status": "ok", "database": "connected"}
+
+
+async def database_health(db: AsyncSession) -> dict[str, int | str]:
+    """Return a safe dependency status without leaking connection failures."""
+    started_at = perf_counter()
+    try:
+        await check_database_connection(db)
+    except Exception:
+        return {
+            "status": "unhealthy",
+            "latency_ms": round((perf_counter() - started_at) * 1000),
+        }
+    return {
+        "status": "healthy",
+        "latency_ms": round((perf_counter() - started_at) * 1000),
+    }

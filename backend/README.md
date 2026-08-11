@@ -87,8 +87,8 @@ python3 scripts/seed_database.py
 The idempotent seed covers catalog sets, multi-date price snapshots, listings,
 portfolio holdings, watchlist observations, and a saved portfolio analysis.
 Use `./scripts/migrate_and_seed.sh` to apply it; use `make reset-demo-data` to
-delete the local Docker data and recreate the full baseline. The demo login is
-`demo@flipradar.com` / `DemoPass1!`.
+delete the local Docker data and recreate the full baseline. Keep the locally
+seeded demo credentials out of logs, telemetry, and issue reports.
 
 ## Tests
 

@@ -137,6 +137,9 @@ class LoggingSettings(BaseModel):
 class ObservabilitySettings(BaseModel):
     release: str
     sentry_dsn: str | None
+    error_rate_alert_threshold_percent: float
+    error_rate_alert_minimum_requests: int
+    error_rate_alert_window_seconds: int
 
 
 class CorsSettings(BaseModel):
@@ -165,6 +168,15 @@ class Settings(BaseSettings):
         default="INFO", alias="UVICORN_ACCESS_LOG_LEVEL"
     )
     sentry_dsn: str | None = Field(default=None, alias="SENTRY_DSN")
+    error_rate_alert_threshold_percent: float = Field(
+        default=5.0, ge=0, le=100, alias="ERROR_RATE_ALERT_THRESHOLD_PERCENT"
+    )
+    error_rate_alert_minimum_requests: int = Field(
+        default=20, ge=1, alias="ERROR_RATE_ALERT_MINIMUM_REQUESTS"
+    )
+    error_rate_alert_window_seconds: int = Field(
+        default=300, ge=1, alias="ERROR_RATE_ALERT_WINDOW_SECONDS"
+    )
 
     database_url_override: str | None = Field(default=None, alias="DATABASE_URL")
     database_host: str = Field(default="localhost", alias="DATABASE_HOST")
@@ -473,7 +485,15 @@ class Settings(BaseSettings):
 
     @property
     def observability(self) -> ObservabilitySettings:
-        return ObservabilitySettings(release=self.app_release, sentry_dsn=self.sentry_dsn)
+        return ObservabilitySettings(
+            release=self.app_release,
+            sentry_dsn=self.sentry_dsn,
+            error_rate_alert_threshold_percent=(
+                self.error_rate_alert_threshold_percent
+            ),
+            error_rate_alert_minimum_requests=self.error_rate_alert_minimum_requests,
+            error_rate_alert_window_seconds=self.error_rate_alert_window_seconds,
+        )
 
     @property
     def cors(self) -> CorsSettings:

@@ -916,22 +916,24 @@ Classification: MUST SHIP
 
 1. Add structured backend logging - (Complete) 
 2. Add request IDs - (Complete) 
-3. Add frontend error reporting.
+3. Add frontend error reporting. - Complete
 4. Add backend exception monitoring. - (Complete) 
 5. Tag errors by release and environment. - (Complete) 
-6. Add database health metrics.
-7. Add provider success, failure, and latency metrics.
-8. Add LLM usage, latency, failure, and cost metrics.
-9. Add worker metrics when background jobs exist.
+6. Add database health metrics. - Complete
+7. Add provider success, failure, and latency metrics. - Complete
+8. Add LLM usage, latency, failure, and cost metrics. - Complete
+9. Add worker metrics when background jobs exist. - Complete
 10. Add health monitoring.
 11. Add error-rate alerts.
 12. Add deploy and migration failure alerts.
 13. Remove sensitive data from telemetry.
 14. Create an operations guide.
 15. Test error capture.
------------------------------------- REVISIT AFTER PHASES 51 - 62 
+
+
 PHASE 47: V1 DEPLOYMENT
-Classification: MUST SHIP
+Classification: MUST SHIP ------------------------------------ REVISIT AFTER PHASES 51 - 62 
+
 
 1. Select frontend, backend, and database hosting.
 2. Configure production PostgreSQL with backups.
@@ -950,7 +952,8 @@ Classification: MUST SHIP
 15. Rehearse staging-to-production deployment.
 
 PHASE 48: LEGAL, PRIVACY, AND DISCLAIMERS
-Classification: MUST SHIP
+Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62 
+
 
 1. Write a privacy policy.
 2. Write terms of use.
@@ -969,7 +972,8 @@ Classification: MUST SHIP
 15. Track policy versions.
 
 PHASE 49: V1 RELEASE VERIFICATION
-Classification: MUST SHIP
+Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62 
+
 
 1. Test registration.
 2. Test verification and password reset.
@@ -988,7 +992,8 @@ Classification: MUST SHIP
 15. Complete a signed release checklist.
 
 PHASE 50: PUBLIC V1 LAUNCH
-Classification: MUST SHIP
+Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62 
+
 
 1. Create a concise landing page.
 2. State the product value clearly.

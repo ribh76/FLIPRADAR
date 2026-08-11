@@ -12,10 +12,9 @@ From the repository root:
 ./scripts/run_local_app.sh
 ```
 
-Open `http://127.0.0.1:5173` and sign in with:
-
-- Email: `demo@flipradar.com`
-- Password: `DemoPass1!`
+Open `http://127.0.0.1:5173` and use the locally seeded demo credentials from
+your controlled development environment. Do not copy demo credentials into
+logs, bug reports, or error-monitoring events.
 
 ## Included Scenarios
 
