@@ -505,17 +505,24 @@ export const apiClient = {
     },
   },
   sets: {
-    list(query: string, limit = 8) {
+    list(query: string, limit = 8, signal?: AbortSignal) {
       return requestData(
         api.get<CollectionResponse<LegoSet>>("/sets", {
           params: { limit, query },
+          signal,
         }),
       );
     },
-    search(query: string, provider = "bricklink", limit = 25) {
+    search(
+      query: string,
+      provider = "bricklink",
+      limit = 25,
+      signal?: AbortSignal,
+    ) {
       return requestData(
         api.get<CatalogSearchResponse>("/sets/search", {
           params: { limit, provider, query },
+          signal,
         }),
       );
     },

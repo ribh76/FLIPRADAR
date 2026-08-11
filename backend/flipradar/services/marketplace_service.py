@@ -123,9 +123,15 @@ async def _update_marketplace_data(db: AsyncSession, set_number: str) -> PriceSn
     if lego_set is None:
         raise LookupError("LEGO set not found")
 
-    raw_listings = []
-    for adapter in MARKETPLACE_ADAPTERS:
-        raw_listings.extend(await _fetch_adapter_listings(adapter, lego_set.set_number))
+    raw_listings, provider_errors = await _fetch_marketplace_listings(
+        lego_set.set_number
+    )
+    if provider_errors:
+        logger.warning(
+            "marketplace refresh partial result set_number=%s failed_providers=%s",
+            lego_set.set_number,
+            provider_errors,
+        )
 
     normalized_listings = listing_normalizer.normalize(raw_listings)
     matched_listings = _match_listings_to_set(normalized_listings, lego_set)
@@ -152,6 +158,30 @@ async def _update_marketplace_data(db: AsyncSession, set_number: str) -> PriceSn
     if not snapshots:
         raise LookupError("No valid marketplace listings found")
     return snapshots[0]
+
+
+async def _fetch_marketplace_listings(set_number: str) -> tuple[list[dict], list[str]]:
+    """Fetch providers concurrently and retain successful provider results.
+
+    A provider timeout should not discard the other marketplace's usable price
+    evidence. If every provider fails, retain the existing error contract.
+    """
+    results = await asyncio.gather(
+        *(_fetch_adapter_listings(adapter, set_number) for adapter in MARKETPLACE_ADAPTERS),
+        return_exceptions=True,
+    )
+    listings: list[dict] = []
+    errors: list[str] = []
+    failures: list[Exception] = []
+    for adapter, result in zip(MARKETPLACE_ADAPTERS, results, strict=True):
+        if isinstance(result, Exception):
+            errors.append(adapter.marketplace)
+            failures.append(result)
+        else:
+            listings.extend(result)
+    if not listings and failures:
+        raise failures[0]
+    return listings, errors
 
 
 def _match_listings_to_set(listings: list[dict], lego_set: LegoSet) -> list[dict]:

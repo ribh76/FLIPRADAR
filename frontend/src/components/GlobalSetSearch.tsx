@@ -2,6 +2,7 @@ import { Search } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useServerQuery } from "../hooks/serverState";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { apiClient } from "../services/apiClient";
 import {
   getRecentSetSearches,
@@ -14,10 +15,14 @@ export function GlobalSetSearch() {
   const [isFocused, setIsFocused] = useState(false);
   const [recentSearches, setRecentSearches] = useState(getRecentSetSearches);
   const trimmedQuery = query.trim();
+  const debouncedQuery = useDebouncedValue(trimmedQuery);
   const resultsQuery = useServerQuery(
-    ["global-set-search", trimmedQuery],
-    useCallback(() => apiClient.sets.list(trimmedQuery, 6), [trimmedQuery]),
-    { enabled: trimmedQuery.length >= 2 },
+    ["global-set-search", debouncedQuery],
+    useCallback(
+      (signal: AbortSignal) => apiClient.sets.list(debouncedQuery, 6, signal),
+      [debouncedQuery],
+    ),
+    { abortOnUnmount: true, enabled: debouncedQuery.length >= 2 },
   );
   const results = resultsQuery.data?.data ?? [];
   const isOpen = isFocused && trimmedQuery.length >= 2;

@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getApiError } from "../services/apiClient";
 
 export type ServerStateKey = readonly (string | number | boolean | null)[];
 
 type ServerQueryOptions<TData> = {
+  abortOnUnmount?: boolean;
   enabled?: boolean;
   initialData?: TData;
 };
+
+type ServerQueryFn<TData> = (signal: AbortSignal) => Promise<TData>;
 
 type ServerMutationOptions<TData, TVariables> = {
   onSuccess?: (data: TData, variables: TVariables) => void | Promise<void>;
@@ -26,14 +29,15 @@ export function invalidateServerState(key: ServerStateKey): void {
 
 async function loadQuery<TData>(
   cacheKey: string,
-  queryFn: () => Promise<TData>,
+  queryFn: ServerQueryFn<TData>,
+  signal: AbortSignal,
 ): Promise<TData> {
   const existing = inFlightQueries.get(cacheKey);
   if (existing) {
     return existing as Promise<TData>;
   }
 
-  const request = queryFn().finally(() => {
+  const request = queryFn(signal).finally(() => {
     inFlightQueries.delete(cacheKey);
   });
   inFlightQueries.set(cacheKey, request);
@@ -42,10 +46,10 @@ async function loadQuery<TData>(
 
 export function useServerQuery<TData>(
   key: ServerStateKey,
-  queryFn: () => Promise<TData>,
+  queryFn: ServerQueryFn<TData>,
   options: ServerQueryOptions<TData> = {},
 ) {
-  const { enabled = true, initialData } = options;
+  const { abortOnUnmount = false, enabled = true, initialData } = options;
   const cacheKey = useMemo(() => serializeKey(key), [key]);
   const [data, setData] = useState<TData | undefined>(() => {
     if (queryCache.has(cacheKey)) {
@@ -56,27 +60,42 @@ export function useServerQuery<TData>(
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(enabled && data === undefined);
   const [isFetching, setIsFetching] = useState(false);
+  const dataRef = useRef(data);
+  const controllerRef = useRef<AbortController | null>(null);
+  dataRef.current = data;
 
   const refetch = useCallback(async () => {
     if (!enabled) {
       return undefined;
     }
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
     setIsFetching(true);
-    setIsLoading(data === undefined);
+    setIsLoading(dataRef.current === undefined);
     setError("");
     try {
-      const result = await loadQuery(cacheKey, queryFn);
+      const result = await loadQuery(cacheKey, queryFn, controller.signal);
+      if (controller.signal.aborted) {
+        return undefined;
+      }
       queryCache.set(cacheKey, result);
       setData(result);
       return result;
     } catch (queryError) {
+      if (controller.signal.aborted) {
+        return undefined;
+      }
       setError(getApiError(queryError));
       return undefined;
     } finally {
-      setIsFetching(false);
-      setIsLoading(false);
+      if (controllerRef.current === controller) {
+        controllerRef.current = null;
+        setIsFetching(false);
+        setIsLoading(false);
+      }
     }
-  }, [cacheKey, data, enabled, queryFn]);
+  }, [cacheKey, enabled, queryFn]);
 
   const setCachedData = useCallback(
     (value: TData) => {
@@ -97,7 +116,16 @@ export function useServerQuery<TData>(
       return;
     }
     void refetch();
-  }, [cacheKey, enabled, refetch]);
+    return () => {
+      if (abortOnUnmount) {
+        controllerRef.current?.abort();
+        controllerRef.current = null;
+        // Type-ahead and route-abandoned reads should neither consume memory nor
+        // repopulate the result cache after the user has moved on.
+        queryCache.delete(cacheKey);
+      }
+    };
+  }, [abortOnUnmount, cacheKey, enabled, refetch]);
 
   return {
     data,

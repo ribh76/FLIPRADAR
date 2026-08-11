@@ -6,6 +6,7 @@ backend_url="${BACKEND_URL:-http://127.0.0.1:8000}"
 frontend_url="${FRONTEND_URL:-http://127.0.0.1:5173}"
 requests="${REQUESTS:-25}"
 concurrency="${CONCURRENCY:-5}"
+max_health_p95_seconds="${MAX_HEALTH_P95_SECONDS:-0.25}"
 
 measure() {
   local label="$1"
@@ -34,3 +35,9 @@ p95="$(sed -n "${p95_index}p" "$sorted_file")"
 maximum="$(tail -n 1 "$sorted_file")"
 rm -f "$sorted_file"
 printf 'count=%s avg=%ss p95=%ss max=%ss\n' "$count" "$average" "$p95" "$maximum"
+
+if awk -v actual="$p95" -v maximum="$max_health_p95_seconds" \
+  'BEGIN { exit !(actual > maximum) }'; then
+  echo "Performance regression: health p95 ${p95}s exceeds ${max_health_p95_seconds}s" >&2
+  exit 1
+fi

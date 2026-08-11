@@ -68,5 +68,20 @@ async def test_refresh_coalesces_concurrent_provider_cache_misses(monkeypatch):
     assert results.count(None) == 7
 
 
+@pytest.mark.asyncio
+async def test_provider_timeout_keeps_successful_marketplace_results(monkeypatch):
+    async def fetch(adapter, _set_number):
+        if adapter.marketplace == "ebay":
+            raise marketplace_service.ServiceProviderTimeoutError("timed out")
+        return [{"marketplace": adapter.marketplace}]
+
+    monkeypatch.setattr(marketplace_service, "_fetch_adapter_listings", fetch)
+
+    listings, errors = await marketplace_service._fetch_marketplace_listings("75192")
+
+    assert listings == [{"marketplace": "bricklink"}]
+    assert errors == ["ebay"]
+
+
 async def _async(value):
     return value

@@ -38,7 +38,12 @@ export function SetCatalogCard({ set, onViewDetail }: SetCatalogCardProps) {
             <img
               alt={`${set.name} LEGO set`}
               className="h-full w-full object-cover"
+              decoding="async"
+              fetchPriority="low"
+              height="176"
+              loading="lazy"
               src={imageUrl}
+              width="180"
             />
           ) : (
             <PackageOpen
@@ -106,7 +111,9 @@ export function SetCatalogCard({ set, onViewDetail }: SetCatalogCardProps) {
             <button
               className="secondary-button"
               onClick={() =>
-                navigate(`/portfolio?set_number=${encodeURIComponent(set.set_number)}`)
+                navigate(
+                  `/portfolio?set_number=${encodeURIComponent(set.set_number)}`,
+                )
               }
               type="button"
             >
@@ -129,7 +136,9 @@ export function SetCatalogCard({ set, onViewDetail }: SetCatalogCardProps) {
             <button
               className="secondary-button"
               onClick={() =>
-                navigate(`/deals?set_number=${encodeURIComponent(set.set_number)}`)
+                navigate(
+                  `/deals?set_number=${encodeURIComponent(set.set_number)}`,
+                )
               }
               type="button"
             >

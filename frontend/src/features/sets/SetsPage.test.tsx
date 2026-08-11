@@ -73,7 +73,11 @@ describe("SetsPage", () => {
         document.querySelector('option[value="Extreme Adventure"]'),
       ).not.toBeNull();
     });
-    expect(apiClient.sets.list).toHaveBeenCalledWith("420");
+    expect(apiClient.sets.list).toHaveBeenCalledWith(
+      "420",
+      8,
+      expect.any(AbortSignal),
+    );
   });
 
   it("renders a loading card while a catalog search is pending", async () => {

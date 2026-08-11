@@ -10,6 +10,7 @@ import {
   TextField,
 } from "../../components/ui";
 import { useServerQuery } from "../../hooks/serverState";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { apiClient } from "../../services/apiClient";
 import { SetCatalogCard } from "./SetCatalogCard";
 import { saveRecentSetSearch } from "../../utils/navigationState";
@@ -21,23 +22,26 @@ export function SetsPage() {
   const [searchValue, setSearchValue] = useState(submittedQuery);
   const [provider, setProvider] = useState("bricklink");
   const [validationMessage, setValidationMessage] = useState("");
+  const debouncedSearchValue = useDebouncedValue(searchValue.trim());
   const loadSuggestions = useCallback(
-    () => apiClient.sets.list(searchValue.trim()),
-    [searchValue],
+    (signal: AbortSignal) =>
+      apiClient.sets.list(debouncedSearchValue, 8, signal),
+    [debouncedSearchValue],
   );
   const suggestionsQuery = useServerQuery(
-    ["set-suggestions", searchValue.trim()],
+    ["set-suggestions", debouncedSearchValue],
     loadSuggestions,
-    { enabled: searchValue.trim().length >= 2 },
+    { abortOnUnmount: true, enabled: debouncedSearchValue.length >= 2 },
   );
   const loadSearch = useCallback(
-    () => apiClient.sets.search(submittedQuery, provider),
+    (signal: AbortSignal) =>
+      apiClient.sets.search(submittedQuery, provider, 25, signal),
     [provider, submittedQuery],
   );
   const searchQuery = useServerQuery(
     ["set-search", submittedQuery, provider],
     loadSearch,
-    { enabled: Boolean(submittedQuery) },
+    { abortOnUnmount: true, enabled: Boolean(submittedQuery) },
   );
 
   useEffect(() => {
