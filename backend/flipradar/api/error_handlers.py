@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 
 from flipradar.api.schemas.common_schema import ApiError, ApiErrorResponse
+from flipradar.core.observability import capture_exception
 from flipradar.services.errors import ServiceError
 
 logger = logging.getLogger(__name__)
@@ -96,6 +97,11 @@ async def http_exception_handler(
             status_code,
             _request_id(request),
         )
+        capture_exception(
+            exc,
+            request_id=_request_id(request),
+            context={"method": request.method, "path": request.url.path},
+        )
         detail = "Internal server error"
     else:
         logger.warning(
@@ -141,6 +147,11 @@ async def database_exception_handler(
         request.url.path,
         _request_id(request),
     )
+    capture_exception(
+        exc,
+        request_id=_request_id(request),
+        context={"method": request.method, "path": request.url.path},
+    )
     return error_response(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         code="database_unavailable",
@@ -154,6 +165,11 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         "unhandled request failure route=%s request_id=%s",
         request.url.path,
         _request_id(request),
+    )
+    capture_exception(
+        exc,
+        request_id=_request_id(request),
+        context={"method": request.method, "path": request.url.path},
     )
     return error_response(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -1,8 +1,22 @@
 from celery import Celery
 
+from flipradar.core.logging import setup_logging
+from flipradar.core.observability import configure_exception_monitoring
 from flipradar.core.settings import get_settings
 
 settings = get_settings()
+setup_logging(
+    settings.logging.level,
+    sqlalchemy_level=settings.logging.sqlalchemy_level,
+    uvicorn_access_level=settings.logging.uvicorn_access_level,
+    environment=settings.application.environment.value,
+    release=settings.observability.release,
+)
+configure_exception_monitoring(
+    dsn=settings.observability.sentry_dsn,
+    environment=settings.application.environment.value,
+    release=settings.observability.release,
+)
 celery_app = Celery(
     "flipradar",
     broker=settings.resolved_celery_broker_url,

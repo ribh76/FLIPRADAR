@@ -1,3 +1,4 @@
+import logging
 import time
 from collections import defaultdict, deque
 from collections.abc import Callable
@@ -8,15 +9,30 @@ from starlette import status
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from flipradar.api.error_handlers import error_response
+from flipradar.core.logging import request_id_context
+
+logger = logging.getLogger(__name__)
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable):
         request_id = request.headers.get("X-Request-ID") or str(uuid4())
         request.state.request_id = request_id
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request_id
-        return response
+        request_id_token = request_id_context.set(request_id)
+        started_at = time.perf_counter()
+        try:
+            response = await call_next(request)
+            response.headers["X-Request-ID"] = request_id
+            logger.info(
+                "request completed method=%s path=%s status_code=%s duration_ms=%.2f",
+                request.method,
+                request.url.path,
+                response.status_code,
+                (time.perf_counter() - started_at) * 1000,
+            )
+            return response
+        finally:
+            request_id_context.reset(request_id_token)
 
 
 class RollingWindowRateLimitMiddleware(BaseHTTPMiddleware):

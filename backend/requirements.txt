@@ -27,3 +27,4 @@ ruff
 pyright
 pre-commit
 httpx
+sentry-sdk

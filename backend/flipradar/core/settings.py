@@ -134,6 +134,11 @@ class LoggingSettings(BaseModel):
     uvicorn_access_level: str
 
 
+class ObservabilitySettings(BaseModel):
+    release: str
+    sentry_dsn: str | None
+
+
 class CorsSettings(BaseModel):
     allowed_origins: list[str]
     allow_credentials: bool
@@ -152,12 +157,14 @@ class Settings(BaseSettings):
     app_env: AppEnvironment = Field(default=AppEnvironment.DEVELOPMENT, alias="APP_ENV")
     app_debug: bool = Field(default=True, alias="APP_DEBUG")
     frontend_url: str = Field(default="http://127.0.0.1:5173", alias="FRONTEND_URL")
+    app_release: str = Field(default="unknown", alias="APP_RELEASE")
 
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     sqlalchemy_log_level: str = Field(default="WARNING", alias="SQLALCHEMY_LOG_LEVEL")
     uvicorn_access_log_level: str = Field(
         default="INFO", alias="UVICORN_ACCESS_LOG_LEVEL"
     )
+    sentry_dsn: str | None = Field(default=None, alias="SENTRY_DSN")
 
     database_url_override: str | None = Field(default=None, alias="DATABASE_URL")
     database_host: str = Field(default="localhost", alias="DATABASE_HOST")
@@ -318,6 +325,7 @@ class Settings(BaseSettings):
         "bricklink_token_value",
         "bricklink_token_secret",
         "anthropic_api_key",
+        "sentry_dsn",
         mode="before",
     )
     @classmethod
@@ -462,6 +470,10 @@ class Settings(BaseSettings):
             sqlalchemy_level=self.sqlalchemy_log_level,
             uvicorn_access_level=self.uvicorn_access_log_level,
         )
+
+    @property
+    def observability(self) -> ObservabilitySettings:
+        return ObservabilitySettings(release=self.app_release, sentry_dsn=self.sentry_dsn)
 
     @property
     def cors(self) -> CorsSettings:

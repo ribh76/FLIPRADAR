@@ -26,6 +26,7 @@ from flipradar.api.routes import (
     watchlist_routes,
 )
 from flipradar.core.logging import setup_logging
+from flipradar.core.observability import configure_exception_monitoring
 from flipradar.core.settings import Settings, get_settings
 from flipradar.core.startup import report_startup_configuration
 
@@ -39,6 +40,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         logging_settings.level,
         sqlalchemy_level=logging_settings.sqlalchemy_level,
         uvicorn_access_level=logging_settings.uvicorn_access_level,
+        environment=resolved_settings.application.environment.value,
+        release=resolved_settings.observability.release,
+    )
+    configure_exception_monitoring(
+        dsn=resolved_settings.observability.sentry_dsn,
+        environment=resolved_settings.application.environment.value,
+        release=resolved_settings.observability.release,
     )
 
     @asynccontextmanager
