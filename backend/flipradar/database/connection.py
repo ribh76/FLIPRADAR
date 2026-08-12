@@ -45,10 +45,14 @@ async def dispose_engine() -> None:
 
 async def create_database_tables(engine: AsyncEngine | None = None) -> None:
     from flipradar.domain.models import (  # noqa: F401
+        Color,
+        Element,
         LegoSet,
+        ListingEvaluation,
         Marketplace,
         MarketplaceListing,
-        ListingEvaluation,
+        Part,
+        PartCategory,
         PortfolioItem,
         PriceSnapshot,
         Recommendation,

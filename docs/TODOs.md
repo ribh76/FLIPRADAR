@@ -831,7 +831,7 @@ Classification: SHIP LATER
 15. Add tests. - (Complete)
 
 ==================================================
-PART XI - V1 COMPLETION AND LAUNCH
+PART XI - Robusting and Features
 ==================================================
 
 PHASE 42: CROSS-FEATURE NAVIGATION
@@ -923,109 +923,27 @@ Classification: MUST SHIP
 7. Add provider success, failure, and latency metrics. - Complete
 8. Add LLM usage, latency, failure, and cost metrics. - Complete
 9. Add worker metrics when background jobs exist. - Complete
-10. Add health monitoring.
-11. Add error-rate alerts.
-12. Add deploy and migration failure alerts.
-13. Remove sensitive data from telemetry.
-14. Create an operations guide.
-15. Test error capture.
+10. Add health monitoring.  - (Complete)
+11. Add error-rate alerts. - (Complete)
+12. Add deploy and migration failure alerts. - (Complete)
+13. Remove sensitive data from telemetry. - (Complete)
+14. Create an operations guide. - (Complete)
+15. Test error capture. - (Complete)
 
-
-PHASE 47: V1 DEPLOYMENT
-Classification: MUST SHIP ------------------------------------ REVISIT AFTER PHASES 51 - 62 
-
-
-1. Select frontend, backend, and database hosting.
-2. Configure production PostgreSQL with backups.
-3. Configure staging separately.
-4. Configure production secrets.
-5. Configure the frontend API URL.
-6. Configure production CORS.
-7. Configure HTTPS and a custom domain.
-8. Run migrations during deployment.
-9. Configure health checks.
-10. Configure frontend routing and caching.
-11. Add preview or staging builds.
-12. Add rollback procedures.
-13. Add backup and restore procedures.
-14. Create a deployment checklist.
-15. Rehearse staging-to-production deployment.
-
-PHASE 48: LEGAL, PRIVACY, AND DISCLAIMERS
-Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62 
-
-
-1. Write a privacy policy.
-2. Write terms of use.
-3. Write marketplace-data disclaimers.
-4. Write collectibles and analysis disclaimers.
-5. Explain that valuations are estimates.
-6. Explain data freshness and provider availability.
-7. Explain data retention.
-8. Explain account deletion.
-9. Explain third-party API usage.
-10. Add legal links to registration.
-11. Add footer links.
-12. Add disclaimers to recommendation pages.
-13. Avoid implying official LEGO, BrickLink, or eBay affiliation.
-14. Review catalog and image usage rights.
-15. Track policy versions.
-
-PHASE 49: V1 RELEASE VERIFICATION
-Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62 
-
-
-1. Test registration.
-2. Test verification and password reset.
-3. Test login, logout, refresh, and session revocation.
-4. Test valid and invalid set lookup.
-5. Test portfolio creation, editing, deletion, valuation, and history.
-6. Test dashboard charts and incomplete data.
-7. Test Deal Finder and filters.
-8. Test listing evaluation with valid, malformed, unsupported, and expired links.
-9. Test watchlist workflows.
-10. Test deterministic and AI portfolio analysis.
-11. Test mobile and desktop.
-12. Test provider failures.
-13. Test production migrations.
-14. Test backup restoration.
-15. Complete a signed release checklist.
-
-PHASE 50: PUBLIC V1 LAUNCH
-Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62 
-
-
-1. Create a concise landing page.
-2. State the product value clearly.
-3. Add screenshots or a short walkthrough.
-4. Add a demo account or sample-data mode.
-5. Add a structured feedback form.
-6. Add privacy-conscious analytics.
-7. Track major user journeys.
-8. Track errors separately from abandonment.
-9. Prepare a Reddit launch post.
-10. Label the product as an early public release.
-11. Ask focused feedback questions.
-12. Add bug and feature-request issue templates.
-13. Triage feedback.
-14. Fix critical launch defects before adding scope.
-15. Record baseline launch metrics.
-
------------------------------------- REVISIT AFTER PHASES 51 - 62 
 
 
 ==================================================
-PART XII - V2 AND POST-LAUNCH FEATURES
+PART XII - Final Features 
 ==================================================
 
-PHASE 51: PART CATALOG
+PHASE 47: PART CATALOG
 Classification: SHIP LATER
 
-1. Create part, color, category, and element models.
-2. Store provider identifiers.
-3. Store names, aliases, mold variants, and images.
-4. Store available colors.
-5. Store known year ranges.
+1. Create part, color, category, and element models. - (Complete) 
+2. Store provider identifiers. - (Complete) 
+3. Store names, aliases, mold variants, and images. - (Complete) 
+4. Store available colors. - (Complete) 
+5. Store known year ranges. - (Complete) 
 6. Add search indexes.
 7. Add catalog synchronization.
 8. Normalize provider records.
@@ -1037,7 +955,7 @@ Classification: SHIP LATER
 14. Add tests.
 15. Document limitations.
 
-PHASE 52: PART-DESCRIPTION LOOKUP
+PHASE 48: PART-DESCRIPTION LOOKUP
 Classification: SHIP LATER
 
 1. Add exact part-number search.
@@ -1056,7 +974,7 @@ Classification: SHIP LATER
 14. Add no-result suggestions.
 15. Add search-quality tests.
 
-PHASE 53: INVENTORY AND MISSING PARTS
+PHASE 49: INVENTORY AND MISSING PARTS
 Classification: SHIP LATER
 
 1. Add set inventory data.
@@ -1075,7 +993,7 @@ Classification: SHIP LATER
 14. Add replacement-purchase tracking.
 15. Add tests.
 
-PHASE 54: ADVANCED PRICING ANALYTICS
+PHASE 50: ADVANCED PRICING ANALYTICS
 Classification: SHIP LATER
 
 1. Store longer pricing histories.
@@ -1094,7 +1012,7 @@ Classification: SHIP LATER
 14. Add advanced chart controls.
 15. Validate metrics.
 
-PHASE 55: PREDICTIVE PRICE EXPERIMENTATION
+PHASE 51: PREDICTIVE PRICE EXPERIMENTATION
 Classification: SHIP LATER
 
 1. Define forecast use cases.
@@ -1113,7 +1031,7 @@ Classification: SHIP LATER
 14. Label forecasts as experimental.
 15. Keep forecasts out of core decisions until validated.
 
-PHASE 56: MULTI-PORTFOLIO SUPPORT
+PHASE 52: MULTI-PORTFOLIO SUPPORT
 Classification: SHIP LATER
 
 1. Create a portfolio entity.
@@ -1132,7 +1050,7 @@ Classification: SHIP LATER
 14. Add migration and authorization tests.
 15. Update all existing portfolio workflows.
 
-PHASE 57: IMPORT AND EXPORT
+PHASE 53: IMPORT AND EXPORT
 Classification: SHIP LATER
 
 1. Define a portfolio CSV format.
@@ -1151,7 +1069,7 @@ Classification: SHIP LATER
 14. Add import audit logs.
 15. Add malformed and large-file tests.
 
-PHASE 58: MFA
+PHASE 54: MFA
 Classification: SHIP LATER
 
 1. Add MFA settings to users.
@@ -1170,7 +1088,7 @@ Classification: SHIP LATER
 14. Add recovery tests.
 15. Document supported authenticator apps.
 
-PHASE 59: COMMUNITY MARKET SIGNALS
+PHASE 55: COMMUNITY MARKET SIGNALS
 Classification: SHIP LATER
 
 1. Define privacy-safe aggregate metrics.
@@ -1189,7 +1107,7 @@ Classification: SHIP LATER
 14. Perform a privacy review.
 15. Add privacy tests.
 
-PHASE 60: SOCIAL AND SHARING FEATURES
+PHASE 56: SOCIAL AND SHARING FEATURES
 Classification: SHIP LATER
 
 1. Add shareable portfolio summary cards.
@@ -1208,7 +1126,7 @@ Classification: SHIP LATER
 14. Add authorization tests.
 15. Update privacy documentation.
 
-PHASE 61: ADDITIONAL MARKETPLACES
+PHASE 57: ADDITIONAL MARKETPLACES
 Classification: SHIP LATER
 
 1. Define provider-selection criteria.
@@ -1227,7 +1145,7 @@ Classification: SHIP LATER
 14. Update source documentation.
 15. Launch behind feature flags.
 
-PHASE 62: CURRENCY AND REGIONAL SUPPORT
+PHASE 58: CURRENCY AND REGIONAL SUPPORT
 Classification: SHIP LATER
 
 1. Add user display-currency preferences.
@@ -1246,7 +1164,7 @@ Classification: SHIP LATER
 14. Document conversion limitations.
 15. Add currency and locale settings.
 
-PHASE 63: ADMINISTRATIVE TOOLS
+PHASE 59: ADMINISTRATIVE TOOLS
 Classification: SHIP LATER
 
 1. Add administrator roles.
@@ -1265,7 +1183,7 @@ Classification: SHIP LATER
 14. Add administrator tests.
 15. Keep admin tools separate from normal user bundles.
 
-PHASE 64: PLATFORM SCALABILITY
+PHASE 60: PLATFORM SCALABILITY
 Classification: SHIP LATER
 
 1. Measure production bottlenecks.
@@ -1284,6 +1202,87 @@ Classification: SHIP LATER
 14. Define scaling thresholds.
 15. Document architecture decisions.
 
+
+==================================================
+PART XII - Deployment and Release 
+==================================================
+
+PHASE 61: V1 DEPLOYMENT Classification: MUST SHIP ------------------------------------ REVISIT AFTER PHASES 51 - 62
+
+Select frontend, backend, and database hosting.
+Configure production PostgreSQL with backups.
+Configure staging separately.
+Configure production secrets.
+Configure the frontend API URL.
+Configure production CORS.
+Configure HTTPS and a custom domain.
+Run migrations during deployment.
+Configure health checks.
+Configure frontend routing and caching.
+Add preview or staging builds.
+Add rollback procedures.
+Add backup and restore procedures.
+Create a deployment checklist.
+Rehearse staging-to-production deployment.
+
+
+PHASE 62: LEGAL, PRIVACY, AND DISCLAIMERS Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62
+
+Write a privacy policy.
+Write terms of use.
+Write marketplace-data disclaimers.
+Write collectibles and analysis disclaimers.
+Explain that valuations are estimates.
+Explain data freshness and provider availability.
+Explain data retention.
+Explain account deletion.
+Explain third-party API usage.
+Add legal links to registration.
+Add footer links.
+Add disclaimers to recommendation pages.
+Avoid implying official LEGO, BrickLink, or eBay affiliation.
+Review catalog and image usage rights.
+Track policy versions.
+
+
+PHASE 63: V1 RELEASE VERIFICATION Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62
+
+Test registration.
+Test verification and password reset.
+Test login, logout, refresh, and session revocation.
+Test valid and invalid set lookup.
+Test portfolio creation, editing, deletion, valuation, and history.
+Test dashboard charts and incomplete data.
+Test Deal Finder and filters.
+Test listing evaluation with valid, malformed, unsupported, and expired links.
+Test watchlist workflows.
+Test deterministic and AI portfolio analysis.
+Test mobile and desktop.
+Test provider failures.
+Test production migrations.
+Test backup restoration.
+Complete a signed release checklist.
+
+
+PHASE 64: PUBLIC V1 LAUNCH Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62
+
+Create a concise landing page.
+State the product value clearly.
+Add screenshots or a short walkthrough.
+Add a demo account or sample-data mode.
+Add a structured feedback form.
+Add privacy-conscious analytics.
+Track major user journeys.
+Track errors separately from abandonment.
+Prepare a Reddit launch post.
+Label the product as an early public release.
+Ask focused feedback questions.
+Add bug and feature-request issue templates.
+Triage feedback.
+Fix critical launch defects before adding scope.
+Record baseline launch metrics.
+
+
 ==================================================
 RELEASE MILESTONES
 ==================================================
@@ -1301,11 +1300,11 @@ MILESTONE D: MARKETPLACE PRODUCT (Complete)
 Complete Phases 26-33 for V1.
 Complete Phases 29 and 34-36 later.
 
-MILESTONE E: PORTFOLIO ANALYSIS
+MILESTONE E: PORTFOLIO ANALYSIS (Complete) 
 Complete Phases 37-40.
 
-MILESTONE F: PUBLIC V1
-Complete Phases 41-50.
+MILESTONE F: PUBLIC INFRA (Complete) 
+Complete Phases 41-45.
 
 MILESTONE G: V2 (Complete all SHIP LATER phases accross TODOS)
 Prioritize based on public feedback:

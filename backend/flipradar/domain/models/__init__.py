@@ -13,6 +13,7 @@ from flipradar.domain.models.notification import (
     TargetReachedNotification,
     UserNotificationSettings,
 )
+from flipradar.domain.models.part_catalog import Color, Element, Part, PartCategory
 from flipradar.domain.models.portfolio import PortfolioItem
 from flipradar.domain.models.portfolio_analytics import (
     PortfolioAnalysis,
@@ -43,6 +44,10 @@ __all__ = [
     "AccountToken",
     "LegoSet",
     "Marketplace",
+    "Part",
+    "Color",
+    "PartCategory",
+    "Element",
     "MarketplaceListing",
     "ListingEvaluation",
     "Notification",
