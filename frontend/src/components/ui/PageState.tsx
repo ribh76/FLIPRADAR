@@ -92,9 +92,11 @@ export function ErrorState({
 }
 
 export function EmptyState({
+  children,
   message,
   title = "Nothing here yet",
 }: {
+  children?: ReactNode;
   message?: string;
   title?: string;
 }) {
@@ -106,6 +108,7 @@ export function EmptyState({
       title={title}
     >
       {message}
+      {children}
     </PageState>
   );
 }

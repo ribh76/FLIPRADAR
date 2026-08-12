@@ -93,11 +93,22 @@ async def search_part_catalog(
     query: str = Query(..., min_length=1, max_length=160),
     provider: str = Query(default="bricklink", min_length=1, max_length=40),
     limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    color: str | None = Query(default=None, min_length=1, max_length=160),
+    category: str | None = Query(default=None, min_length=1, max_length=160),
+    year: int | None = Query(default=None, ge=1949, le=2100),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     try:
         return await part_catalog_service.search_parts(
-            db, query, provider=provider, limit=limit
+            db,
+            query,
+            provider=provider,
+            limit=limit,
+            offset=offset,
+            color=color,
+            category=category,
+            year=year,
         )
     except ServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc

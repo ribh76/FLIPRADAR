@@ -22,6 +22,8 @@ import type {
   PortfolioHoldingDetail,
   PortfolioHistory,
   PortfolioSummary,
+  PartCatalogSearchResponse,
+  PartSearchFilters,
   RefreshSession,
   SavedSearch,
   LegoSet,
@@ -529,6 +531,20 @@ export const apiClient = {
     detail(setNumber: string) {
       return requestData(
         api.get<SetDetail>(`/sets/${encodeURIComponent(setNumber)}`),
+      );
+    },
+  },
+  parts: {
+    search(
+      query: string,
+      filters: PartSearchFilters = {},
+      signal?: AbortSignal,
+    ) {
+      return requestData(
+        api.get<PartCatalogSearchResponse>("/parts/search", {
+          params: { limit: 12, ...filters, query },
+          signal,
+        }),
       );
     },
   },

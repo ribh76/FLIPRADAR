@@ -2,10 +2,15 @@
 
 import asyncio
 from collections.abc import Callable
+from copy import copy
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from flipradar.database.repositories import Pagination, PartCatalogRepository
+from flipradar.database.repositories import (
+    Pagination,
+    PartCatalogRepository,
+    PartCatalogSearchPage,
+)
 from flipradar.domain.models import Part
 from flipradar.integrations import bricklink_mock_client
 from flipradar.services.errors import ServiceNotFoundError, ServiceValidationError
@@ -51,19 +56,46 @@ class PartCatalogService:
         *,
         provider: str = "bricklink",
         limit: int = 25,
+        offset: int = 0,
+        color: str | None = None,
+        category: str | None = None,
+        year: int | None = None,
     ) -> dict:
+        normalized_query = query.strip()
+        if not normalized_query:
+            raise ServiceValidationError("Part search query is required")
+        filters = {"color": color, "category": category, "year": year}
         repository = self._repository_factory(db)
-        local_results = await repository.search(
-            query, pagination=Pagination(limit=limit, offset=0)
+        local_page = await repository.search_page(
+            normalized_query,
+            pagination=Pagination(limit=limit, offset=offset),
+            **filters,
         )
-        if local_results:
-            return {"query": query.strip(), "source": "local", "results": local_results}
-        results = await self.synchronize(db, query, provider=provider)
-        return {
-            "query": query.strip(),
-            "source": "provider",
-            "results": results[:limit],
-        }
+        if local_page.matches or local_page.total:
+            return _search_response(
+                normalized_query, "local", local_page, limit, offset
+            )
+
+        # A filter miss is still a local catalog hit.  Re-syncing the same query
+        # cannot make an unavailable color, category, or year suddenly match.
+        if any(value is not None for value in filters.values()):
+            unfiltered_results = await repository.search(
+                normalized_query, pagination=Pagination(limit=1, offset=0)
+            )
+            if unfiltered_results:
+                return _search_response(
+                    normalized_query, "local", local_page, limit, offset
+                )
+
+        await self.synchronize(db, normalized_query, provider=provider)
+        provider_page = await repository.search_page(
+            normalized_query,
+            pagination=Pagination(limit=limit, offset=offset),
+            **filters,
+        )
+        return _search_response(
+            normalized_query, "provider", provider_page, limit, offset
+        )
 
 
 def _provider(provider: str) -> str:
@@ -87,9 +119,53 @@ part_catalog_service = PartCatalogService()
 
 
 async def search_parts(
-    db: AsyncSession, query: str, *, provider: str = "bricklink", limit: int = 25
+    db: AsyncSession,
+    query: str,
+    *,
+    provider: str = "bricklink",
+    limit: int = 25,
+    offset: int = 0,
+    color: str | None = None,
+    category: str | None = None,
+    year: int | None = None,
 ) -> dict:
-    return await part_catalog_service.search(db, query, provider=provider, limit=limit)
+    return await part_catalog_service.search(
+        db,
+        query,
+        provider=provider,
+        limit=limit,
+        offset=offset,
+        color=color,
+        category=category,
+        year=year,
+    )
+
+
+def _search_response(
+    query: str,
+    source: str,
+    page: PartCatalogSearchPage,
+    limit: int,
+    offset: int,
+) -> dict:
+    results: list[Part] = []
+    for match in page.matches:
+        part = copy(match.part)
+        part.match_type = match.relevance.match_type
+        part.match_confidence = match.relevance.confidence
+        part.match_explanation = match.relevance.explanation
+        results.append(part)
+    return {
+        "query": query,
+        "source": source,
+        "results": results,
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "count": len(results),
+            "has_more": offset + len(results) < page.total,
+        },
+    }
 
 
 async def synchronize_parts(

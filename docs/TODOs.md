@@ -944,35 +944,35 @@ Classification: SHIP LATER
 3. Store names, aliases, mold variants, and images. - (Complete) 
 4. Store available colors. - (Complete) 
 5. Store known year ranges. - (Complete) 
-6. Add search indexes.
-7. Add catalog synchronization.
-8. Normalize provider records.
-9. Add source and freshness metadata.
-10. Handle duplicates and variants.
-11. Add repositories and services.
-12. Add seed data.
-13. Add quality flags.
-14. Add tests.
-15. Document limitations.
+6. Add search indexes. - (Complete)
+7. Add catalog synchronization. - (Complete)
+8. Normalize provider records. - (Complete)
+9. Add source and freshness metadata. - (Complete)
+10. Handle duplicates and variants. - (Complete)
+11. Add repositories and services. - (Complete)
+12. Add seed data. - (Complete)
+13. Add quality flags. - (Complete)
+14. Add tests. - (Complete)
+15. Document limitations. - (Complete)
 
 PHASE 48: PART-DESCRIPTION LOOKUP
 Classification: SHIP LATER
 
-1. Add exact part-number search.
-2. Add text search over names and aliases.
-3. Add fuzzy matching.
-4. Add color filtering.
-5. Add category filtering.
-6. Add year filtering.
-7. Rank exact and high-confidence matches first.
-8. Explain why each result matched.
-9. Build the part-search page.
-10. Build the part-detail page.
-11. Display colors and variants.
-12. Display market pricing where available.
-13. Add pagination.
-14. Add no-result suggestions.
-15. Add search-quality tests.
+1. Add exact part-number search. - (Complete)
+2. Add text search over names and aliases. - (Complete)
+3. Add fuzzy matching. - (Complete)
+4. Add color filtering. - (Complete)
+5. Add category filtering. - (Complete)
+6. Add year filtering. - (Complete)
+7. Rank exact and high-confidence matches first. - Complete
+8. Explain why each result matched. - Complete
+9. Build the part-search page. - Complete
+10. Build the part-detail page. - Complete
+11. Display colors and variants. - Complete
+12. Display market pricing where available. - Complete
+13. Add pagination. - Complete
+14. Add no-result suggestions. - Complete
+15. Add search-quality tests. - Complete
 
 PHASE 49: INVENTORY AND MISSING PARTS
 Classification: SHIP LATER

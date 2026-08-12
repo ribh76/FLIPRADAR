@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from flipradar.api.schemas.common_schema import PaginationMeta
+
 
 class CatalogEntityResponse(BaseModel):
     id: UUID
@@ -27,12 +29,28 @@ class CatalogEntityResponse(BaseModel):
 class PartCatalogResponse(CatalogEntityResponse):
     category: CatalogEntityResponse | None
     available_colors: list[CatalogEntityResponse] = Field(default_factory=list)
+    market_price: float | None = None
+    market_price_currency: str | None = None
+
+
+class PartCatalogSearchResult(PartCatalogResponse):
+    match_type: Literal[
+        "exact_part_number",
+        "exact_name",
+        "exact_alias",
+        "name_text",
+        "alias_text",
+        "fuzzy",
+    ]
+    match_confidence: Literal["exact", "high", "medium"]
+    match_explanation: str
 
 
 class PartCatalogSearchResponse(BaseModel):
     query: str
     source: Literal["local", "provider"]
-    results: list[PartCatalogResponse]
+    results: list[PartCatalogSearchResult]
+    pagination: PaginationMeta
 
 
 class PartCatalogSyncResponse(BaseModel):

@@ -5,6 +5,7 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from difflib import SequenceMatcher
 from typing import Any, cast
 from uuid import UUID
 
@@ -158,6 +159,9 @@ class PartCatalogRepository:
                 "fetched_at",
             ):
                 setattr(entity, field, payload.get(field))
+            for field in ("market_price", "market_price_currency"):
+                if field in payload:
+                    setattr(entity, field, payload[field])
         await self.db.flush()
         return entity
 
@@ -197,8 +201,41 @@ class PartCatalogRepository:
         )
         return result.scalar_one()
 
-    async def search(self, query: str, *, pagination: Pagination) -> list[Part]:
-        normalized = query.strip().lower()
+    async def search(
+        self,
+        query: str,
+        *,
+        pagination: Pagination,
+        color: str | None = None,
+        category: str | None = None,
+        year: int | None = None,
+    ) -> list[Part]:
+        page = await self.search_page(
+            query,
+            pagination=pagination,
+            color=color,
+            category=category,
+            year=year,
+        )
+        return [match.part for match in page.matches]
+
+    async def search_page(
+        self,
+        query: str,
+        *,
+        pagination: Pagination,
+        color: str | None = None,
+        category: str | None = None,
+        year: int | None = None,
+    ) -> PartCatalogSearchPage:
+        """Search parts locally, ranking identifiers and strong text matches first.
+
+        Catalog aliases are JSON documents and fuzzy matching needs to compare the
+        complete descriptive record, so scoring is intentionally performed after
+        eager loading the catalog records.  Pagination is applied only after that
+        ranking so an exact match can never be hidden behind alphabetical rows.
+        """
+        normalized = _normalize_catalog_text(query)
         statement = (
             select(Part)
             .options(
@@ -206,17 +243,160 @@ class PartCatalogRepository:
                 selectinload(Part.elements).selectinload(Element.color),
             )
             .execution_options(populate_existing=True)
-            .where(
-                or_(
-                    Part.name.ilike(f"%{normalized}%"),
-                    Part.canonical_identifier.ilike(f"%{normalized}%"),
-                    Part.aliases.contains([normalized]),
-                )
-            )
             .order_by(Part.name, Part.canonical_identifier)
         )
-        result = await self.db.execute(_apply_pagination(statement, pagination))
-        return list(result.scalars().unique())
+        result = await self.db.execute(statement)
+        candidates = list(result.scalars().unique())
+        ranked = [
+            PartCatalogSearchMatch(part=part, relevance=relevance)
+            for part in candidates
+            if (relevance := _part_match_relevance(part, normalized)) is not None
+            and _part_matches_filters(part, color=color, category=category, year=year)
+        ]
+        ranked.sort(
+            key=lambda item: (
+                -item.relevance.score,
+                item.part.name,
+                item.part.canonical_identifier,
+            )
+        )
+        return PartCatalogSearchPage(
+            matches=ranked[pagination.offset : pagination.offset + pagination.limit],
+            total=len(ranked),
+        )
+
+
+@dataclass(frozen=True)
+class PartSearchRelevance:
+    score: int
+    match_type: str
+    confidence: str
+    explanation: str
+
+
+@dataclass(frozen=True)
+class PartCatalogSearchMatch:
+    part: Part
+    relevance: PartSearchRelevance
+
+
+@dataclass(frozen=True)
+class PartCatalogSearchPage:
+    matches: list[PartCatalogSearchMatch]
+    total: int
+
+
+def _normalize_catalog_text(value: str) -> str:
+    return " ".join(value.casefold().split())
+
+
+def _compact_catalog_text(value: str) -> str:
+    return "".join(
+        character for character in _normalize_catalog_text(value) if character.isalnum()
+    )
+
+
+def _part_match_relevance(part: Part, query: str) -> PartSearchRelevance | None:
+    """Return a deterministic relevance score for a local part lookup."""
+    compact_query = _compact_catalog_text(query)
+    identifier_values = [
+        part.canonical_identifier,
+        part.canonical_identifier.removeprefix("part:"),
+        *(part.provider_identifiers or {}).values(),
+    ]
+    if any(
+        _compact_catalog_text(value) == compact_query for value in identifier_values
+    ):
+        return PartSearchRelevance(
+            score=1_000,
+            match_type="exact_part_number",
+            confidence="exact",
+            explanation="Exact part number match.",
+        )
+
+    name = _normalize_catalog_text(part.name)
+    aliases = [_normalize_catalog_text(alias) for alias in part.aliases or []]
+    if name == query:
+        return PartSearchRelevance(
+            score=900,
+            match_type="exact_name",
+            confidence="exact",
+            explanation="Exact part name match.",
+        )
+    if query in aliases:
+        return PartSearchRelevance(
+            score=850,
+            match_type="exact_alias",
+            confidence="exact",
+            explanation="Exact alternate part name match.",
+        )
+    if query in name:
+        return PartSearchRelevance(
+            score=700,
+            match_type="name_text",
+            confidence="high",
+            explanation="Part name contains your search text.",
+        )
+    if any(query in alias for alias in aliases):
+        return PartSearchRelevance(
+            score=650,
+            match_type="alias_text",
+            confidence="high",
+            explanation="An alternate part name contains your search text.",
+        )
+
+    # Avoid fuzzy matching one- or two-character queries: those are usually an
+    # incomplete text search and would produce noisy catalog results.
+    if len(compact_query) < 3:
+        return None
+    best_ratio = max(
+        SequenceMatcher(None, compact_query, _compact_catalog_text(value)).ratio()
+        for value in [part.name, *(part.aliases or [])]
+    )
+    if best_ratio < 0.72:
+        return None
+    return PartSearchRelevance(
+        score=500 + round(best_ratio * 100),
+        match_type="fuzzy",
+        confidence="high" if best_ratio >= 0.85 else "medium",
+        explanation=f"Close spelling match ({round(best_ratio * 100)}% similar).",
+    )
+
+
+def _part_matches_filters(
+    part: Part,
+    *,
+    color: str | None,
+    category: str | None,
+    year: int | None,
+) -> bool:
+    if color and not any(
+        _catalog_entity_matches(color_entity, color)
+        for color_entity in part.available_colors
+    ):
+        return False
+    if category and (
+        part.category is None or not _catalog_entity_matches(part.category, category)
+    ):
+        return False
+    if year is not None and (
+        (part.first_known_year is not None and part.first_known_year > year)
+        or (part.last_known_year is not None and part.last_known_year < year)
+    ):
+        return False
+    return True
+
+
+def _catalog_entity_matches(entity: Color | PartCategory, filter_value: str) -> bool:
+    query = _normalize_catalog_text(filter_value)
+    values = [
+        entity.name,
+        entity.canonical_identifier,
+        entity.canonical_identifier.split(":", 1)[-1],
+        *(entity.aliases or []),
+        *((entity.provider_identifiers or {}).values()),
+    ]
+    return any(query == _normalize_catalog_text(value) for value in values)
 
 
 def _merge_catalog_values(existing: list | None, incoming: list | None) -> list:

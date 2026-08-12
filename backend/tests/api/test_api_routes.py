@@ -13,7 +13,10 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 import flipradar.domain.models  # noqa: F401
-from flipradar.api.schemas.portfolio_analysis_schema import LlmPortfolioNarrative
+from flipradar.api.schemas.portfolio_analysis_schema import (
+    LlmPortfolioNarrative,
+    LlmPortfolioObservation,
+)
 from flipradar.core.settings import get_settings
 from flipradar.database import Base, get_db_session, repositories
 from flipradar.domain.engines import price_estimator
@@ -420,6 +423,17 @@ def test_part_search_hydrates_catalog_and_uses_local_results(client: TestClient)
     provider_body = provider_response.json()
     assert provider_body["source"] == "provider"
     assert provider_body["results"][0]["canonical_identifier"] == "part:3001"
+    assert provider_body["results"][0]["match_type"] == "exact_part_number"
+    assert (
+        provider_body["results"][0]["match_explanation"] == "Exact part number match."
+    )
+    assert provider_body["results"][0]["market_price"] == 0.18
+    assert provider_body["pagination"] == {
+        "limit": 25,
+        "offset": 0,
+        "count": 1,
+        "has_more": False,
+    }
     assert "source_timestamp_missing" in provider_body["results"][0]["quality_flags"]
     assert {
         color["name"] for color in provider_body["results"][0]["available_colors"]
@@ -431,6 +445,20 @@ def test_part_search_hydrates_catalog_and_uses_local_results(client: TestClient)
     local_response = client.get("/parts/search", params={"query": "3001"})
     assert local_response.status_code == 200
     assert local_response.json()["source"] == "local"
+
+    lookup_response = client.get(
+        "/parts/search",
+        params={
+            "query": "brik 2 x 4",
+            "color": "Red",
+            "category": "Bricks",
+            "year": 1958,
+        },
+    )
+    assert lookup_response.status_code == 200
+    assert [
+        part["canonical_identifier"] for part in lookup_response.json()["results"]
+    ] == ["part:3001"]
 
 
 def test_create_listing_endpoint(client: TestClient):

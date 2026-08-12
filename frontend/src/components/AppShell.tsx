@@ -77,6 +77,12 @@ const navItems = [
     to: "/sets",
   },
   {
+    description: "Find LEGO parts by number, description, color, and year.",
+    icon: Search,
+    label: "Parts",
+    to: "/parts",
+  },
+  {
     description: "Reusable component and brand examples.",
     icon: Palette,
     label: "Showcase",

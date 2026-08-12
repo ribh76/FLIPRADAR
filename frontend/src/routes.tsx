@@ -37,6 +37,9 @@ const NotificationsPage = lazy(async () => ({
 const PortfolioPage = lazy(async () => ({
   default: (await import("./features/portfolio/PortfolioPage")).PortfolioPage,
 }));
+const PartSearchPage = lazy(async () => ({
+  default: (await import("./features/parts/PartSearchPage")).PartSearchPage,
+}));
 const HoldingDetailPage = lazy(async () => ({
   default: (await import("./features/portfolio/HoldingDetailPage"))
     .HoldingDetailPage,
@@ -100,6 +103,7 @@ export const appRoutes: RouteObject[] = [
             element: lazyPage(<HoldingDetailPage />),
           },
           { path: "/sets", element: lazyPage(<SetsPage />) },
+          { path: "/parts", element: lazyPage(<PartSearchPage />) },
           { path: "/sets/:setNumber", element: lazyPage(<SetDetailPage />) },
           { path: "/showcase", element: lazyPage(<ShowcasePage />) },
           { path: "/settings", element: lazyPage(<AccountSettingsPage />) },

@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from flipradar.services.errors import ServiceIncompleteDataError
@@ -71,7 +72,7 @@ def _normalize_entity(
     }
     provider_identifiers[provider] = provider_identifiers.get(provider, identifier)
     first_year, last_year = _known_year_range(raw)
-    return {
+    payload = {
         "canonical_identifier": f"{kind}:{identifier.strip().lower()}",
         "provider_identifiers": provider_identifiers,
         "name": name,
@@ -92,6 +93,27 @@ def _normalize_entity(
         "last_known_year": last_year,
         **common,
     }
+    if kind == "part":
+        market_price = _market_price(raw.get("market_price"))
+        payload["market_price"] = market_price
+        payload["market_price_currency"] = (
+            _optional_text(raw.get("market_price_currency")) or "USD"
+            if market_price is not None
+            else None
+        )
+    return payload
+
+
+def _market_price(value: Any) -> Decimal | None:
+    if value is None or value == "":
+        return None
+    try:
+        price = Decimal(str(value))
+    except (InvalidOperation, ValueError) as exc:
+        raise ServiceIncompleteDataError("Provider market price is invalid") from exc
+    if price < 0:
+        raise ServiceIncompleteDataError("Provider market price cannot be negative")
+    return price.quantize(Decimal("0.01"))
 
 
 def _identifier_for(raw: Mapping[str, Any], kind: str) -> str | None:

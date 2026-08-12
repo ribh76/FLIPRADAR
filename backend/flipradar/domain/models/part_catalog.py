@@ -6,6 +6,7 @@ instead of keeping a second, denormalized color list.
 """
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 from uuid import UUID as PyUUID
 from uuid import uuid4
@@ -16,6 +17,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Uuid,
     func,
@@ -141,6 +143,8 @@ class Part(CatalogRecordMetadata, Base):
     category_id: Mapped[PyUUID | None] = mapped_column(
         ForeignKey("part_categories.id", ondelete="RESTRICT"), index=True
     )
+    market_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    market_price_currency: Mapped[str | None] = mapped_column(String(3))
 
     category: Mapped[PartCategory | None] = relationship(back_populates="parts")
     elements: Mapped[list[Element]] = relationship(

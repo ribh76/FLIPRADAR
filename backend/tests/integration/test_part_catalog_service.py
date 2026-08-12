@@ -59,3 +59,42 @@ async def test_catalog_refresh_replaces_quality_flags_when_provider_data_improve
 
     refreshed = (await db_session.execute(select(Part))).scalar_one()
     assert refreshed.quality_flags == ["source_timestamp_missing"]
+
+
+async def test_part_lookup_supports_exact_text_fuzzy_and_catalog_filters(
+    db_session: AsyncSession,
+):
+    service = PartCatalogService()
+    await service.synchronize(db_session, "3001")
+
+    exact = await service.search(db_session, "part:3001")
+    alias = await service.search(db_session, "basic brick")
+    fuzzy = await service.search(db_session, "brik 2 x 4")
+    filtered = await service.search(
+        db_session,
+        "brick",
+        color="Red",
+        category="Bricks",
+        year=1958,
+    )
+    outside_known_year = await service.search(db_session, "brick", year=1957)
+
+    for result in (exact, alias, fuzzy, filtered):
+        assert result["source"] == "local"
+        assert [part.canonical_identifier for part in result["results"]] == [
+            "part:3001"
+        ]
+    assert exact["results"][0].match_type == "exact_part_number"
+    assert exact["results"][0].match_confidence == "exact"
+    assert exact["results"][0].match_explanation == "Exact part number match."
+    assert fuzzy["results"][0].match_type == "fuzzy"
+    assert str(fuzzy["results"][0].market_price) == "0.18"
+    assert outside_known_year["query"] == "brick"
+    assert outside_known_year["source"] == "local"
+    assert outside_known_year["results"] == []
+    assert outside_known_year["pagination"] == {
+        "limit": 25,
+        "offset": 0,
+        "count": 0,
+        "has_more": False,
+    }

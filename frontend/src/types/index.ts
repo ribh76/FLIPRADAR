@@ -570,6 +570,54 @@ export type CatalogSearchResponse = {
   results: LegoSet[];
 };
 
+export type PartCatalogEntity = {
+  id: string;
+  canonical_identifier: string;
+  provider_identifiers: Record<string, string>;
+  name: string;
+  aliases: string[];
+  mold_variants: Array<Record<string, unknown> | string>;
+  image_urls: string[];
+  quality_flags: string[];
+  first_known_year: number | null;
+  last_known_year: number | null;
+  source_name: string | null;
+  source_url: string | null;
+  source_updated_at: string | null;
+  fetched_at: string | null;
+};
+
+export type PartCatalogSearchResult = PartCatalogEntity & {
+  category: PartCatalogEntity | null;
+  available_colors: PartCatalogEntity[];
+  market_price: string | number | null;
+  market_price_currency: string | null;
+  match_type:
+    | "exact_part_number"
+    | "exact_name"
+    | "exact_alias"
+    | "name_text"
+    | "alias_text"
+    | "fuzzy";
+  match_confidence: "exact" | "high" | "medium";
+  match_explanation: string;
+};
+
+export type PartSearchFilters = {
+  color?: string;
+  category?: string;
+  year?: number;
+  limit?: number;
+  offset?: number;
+};
+
+export type PartCatalogSearchResponse = {
+  query: string;
+  source: "local" | "provider";
+  results: PartCatalogSearchResult[];
+  pagination: PaginationMeta;
+};
+
 export type CurrentUser = {
   id: string;
   username: string;

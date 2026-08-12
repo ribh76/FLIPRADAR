@@ -81,6 +81,8 @@ MOCK_PART_CATALOG: list[dict] = [
             "mold_variants": [{"identifier": "3001a", "description": "Solid studs"}],
             "image_urls": ["https://img.bricklink.com/P/5/3001.png"],
             "first_known_year": 1958,
+            "market_price": "0.18",
+            "market_price_currency": "USD",
         },
         "element": {
             "element_id": "300121",
@@ -108,6 +110,8 @@ MOCK_PART_CATALOG: list[dict] = [
             ],
             "image_urls": ["https://img.bricklink.com/P/1/3001.png"],
             "first_known_year": 1958,
+            "market_price": "0.18",
+            "market_price_currency": "USD",
         },
         "element": {
             "element_id": "300101",
