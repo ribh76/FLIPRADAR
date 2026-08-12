@@ -102,11 +102,15 @@ async def get_price_analytics(
     currency: str,
 ) -> dict:
     """Return descriptive analytics for one comparable condition/metric series."""
+    lego_set = await repositories.get_set_by_number(db, set_number)
+    if lego_set is None:
+        raise ServiceNotFoundError("LEGO set not found")
     raw, rollups = await repositories.list_price_history_for_set(
         db,
         set_number,
-        condition=condition,
         metric_type=metric_type,
         currency=currency,
     )
-    return calculate_price_analytics(raw, rollups)
+    return calculate_price_analytics(
+        raw, rollups, condition=condition, currency=currency, lego_set=lego_set
+    )

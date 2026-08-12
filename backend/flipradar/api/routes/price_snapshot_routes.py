@@ -12,6 +12,7 @@ from flipradar.api.schemas import (
 )
 from flipradar.api.schemas.common_schema import collection_response
 from flipradar.domain.models import PriceSnapshot
+from flipradar.domain.models.enums import PriceMetricType, SnapshotCondition
 from flipradar.services import price_snapshot_service
 from flipradar.services.errors import ServiceError
 
@@ -99,17 +100,20 @@ async def list_price_snapshots(
 async def get_price_analytics(
     set_number: str,
     db: AsyncSession = Depends(get_db_session),
-    condition: str = Query(default="new"),
-    metric_type: str = Query(default="fair_market_value"),
+    condition: SnapshotCondition = Query(default=SnapshotCondition.NEW),
+    metric_type: PriceMetricType = Query(default=PriceMetricType.FAIR_MARKET_VALUE),
     currency: str = Query(default="USD", min_length=3, max_length=3),
 ) -> dict:
-    return await price_snapshot_service.get_price_analytics(
-        db,
-        set_number,
-        condition=condition,
-        metric_type=metric_type,
-        currency=currency,
-    )
+    try:
+        return await price_snapshot_service.get_price_analytics(
+            db,
+            set_number,
+            condition=condition.value,
+            metric_type=metric_type.value,
+            currency=currency,
+        )
+    except ServiceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
 # Fetches the latest snapshot for a set. It accepts a set number and returns the newest pricing snapshot.

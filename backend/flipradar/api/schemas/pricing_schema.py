@@ -53,3 +53,11 @@ class PriceAnalyticsResponse(BaseModel):
     marketplace_spread: dict[str, Decimal | int | None]
     liquidity: dict[str, int]
     drawdown: dict[str, Decimal | None]
+    condition_adjusted_comparison: dict
+    theme_benchmark: dict[str, str | int | Decimal | None]
+    retirement: dict[str, bool | int | Decimal | None]
+    msrp_comparison: dict[str, Decimal | None]
+    inflation_adjusted: dict[str, Decimal | int | None]
+    confidence_band: dict[str, int | str]
+    chart_controls: dict[str, list[str]]
+    validation_metrics: dict[str, bool | int | Decimal]
