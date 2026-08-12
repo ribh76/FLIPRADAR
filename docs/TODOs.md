@@ -977,21 +977,21 @@ Classification: SHIP LATER
 PHASE 49: INVENTORY AND MISSING PARTS
 Classification: SHIP LATER
 
-1. Add set inventory data.
-2. Link sets to parts, colors, and quantities.
-3. Add owned and missing-part tracking.
-4. Allow portfolio sets to be marked incomplete.
-5. Generate missing-parts checklists.
-6. Allow substitutions and manual adjustments.
-7. Search for replacement parts.
-8. Estimate replacement cost.
-9. Compare replacement cost with completed-set value.
-10. Add completeness percentage.
-11. Include completeness in valuation.
-12. Add CSV export.
-13. Add printable lists.
-14. Add replacement-purchase tracking.
-15. Add tests.
+1. Add set inventory data. - (Complete) 
+2. Link sets to parts, colors, and quantities. - (Complete) 
+3. Add owned and missing-part tracking. - (Complete) 
+4. Allow portfolio sets to be marked incomplete. - (Complete) 
+5. Generate missing-parts checklists. - (Complete) 
+6. Allow substitutions and manual adjustments. - (Complete) 
+7. Search for replacement parts. - (Complete) 
+8. Estimate replacement cost. - (Complete) 
+9. Compare replacement cost with completed-set value. - (Complete) 
+10. Add completeness percentage. - (Complete) 
+11. Include completeness in valuation. - (Complete) 
+12. Add CSV export. - (Complete) 
+13. Add printable lists. - (Complete) 
+14. Add replacement-purchase tracking. - (Complete) 
+15. Add tests. - (Complete) 
 
 PHASE 50: ADVANCED PRICING ANALYTICS
 Classification: SHIP LATER

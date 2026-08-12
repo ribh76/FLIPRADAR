@@ -625,6 +625,7 @@ export type InventoryElement = {
   part_name: string;
   color: string;
   image_url: string | null;
+  estimated_unit_cost: number | null;
 };
 export type InventoryItem = {
   id: string;
@@ -640,6 +641,9 @@ export type MissingPartsChecklistLine = {
   missing_quantity: number;
   substitute_element: InventoryElement | null;
   substitution_candidates: InventoryElement[];
+  purchase_item_id: string | null;
+  purchased: boolean;
+  actual_unit_cost: number | null;
 };
 export type MissingPartsChecklist = {
   set_number: string;
@@ -647,6 +651,12 @@ export type MissingPartsChecklist = {
   required_parts: number;
   owned_parts: number;
   missing_parts: number;
+  completeness_percent: number;
+  estimated_replacement_cost: number;
+  completed_set_value: number | null;
+  completeness_adjusted_value: number | null;
+  purchase_price: number | null;
+  projected_net_value: number | null;
   lines: MissingPartsChecklistLine[];
 };
 

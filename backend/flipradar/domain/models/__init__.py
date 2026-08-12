@@ -2,6 +2,7 @@ from flipradar.domain.models.account_token import AccountToken
 from flipradar.domain.models.inventory import (
     ChecklistAdjustment,
     InventoryItem,
+    ReplacementPurchaseItem,
     SetPartRequirement,
 )
 from flipradar.domain.models.lego_set import LegoSet
@@ -56,6 +57,7 @@ __all__ = [
     "InventoryItem",
     "SetPartRequirement",
     "ChecklistAdjustment",
+    "ReplacementPurchaseItem",
     "MarketplaceListing",
     "ListingEvaluation",
     "Notification",

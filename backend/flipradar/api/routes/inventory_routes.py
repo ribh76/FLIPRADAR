@@ -10,6 +10,7 @@ from flipradar.api.schemas.inventory_schema import (
     InventoryItemResponse,
     InventoryQuantityUpdate,
     MissingPartsChecklistResponse,
+    PurchaseItemUpdate,
 )
 from flipradar.services import inventory_service
 from flipradar.services.errors import ServiceError
@@ -74,6 +75,48 @@ async def adjust_checklist(
             requirement_id,
             payload.manual_adjustment,
             payload.substitute_element_id,
+        )
+    except ServiceError as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@router.post(
+    "/checklists/{set_number}/purchase-list",
+    response_model=MissingPartsChecklistResponse,
+)
+async def create_replacement_purchase_list(
+    set_number: str,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    try:
+        return await inventory_service.add_missing_parts_to_purchase_list(
+            db, current_user.id, set_number
+        )
+    except ServiceError as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@router.patch(
+    "/purchase-list/{purchase_item_id}", response_model=MissingPartsChecklistResponse
+)
+async def update_replacement_purchase(
+    purchase_item_id: UUID,
+    payload: PurchaseItemUpdate,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    try:
+        return await inventory_service.update_purchase_item(
+            db,
+            current_user.id,
+            purchase_item_id,
+            payload.purchased,
+            payload.actual_unit_cost,
         )
     except ServiceError as exc:
         from fastapi import HTTPException

@@ -36,6 +36,7 @@ from flipradar.api.schemas.inventory_schema import (
     InventoryItemResponse,
     InventoryQuantityUpdate,
     MissingPartsChecklistResponse,
+    PurchaseItemUpdate,
 )
 from flipradar.api.schemas.lego_set_schema import (
     CatalogSearchResponse,
@@ -174,6 +175,7 @@ __all__ = [
     "RECOMMENDATION_NARRATIVE_PROMPT_VERSION",
     "ManualListingEntry",
     "MissingPartsChecklistResponse",
+    "PurchaseItemUpdate",
     "NotificationMarkAllReadResponse",
     "NotificationPreferenceResponse",
     "NotificationPreferenceUpdate",

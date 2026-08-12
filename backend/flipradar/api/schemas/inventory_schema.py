@@ -10,6 +10,7 @@ class InventoryElementResponse(BaseModel):
     part_name: str
     color: str
     image_url: str | None = None
+    estimated_unit_cost: float | None = None
 
 
 class InventoryItemResponse(BaseModel):
@@ -38,6 +39,9 @@ class ChecklistLineResponse(BaseModel):
     substitution_candidates: list[InventoryElementResponse] = Field(
         default_factory=list
     )
+    purchase_item_id: UUID | None = None
+    purchased: bool = False
+    actual_unit_cost: float | None = None
 
 
 class MissingPartsChecklistResponse(BaseModel):
@@ -46,4 +50,15 @@ class MissingPartsChecklistResponse(BaseModel):
     required_parts: int
     owned_parts: int
     missing_parts: int
+    completeness_percent: float
+    estimated_replacement_cost: float
+    completed_set_value: float | None = None
+    completeness_adjusted_value: float | None = None
+    purchase_price: float | None = None
+    projected_net_value: float | None = None
     lines: list[ChecklistLineResponse]
+
+
+class PurchaseItemUpdate(BaseModel):
+    purchased: bool
+    actual_unit_cost: float | None = Field(default=None, ge=0)

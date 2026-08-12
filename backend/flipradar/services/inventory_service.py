@@ -11,6 +11,9 @@ from flipradar.domain.models import (
     Element,
     InventoryItem,
     LegoSet,
+    PortfolioItem,
+    PriceSnapshot,
+    ReplacementPurchaseItem,
     SetPartRequirement,
 )
 from flipradar.services.errors import ServiceError
@@ -27,6 +30,11 @@ def _element_response(element: Element) -> dict:
             element.image_urls[0]
             if element.image_urls
             else (element.part.image_urls[0] if element.part.image_urls else None)
+        ),
+        "estimated_unit_cost": (
+            float(element.part.market_price)
+            if element.part.market_price is not None
+            else None
         ),
     }
 
@@ -141,6 +149,23 @@ async def checklist(db: AsyncSession, user_id: UUID, set_number: str) -> dict:
         )
     ).all()
     owned = {element_id: quantity for element_id, quantity in inventory}
+    purchases = (
+        (
+            await db.execute(
+                select(ReplacementPurchaseItem).where(
+                    ReplacementPurchaseItem.user_id == user_id,
+                    ReplacementPurchaseItem.requirement_id.in_(
+                        [requirement.id for requirement in requirements]
+                    ),
+                )
+            )
+        )
+        .scalars()
+        .all()
+        if requirements
+        else []
+    )
+    purchases_by_requirement = {item.requirement_id: item for item in purchases}
     lines = []
     for requirement in requirements:
         adjustment = by_requirement.get(requirement.id)
@@ -188,16 +213,90 @@ async def checklist(db: AsyncSession, user_id: UUID, set_number: str) -> dict:
                 "substitution_candidates": [
                     _element_response(candidate) for candidate in candidates
                 ],
+                "purchase_item_id": (
+                    purchases_by_requirement[requirement.id].id
+                    if requirement.id in purchases_by_requirement
+                    else None
+                ),
+                "purchased": (
+                    purchases_by_requirement[requirement.id].purchased
+                    if requirement.id in purchases_by_requirement
+                    else False
+                ),
+                "actual_unit_cost": (
+                    purchases_by_requirement[requirement.id].actual_unit_cost
+                    if requirement.id in purchases_by_requirement
+                    else None
+                ),
             }
         )
+    completed_snapshot = (
+        await db.execute(
+            select(PriceSnapshot.value)
+            .where(
+                PriceSnapshot.lego_set_id == lego_set.id,
+                PriceSnapshot.metric_type == "fair_market_value",
+            )
+            .order_by(PriceSnapshot.retrieval_time.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    purchase_price = (
+        await db.execute(
+            select(PortfolioItem.purchase_price)
+            .where(
+                PortfolioItem.user_id == user_id,
+                PortfolioItem.lego_set_id == lego_set.id,
+            )
+            .order_by(PortfolioItem.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    required_parts = sum(line["adjusted_quantity"] for line in lines)
+    owned_parts = sum(
+        min(line["adjusted_quantity"], line["owned_quantity"]) for line in lines
+    )
+    completeness_percent = (owned_parts / required_parts * 100) if required_parts else 0
+    estimated_replacement_cost = sum(
+        line["missing_quantity"]
+        * (line["substitute_element"] or line["element"])["estimated_unit_cost"]
+        for line in lines
+        if (line["substitute_element"] or line["element"])["estimated_unit_cost"]
+        is not None
+    )
+    completed_set_value = (
+        float(completed_snapshot) if completed_snapshot is not None else None
+    )
+    completeness_adjusted_value = (
+        completed_set_value * completeness_percent / 100
+        if completed_set_value is not None
+        else None
+    )
     return {
         "set_number": lego_set.set_number,
         "set_name": lego_set.name,
-        "required_parts": sum(line["adjusted_quantity"] for line in lines),
-        "owned_parts": sum(
-            min(line["adjusted_quantity"], line["owned_quantity"]) for line in lines
-        ),
+        "required_parts": required_parts,
+        "owned_parts": owned_parts,
         "missing_parts": sum(line["missing_quantity"] for line in lines),
+        "completeness_percent": round(completeness_percent, 1),
+        "estimated_replacement_cost": round(estimated_replacement_cost, 2),
+        "completed_set_value": completed_set_value,
+        "completeness_adjusted_value": (
+            round(completeness_adjusted_value, 2)
+            if completeness_adjusted_value is not None
+            else None
+        ),
+        "purchase_price": float(purchase_price) if purchase_price is not None else None,
+        "projected_net_value": (
+            round(
+                completed_set_value
+                - estimated_replacement_cost
+                - float(purchase_price),
+                2,
+            )
+            if completed_set_value is not None and purchase_price is not None
+            else None
+        ),
         "lines": lines,
     }
 
@@ -241,5 +340,73 @@ async def update_adjustment(
         db.add(adjustment)
     adjustment.manual_adjustment = manual_adjustment
     adjustment.substitute_element_id = substitute_element_id
+    await db.commit()
+    return await checklist(db, user_id, set_number)
+
+
+async def add_missing_parts_to_purchase_list(
+    db: AsyncSession, user_id: UUID, set_number: str
+) -> dict:
+    """Create or refresh unpurchased replacement orders from a checklist."""
+    data = await checklist(db, user_id, set_number)
+    for line in data["lines"]:
+        if not line["missing_quantity"]:
+            continue
+        element = line["substitute_element"] or line["element"]
+        item = (
+            await db.execute(
+                select(ReplacementPurchaseItem).where(
+                    ReplacementPurchaseItem.user_id == user_id,
+                    ReplacementPurchaseItem.requirement_id == line["requirement_id"],
+                )
+            )
+        ).scalar_one_or_none()
+        if item is None:
+            db.add(
+                ReplacementPurchaseItem(
+                    user_id=user_id,
+                    requirement_id=line["requirement_id"],
+                    element_id=element["id"],
+                    quantity=line["missing_quantity"],
+                    estimated_unit_cost=element["estimated_unit_cost"] or 0,
+                )
+            )
+        elif not item.purchased:
+            item.element_id = element["id"]
+            item.quantity = line["missing_quantity"]
+            item.estimated_unit_cost = element["estimated_unit_cost"] or 0
+    await db.commit()
+    return await checklist(db, user_id, set_number)
+
+
+async def update_purchase_item(
+    db: AsyncSession,
+    user_id: UUID,
+    purchase_item_id: UUID,
+    purchased: bool,
+    actual_unit_cost: float | None,
+) -> dict:
+    item = (
+        await db.execute(
+            select(ReplacementPurchaseItem).where(
+                ReplacementPurchaseItem.id == purchase_item_id,
+                ReplacementPurchaseItem.user_id == user_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if item is None:
+        raise ServiceError("Purchase-list item was not found", status_code=404)
+    item.purchased = purchased
+    item.actual_unit_cost = actual_unit_cost
+    set_number = (
+        await db.execute(
+            select(LegoSet.set_number)
+            .join(
+                SetPartRequirement,
+                SetPartRequirement.lego_set_id == LegoSet.id,
+            )
+            .where(SetPartRequirement.id == item.requirement_id)
+        )
+    ).scalar_one()
     await db.commit()
     return await checklist(db, user_id, set_number)

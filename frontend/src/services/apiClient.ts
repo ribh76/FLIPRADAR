@@ -581,6 +581,25 @@ export const apiClient = {
         ),
       );
     },
+    addToPurchaseList(setNumber: string) {
+      return requestData(
+        api.post<MissingPartsChecklist>(
+          `/inventory/checklists/${encodeURIComponent(setNumber)}/purchase-list`,
+          {},
+        ),
+      );
+    },
+    updatePurchaseItem(
+      id: string,
+      payload: { purchased: boolean; actual_unit_cost: number | null },
+    ) {
+      return requestData(
+        api.patch<MissingPartsChecklist>(
+          `/inventory/purchase-list/${id}`,
+          payload,
+        ),
+      );
+    },
   },
 };
 
