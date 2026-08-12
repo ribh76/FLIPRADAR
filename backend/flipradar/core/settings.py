@@ -268,7 +268,7 @@ class Settings(BaseSettings):
         default=24, ge=1, alias="PRICING_FRESHNESS_HOURS"
     )
     pricing_retention_days: int = Field(
-        default=180, ge=1, alias="PRICING_RETENTION_DAYS"
+        default=730, ge=1, alias="PRICING_RETENTION_DAYS"
     )
     portfolio_valuation_retention_days: int = Field(
         default=180, ge=1, alias="PORTFOLIO_VALUATION_RETENTION_DAYS"

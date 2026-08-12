@@ -42,6 +42,7 @@ from flipradar.domain.models import (
     PortfolioValuationSnapshot,
     PriceDropNotification,
     PriceSnapshot,
+    PriceSnapshotRollup,
     Recommendation,
     RefreshTokenBlacklist,
     RefreshTokenSession,
@@ -1151,6 +1152,83 @@ async def delete_price_snapshots_before(db: AsyncSession, cutoff: datetime) -> i
     )
     await db.flush()
     return cast(CursorResult, result).rowcount or 0
+
+
+async def get_price_snapshots_before(
+    db: AsyncSession, cutoff: datetime
+) -> list[PriceSnapshot]:
+    """Return raw observations that are ready to be compacted."""
+    result = await db.execute(
+        select(PriceSnapshot)
+        .where(PriceSnapshot.retrieval_time < cutoff)
+        .order_by(PriceSnapshot.retrieval_time.asc(), PriceSnapshot.created_at.asc())
+    )
+    return list(result.scalars())
+
+
+async def upsert_price_snapshot_rollup(
+    db: AsyncSession, rollup_data: dict[str, Any]
+) -> None:
+    """Persist one aggregate period, replacing it when a compaction is rerun."""
+    key_fields = (
+        "lego_set_id",
+        "marketplace_id",
+        "condition",
+        "currency",
+        "metric_type",
+        "period",
+        "period_start",
+    )
+    statement = select(PriceSnapshotRollup).where(
+        *[
+            getattr(PriceSnapshotRollup, field) == rollup_data[field]
+            for field in key_fields
+        ]
+    )
+    existing = (await db.execute(statement)).scalar_one_or_none()
+    if existing is None:
+        db.add(PriceSnapshotRollup(**rollup_data))
+        return
+    for field, value in rollup_data.items():
+        if field not in key_fields:
+            setattr(existing, field, value)
+
+
+async def list_price_history_for_set(
+    db: AsyncSession,
+    set_number: str,
+    *,
+    period: str | None = None,
+    condition: str | None = None,
+    metric_type: str | None = None,
+    currency: str | None = None,
+) -> tuple[list[PriceSnapshot], list[PriceSnapshotRollup]]:
+    """Load raw and compacted history for analytics without overlapping periods."""
+    normalized_set_number = normalize_set_number(set_number)
+    raw = (
+        select(PriceSnapshot)
+        .join(LegoSet)
+        .where(LegoSet.set_number == normalized_set_number)
+    )
+    rollups = (
+        select(PriceSnapshotRollup)
+        .join(LegoSet)
+        .where(LegoSet.set_number == normalized_set_number)
+    )
+    if condition:
+        raw = raw.where(PriceSnapshot.condition == condition)
+        rollups = rollups.where(PriceSnapshotRollup.condition == condition)
+    if metric_type:
+        raw = raw.where(PriceSnapshot.metric_type == metric_type)
+        rollups = rollups.where(PriceSnapshotRollup.metric_type == metric_type)
+    if currency:
+        raw = raw.where(PriceSnapshot.currency == currency)
+        rollups = rollups.where(PriceSnapshotRollup.currency == currency)
+    if period:
+        rollups = rollups.where(PriceSnapshotRollup.period == period)
+    raw_rows = list((await db.execute(raw)).scalars())
+    rollup_rows = list((await db.execute(rollups)).scalars())
+    return raw_rows, rollup_rows
 
 
 async def list_price_snapshots_for_set(

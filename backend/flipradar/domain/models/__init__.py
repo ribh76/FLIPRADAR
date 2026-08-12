@@ -34,6 +34,7 @@ from flipradar.domain.models.portfolio_valuation_snapshot import (
     PortfolioValuationSnapshot,
 )
 from flipradar.domain.models.price_snapshot import PriceSnapshot
+from flipradar.domain.models.price_snapshot_rollup import PriceSnapshotRollup
 from flipradar.domain.models.recommendation import Recommendation
 from flipradar.domain.models.refresh_token import (
     RefreshTokenBlacklist,
@@ -76,6 +77,7 @@ __all__ = [
     "PortfolioValuationSnapshot",
     "PortfolioValuationDailyRollup",
     "PriceSnapshot",
+    "PriceSnapshotRollup",
     "Recommendation",
     "SavedSearch",
     "RefreshTokenBlacklist",

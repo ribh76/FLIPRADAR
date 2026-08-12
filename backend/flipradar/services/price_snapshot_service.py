@@ -13,6 +13,7 @@ from flipradar.services.errors import (
     ServiceNotFoundError,
     ServiceValidationError,
 )
+from flipradar.services.price_analytics_service import calculate_price_analytics
 
 logger = logging.getLogger(__name__)
 
@@ -90,3 +91,22 @@ async def get_latest_price_snapshot_by_set_number(
         )
         raise
     return snapshot
+
+
+async def get_price_analytics(
+    db: AsyncSession,
+    set_number: str,
+    *,
+    condition: str,
+    metric_type: str,
+    currency: str,
+) -> dict:
+    """Return descriptive analytics for one comparable condition/metric series."""
+    raw, rollups = await repositories.list_price_history_for_set(
+        db,
+        set_number,
+        condition=condition,
+        metric_type=metric_type,
+        currency=currency,
+    )
+    return calculate_price_analytics(raw, rollups)

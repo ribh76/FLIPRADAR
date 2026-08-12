@@ -55,6 +55,7 @@ async def create_database_tables(engine: AsyncEngine | None = None) -> None:
         PartCategory,
         PortfolioItem,
         PriceSnapshot,
+        PriceSnapshotRollup,
         Recommendation,
         User,
     )

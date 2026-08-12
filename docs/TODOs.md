@@ -996,13 +996,13 @@ Classification: SHIP LATER
 PHASE 50: ADVANCED PRICING ANALYTICS
 Classification: SHIP LATER
 
-1. Store longer pricing histories.
-2. Add weekly and monthly aggregation.
-3. Calculate rolling averages.
-4. Calculate volatility.
-5. Calculate marketplace spread.
-6. Calculate liquidity proxies.
-7. Calculate drawdown from recorded highs.
+1. Store longer pricing histories. - (Complete)
+2. Add weekly and monthly aggregation. - (Complete)
+3. Calculate rolling averages. - (Complete)
+4. Calculate volatility. - (Complete)
+5. Calculate marketplace spread. - (Complete)
+6. Calculate liquidity proxies. - (Complete)
+7. Calculate drawdown from recorded highs. - (Complete)
 8. Add condition-adjusted comparisons.
 9. Add theme benchmark indices.
 10. Add retirement annotations.

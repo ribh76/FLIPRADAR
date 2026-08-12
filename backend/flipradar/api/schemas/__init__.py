@@ -102,6 +102,7 @@ from flipradar.api.schemas.portfolio_schema import (
     PortfolioValuationHistoryResponse,
 )
 from flipradar.api.schemas.pricing_schema import (
+    PriceAnalyticsResponse,
     PriceSnapshotCreate,
     PriceSnapshotResponse,
 )
@@ -218,6 +219,7 @@ __all__ = [
     "PORTFOLIO_ANALYSIS_PROMPT_VERSION",
     "PriceSnapshotCollectionResponse",
     "PriceSnapshotCreate",
+    "PriceAnalyticsResponse",
     "PriceSnapshotResponse",
     "RecommendationDecision",
     "RecommendationResponse",

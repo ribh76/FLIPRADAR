@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
+    PriceAnalyticsResponse,
     PriceSnapshotCollectionResponse,
     PriceSnapshotCreate,
     PriceSnapshotResponse,
@@ -87,6 +88,28 @@ async def list_price_snapshots(
         len(snapshots),
     )
     return collection_response(snapshots, limit=limit, offset=offset)
+
+
+@router.get(
+    "/snapshots/{set_number}/analytics",
+    response_model=PriceAnalyticsResponse,
+    summary="Get advanced price analytics",
+    description="Calculate descriptive price analytics from stored raw and compacted history.",
+)
+async def get_price_analytics(
+    set_number: str,
+    db: AsyncSession = Depends(get_db_session),
+    condition: str = Query(default="new"),
+    metric_type: str = Query(default="fair_market_value"),
+    currency: str = Query(default="USD", min_length=3, max_length=3),
+) -> dict:
+    return await price_snapshot_service.get_price_analytics(
+        db,
+        set_number,
+        condition=condition,
+        metric_type=metric_type,
+        currency=currency,
+    )
 
 
 # Fetches the latest snapshot for a set. It accepts a set number and returns the newest pricing snapshot.

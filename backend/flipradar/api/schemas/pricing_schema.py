@@ -42,3 +42,14 @@ class PriceSnapshotResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PriceAnalyticsResponse(BaseModel):
+    observation_count: int
+    series_point_count: int
+    latest_value: Decimal | None
+    rolling_averages: dict[str, Decimal | None]
+    volatility: dict[str, Decimal | int | None]
+    marketplace_spread: dict[str, Decimal | int | None]
+    liquidity: dict[str, int]
+    drawdown: dict[str, Decimal | None]
