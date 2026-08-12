@@ -31,6 +31,12 @@ from flipradar.api.schemas.common_schema import (
     PriceSnapshotCollectionResponse,
 )
 from flipradar.api.schemas.deal_schema import DealCollectionResponse, DealResponse
+from flipradar.api.schemas.inventory_schema import (
+    ChecklistAdjustmentUpdate,
+    InventoryItemResponse,
+    InventoryQuantityUpdate,
+    MissingPartsChecklistResponse,
+)
 from flipradar.api.schemas.lego_set_schema import (
     CatalogSearchResponse,
     LegoSetCreate,
@@ -140,6 +146,7 @@ __all__ = [
     "CatalogSearchResponse",
     "CatalogEntityResponse",
     "CollectionResponse",
+    "ChecklistAdjustmentUpdate",
     "ConfidenceBand",
     "DealCollectionResponse",
     "DealResponse",
@@ -151,6 +158,8 @@ __all__ = [
     "LegoSetCreate",
     "LegoSetCollectionResponse",
     "LegoSetResponse",
+    "InventoryItemResponse",
+    "InventoryQuantityUpdate",
     "ListingCreate",
     "ListingEvaluationRequest",
     "ListingCollectionResponse",
@@ -164,6 +173,7 @@ __all__ = [
     "LlmUncertaintyCode",
     "RECOMMENDATION_NARRATIVE_PROMPT_VERSION",
     "ManualListingEntry",
+    "MissingPartsChecklistResponse",
     "NotificationMarkAllReadResponse",
     "NotificationPreferenceResponse",
     "NotificationPreferenceUpdate",

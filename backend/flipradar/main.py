@@ -14,6 +14,7 @@ from flipradar.api.routes import (
     auth_routes,
     deal_routes,
     health_routes,
+    inventory_routes,
     lego_routes,
     listing_routes,
     marketplace_routes,
@@ -131,6 +132,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health_routes.router)
     app.include_router(auth_routes.router)
     app.include_router(lego_routes.router)
+    app.include_router(inventory_routes.router)
     app.include_router(deal_routes.router)
     app.include_router(saved_search_routes.router)
     app.include_router(watchlist_routes.router)

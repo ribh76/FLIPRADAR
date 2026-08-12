@@ -40,6 +40,9 @@ const PortfolioPage = lazy(async () => ({
 const PartSearchPage = lazy(async () => ({
   default: (await import("./features/parts/PartSearchPage")).PartSearchPage,
 }));
+const InventoryPage = lazy(async () => ({
+  default: (await import("./features/inventory/InventoryPage")).InventoryPage,
+}));
 const HoldingDetailPage = lazy(async () => ({
   default: (await import("./features/portfolio/HoldingDetailPage"))
     .HoldingDetailPage,
@@ -104,6 +107,7 @@ export const appRoutes: RouteObject[] = [
           },
           { path: "/sets", element: lazyPage(<SetsPage />) },
           { path: "/parts", element: lazyPage(<PartSearchPage />) },
+          { path: "/inventory", element: lazyPage(<InventoryPage />) },
           { path: "/sets/:setNumber", element: lazyPage(<SetDetailPage />) },
           { path: "/showcase", element: lazyPage(<ShowcasePage />) },
           { path: "/settings", element: lazyPage(<AccountSettingsPage />) },

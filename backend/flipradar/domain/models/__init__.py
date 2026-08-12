@@ -1,4 +1,9 @@
 from flipradar.domain.models.account_token import AccountToken
+from flipradar.domain.models.inventory import (
+    ChecklistAdjustment,
+    InventoryItem,
+    SetPartRequirement,
+)
 from flipradar.domain.models.lego_set import LegoSet
 from flipradar.domain.models.listing import MarketplaceListing
 from flipradar.domain.models.listing_evaluation import ListingEvaluation
@@ -48,6 +53,9 @@ __all__ = [
     "Color",
     "PartCategory",
     "Element",
+    "InventoryItem",
+    "SetPartRequirement",
+    "ChecklistAdjustment",
     "MarketplaceListing",
     "ListingEvaluation",
     "Notification",

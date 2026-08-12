@@ -18,6 +18,8 @@ ensure_backend_path()
 from flipradar.api.dependencies.auth import hash_password
 from flipradar.database import SessionLocal, create_database_tables
 from flipradar.domain.models import (
+    Element,
+    InventoryItem,
     LegoSet,
     Marketplace,
     MarketplaceListing,
@@ -26,6 +28,7 @@ from flipradar.domain.models import (
     PortfolioHoldingAnalytics,
     PortfolioItem,
     PriceSnapshot,
+    SetPartRequirement,
     User,
     WatchlistItem,
     WatchlistPriceHistory,
@@ -465,6 +468,41 @@ async def seed() -> None:
             is_email_verified=True,
             email_verified_at=DEMO_NOW - timedelta(days=30),
         )
+        # A small owned-parts inventory and BOM make the rebuild workflow usable
+        # immediately after a development seed.
+        elements = (
+            (
+                await session.execute(
+                    select(Element).order_by(Element.canonical_identifier)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for index, element in enumerate(elements):
+            await _one_or_create(
+                session,
+                InventoryItem,
+                [
+                    InventoryItem.user_id == user.id,
+                    InventoryItem.element_id == element.id,
+                ],
+                user_id=user.id,
+                element_id=element.id,
+                quantity=(2 if index == 0 else 1),
+            )
+        for index, element in enumerate(elements):
+            await _one_or_create(
+                session,
+                SetPartRequirement,
+                [
+                    SetPartRequirement.lego_set_id == sets["75192"].id,
+                    SetPartRequirement.element_id == element.id,
+                ],
+                lego_set_id=sets["75192"].id,
+                element_id=element.id,
+                quantity=(4 if index == 0 else 3),
+            )
         portfolio_specs = [
             ("75192", 1, "790.00", "sealed", 150),
             ("21335", 2, "285.00", "new", 310),
@@ -589,13 +627,15 @@ async def seed() -> None:
                 current_total_value=Decimal(
                     "905.00"
                     if number == "75192"
-                    else "405.00"
-                    if number == "21335"
-                    else "375.00"
-                    if number == "42083"
-                    else "507.60"
-                    if number == "75313"
-                    else "235.00"
+                    else (
+                        "405.00"
+                        if number == "21335"
+                        else (
+                            "375.00"
+                            if number == "42083"
+                            else "507.60" if number == "75313" else "235.00"
+                        )
+                    )
                 ),
                 performance_percent=Decimal("14.56"),
                 holding_days=90,

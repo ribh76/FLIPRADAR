@@ -24,6 +24,8 @@ import type {
   PortfolioSummary,
   PartCatalogSearchResponse,
   PartSearchFilters,
+  InventoryItem,
+  MissingPartsChecklist,
   RefreshSession,
   SavedSearch,
   LegoSet,
@@ -545,6 +547,38 @@ export const apiClient = {
           params: { limit: 12, ...filters, query },
           signal,
         }),
+      );
+    },
+  },
+  inventory: {
+    list() {
+      return requestData(api.get<InventoryItem[]>("/inventory"));
+    },
+    setQuantity(elementId: string, quantity: number) {
+      return requestData(
+        api.put<InventoryItem>(`/inventory/items/${elementId}`, { quantity }),
+      );
+    },
+    checklist(setNumber: string) {
+      return requestData(
+        api.get<MissingPartsChecklist>(
+          `/inventory/checklists/${encodeURIComponent(setNumber)}`,
+        ),
+      );
+    },
+    adjustChecklist(
+      setNumber: string,
+      requirementId: string,
+      payload: {
+        manual_adjustment: number;
+        substitute_element_id: string | null;
+      },
+    ) {
+      return requestData(
+        api.patch<MissingPartsChecklist>(
+          `/inventory/checklists/${encodeURIComponent(setNumber)}/requirements/${requirementId}`,
+          payload,
+        ),
       );
     },
   },

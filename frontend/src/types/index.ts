@@ -618,6 +618,38 @@ export type PartCatalogSearchResponse = {
   pagination: PaginationMeta;
 };
 
+export type InventoryElement = {
+  id: string;
+  element_number: string;
+  part_number: string;
+  part_name: string;
+  color: string;
+  image_url: string | null;
+};
+export type InventoryItem = {
+  id: string;
+  quantity: number;
+  element: InventoryElement;
+};
+export type MissingPartsChecklistLine = {
+  requirement_id: string;
+  element: InventoryElement;
+  required_quantity: number;
+  adjusted_quantity: number;
+  owned_quantity: number;
+  missing_quantity: number;
+  substitute_element: InventoryElement | null;
+  substitution_candidates: InventoryElement[];
+};
+export type MissingPartsChecklist = {
+  set_number: string;
+  set_name: string;
+  required_parts: number;
+  owned_parts: number;
+  missing_parts: number;
+  lines: MissingPartsChecklistLine[];
+};
+
 export type CurrentUser = {
   id: string;
   username: string;

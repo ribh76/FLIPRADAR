@@ -83,6 +83,13 @@ const navItems = [
     to: "/parts",
   },
   {
+    description:
+      "Track owned parts and generate missing-parts build checklists.",
+    icon: Boxes,
+    label: "Inventory",
+    to: "/inventory",
+  },
+  {
     description: "Reusable component and brand examples.",
     icon: Palette,
     label: "Showcase",
