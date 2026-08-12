@@ -9,12 +9,18 @@ from flipradar.api.schemas import (
     LegoSetCollectionResponse,
     LegoSetCreate,
     LegoSetResponse,
+    PartCatalogSearchResponse,
+    PartCatalogSyncResponse,
     PriceSnapshotResponse,
     SetDetailResponse,
 )
 from flipradar.api.schemas.common_schema import collection_response
 from flipradar.domain.models import LegoSet
-from flipradar.services import set_catalog_service, set_detail_service
+from flipradar.services import (
+    part_catalog_service,
+    set_catalog_service,
+    set_detail_service,
+)
 from flipradar.services.errors import ServiceError
 from flipradar.services.price_snapshot_service import (
     get_latest_price_snapshot_by_set_number,
@@ -73,6 +79,50 @@ async def search_lego_set_catalog(
         return await set_catalog_service.search_lego_sets(
             db, query, provider=provider, limit=limit
         )
+    except ServiceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@router.get(
+    "/parts/search",
+    response_model=PartCatalogSearchResponse,
+    summary="Search the LEGO part catalog",
+    description="Searches local part metadata and hydrates a provider miss into the catalog.",
+)
+async def search_part_catalog(
+    query: str = Query(..., min_length=1, max_length=160),
+    provider: str = Query(default="bricklink", min_length=1, max_length=40),
+    limit: int = Query(default=25, ge=1, le=100),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    try:
+        return await part_catalog_service.search_parts(
+            db, query, provider=provider, limit=limit
+        )
+    except ServiceError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@router.post(
+    "/parts/sync",
+    response_model=PartCatalogSyncResponse,
+    summary="Synchronize part catalog records",
+    description="Retrieves and idempotently persists matching part records from a provider.",
+)
+async def synchronize_part_catalog(
+    query: str = Query(..., min_length=1, max_length=160),
+    provider: str = Query(default="bricklink", min_length=1, max_length=40),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    try:
+        results = await part_catalog_service.synchronize_parts(
+            db, query, provider=provider
+        )
+        return {
+            "provider": provider.strip().lower(),
+            "synchronized": len(results),
+            "results": results,
+        }
     except ServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 

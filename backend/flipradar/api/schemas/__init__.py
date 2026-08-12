@@ -63,6 +63,12 @@ from flipradar.api.schemas.notification_schema import (
     NotificationSettingsUpdate,
     NotificationUnreadCountResponse,
 )
+from flipradar.api.schemas.part_catalog_schema import (
+    CatalogEntityResponse,
+    PartCatalogResponse,
+    PartCatalogSearchResponse,
+    PartCatalogSyncResponse,
+)
 from flipradar.api.schemas.portfolio_analysis_schema import (
     PORTFOLIO_ANALYSIS_PROMPT_VERSION,
     LlmPortfolioAction,
@@ -132,6 +138,7 @@ __all__ = [
     "ApiError",
     "ApiErrorResponse",
     "CatalogSearchResponse",
+    "CatalogEntityResponse",
     "CollectionResponse",
     "ConfidenceBand",
     "DealCollectionResponse",
@@ -172,6 +179,9 @@ __all__ = [
     "PasswordResetRequest",
     "PasswordResetResponse",
     "PortfolioDashboardResponse",
+    "PartCatalogResponse",
+    "PartCatalogSearchResponse",
+    "PartCatalogSyncResponse",
     "PortfolioAnalysisResponse",
     "PortfolioAnalysisHistoryEntry",
     "PortfolioAnalysisMetadataUpdate",

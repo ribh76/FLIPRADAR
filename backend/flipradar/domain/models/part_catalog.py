@@ -33,6 +33,9 @@ class CatalogRecordMetadata:
     provider_identifiers: Mapped[dict[str, str]] = mapped_column(
         JsonDocument, nullable=False, default=dict
     )
+    canonical_identifier: Mapped[str] = mapped_column(
+        String(160), nullable=False, unique=True, index=True
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     aliases: Mapped[list[str]] = mapped_column(
         JsonDocument, nullable=False, default=list
@@ -45,6 +48,10 @@ class CatalogRecordMetadata:
     )
     first_known_year: Mapped[int | None] = mapped_column(Integer)
     last_known_year: Mapped[int | None] = mapped_column(Integer)
+    source_name: Mapped[str | None] = mapped_column(String(120))
+    source_url: Mapped[str | None] = mapped_column(String(1000))
+    source_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -71,6 +78,7 @@ class PartCategory(CatalogRecordMetadata, Base):
             "last_known_year IS NULL OR first_known_year IS NULL OR last_known_year >= first_known_year",
             name="known_year_range_valid",
         ),
+        Index("ix_part_categories_name", "name"),
     )
 
     id: Mapped[PyUUID] = mapped_column(
@@ -95,6 +103,7 @@ class Color(CatalogRecordMetadata, Base):
             "last_known_year IS NULL OR first_known_year IS NULL OR last_known_year >= first_known_year",
             name="known_year_range_valid",
         ),
+        Index("ix_colors_name", "name"),
     )
 
     id: Mapped[PyUUID] = mapped_column(
@@ -120,6 +129,7 @@ class Part(CatalogRecordMetadata, Base):
             name="known_year_range_valid",
         ),
         Index("ix_parts_category_id_name", "category_id", "name"),
+        Index("ix_parts_name", "name"),
     )
 
     id: Mapped[PyUUID] = mapped_column(
@@ -152,6 +162,7 @@ class Element(CatalogRecordMetadata, Base):
             name="known_year_range_valid",
         ),
         Index("ix_elements_part_id_color_id", "part_id", "color_id"),
+        Index("ix_elements_name", "name"),
     )
 
     id: Mapped[PyUUID] = mapped_column(

@@ -62,6 +62,75 @@ MOCK_SET_DETAILS: dict[str, dict] = {
     },
 }
 
+MOCK_PART_CATALOG: list[dict] = [
+    {
+        "source": {
+            "name": "BrickLink catalog",
+            "url": "https://www.bricklink.com/catalogTree.asp",
+        },
+        "category": {"id": "26", "name": "Bricks", "aliases": ["Basic bricks"]},
+        "color": {
+            "id": "5",
+            "name": "Red",
+            "image_urls": ["https://img.bricklink.com/P/5/3001.png"],
+        },
+        "part": {
+            "part_num": "3001",
+            "name": "Brick 2 x 4",
+            "aliases": ["2x4 Brick", "Basic Brick 2 x 4"],
+            "mold_variants": [{"identifier": "3001a", "description": "Solid studs"}],
+            "image_urls": ["https://img.bricklink.com/P/5/3001.png"],
+            "first_known_year": 1958,
+        },
+        "element": {
+            "element_id": "300121",
+            "name": "Brick 2 x 4 Red",
+            "first_known_year": 1958,
+        },
+    },
+    {
+        "source": {
+            "name": "BrickLink catalog",
+            "url": "https://www.bricklink.com/catalogTree.asp",
+        },
+        "category": {"id": "26", "name": "Bricks", "aliases": ["Basic bricks"]},
+        "color": {
+            "id": "1",
+            "name": "White",
+            "image_urls": ["https://img.bricklink.com/P/1/3001.png"],
+        },
+        "part": {
+            "part_num": "3001",
+            "name": "Brick 2 x 4",
+            "aliases": ["2x4 Brick"],
+            "mold_variants": [
+                {"identifier": "3001b", "description": "Reinforced underside"}
+            ],
+            "image_urls": ["https://img.bricklink.com/P/1/3001.png"],
+            "first_known_year": 1958,
+        },
+        "element": {
+            "element_id": "300101",
+            "name": "Brick 2 x 4 White",
+            "first_known_year": 1958,
+        },
+    },
+]
+
+
+def fetch_part_catalog_records(query: str) -> list[dict]:
+    """Return deterministic part records used until a live catalog is configured."""
+    normalized = query.strip().lower()
+    return [
+        record
+        for record in MOCK_PART_CATALOG
+        if normalized in record["part"]["part_num"].lower()
+        or normalized in record["part"]["name"].lower()
+        or any(
+            normalized in alias.lower() for alias in record["part"].get("aliases", [])
+        )
+    ]
+
 
 def fetch_set_metadata(set_number: str) -> dict:
     """Return deterministic mock set metadata until BrickLink API is configured."""

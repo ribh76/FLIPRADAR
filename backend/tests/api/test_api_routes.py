@@ -413,6 +413,25 @@ def test_set_search_returns_not_found_and_incomplete_provider_errors(
     assert "incomplete" in incomplete.json()["error"]["message"].lower()
 
 
+def test_part_search_hydrates_catalog_and_uses_local_results(client: TestClient):
+    provider_response = client.get("/parts/search", params={"query": "3001"})
+
+    assert provider_response.status_code == 200
+    provider_body = provider_response.json()
+    assert provider_body["source"] == "provider"
+    assert provider_body["results"][0]["canonical_identifier"] == "part:3001"
+    assert {
+        color["name"] for color in provider_body["results"][0]["available_colors"]
+    } == {
+        "Red",
+        "White",
+    }
+
+    local_response = client.get("/parts/search", params={"query": "3001"})
+    assert local_response.status_code == 200
+    assert local_response.json()["source"] == "local"
+
+
 def test_create_listing_endpoint(client: TestClient):
     lego_set = create_lego_set(client)
     payload = create_listing_payload(lego_set["set_number"])

@@ -30,6 +30,7 @@ from flipradar.domain.models import (
     WatchlistItem,
     WatchlistPriceHistory,
 )
+from flipradar.services.part_catalog_service import synchronize_parts
 
 DEMO_NOW = datetime(2026, 8, 10, 16, 0, tzinfo=UTC)
 DEMO_EMAIL = "demo@flipradar.com"
@@ -308,6 +309,10 @@ async def seed() -> None:
                 source_name="FlipRadar demo catalog",
                 completeness_flag=True,
             )
+
+        # Keep representative part records synchronized through the same path
+        # used by catalog retrieval.
+        await synchronize_parts(session, "3001")
 
         # Three points per set make 90-day trends, while both conditions cover valuation paths.
         for index, row in enumerate(DEMO_SETS):

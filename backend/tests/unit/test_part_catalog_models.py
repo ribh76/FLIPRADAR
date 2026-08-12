@@ -2,9 +2,18 @@ from flipradar.domain.models import Color, Element, Part, PartCategory
 
 
 def test_part_catalog_models_expose_provider_metadata_and_available_colors():
-    category = PartCategory(provider_identifiers={"bricklink": "26"}, name="Bricks")
-    color = Color(provider_identifiers={"bricklink": "5"}, name="Red")
+    category = PartCategory(
+        canonical_identifier="category:26",
+        provider_identifiers={"bricklink": "26"},
+        name="Bricks",
+    )
+    color = Color(
+        canonical_identifier="color:5",
+        provider_identifiers={"bricklink": "5"},
+        name="Red",
+    )
     part = Part(
+        canonical_identifier="part:3001",
         provider_identifiers={"bricklink": "3001"},
         name="Brick 2 x 4",
         category=category,
@@ -15,6 +24,7 @@ def test_part_catalog_models_expose_provider_metadata_and_available_colors():
         last_known_year=2026,
     )
     element = Element(
+        canonical_identifier="element:300121",
         provider_identifiers={"lego": "300121"},
         name="Red Brick 2 x 4",
         part=part,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
@@ -18,7 +19,9 @@ from sqlalchemy.orm import selectinload
 from flipradar.api.schemas.validation import MarketplaceName, normalize_set_number
 from flipradar.domain.models import (
     AccountToken,
+    Color,
     DealScoreNotification,
+    Element,
     EndedListingNotification,
     LegoSet,
     ListingEvaluation,
@@ -27,6 +30,8 @@ from flipradar.domain.models import (
     Notification,
     NotificationAuditLog,
     NotificationPreference,
+    Part,
+    PartCategory,
     PortfolioAnalysis,
     PortfolioAnalyticsSnapshot,
     PortfolioHoldingAnalytics,
@@ -112,6 +117,117 @@ class LegoSetCatalogRepository:
             raise RepositoryError("LEGO set upsert did not return a record")
         await self.db.refresh(result)
         return result
+
+
+class PartCatalogRepository:
+    """Persistence boundary for idempotent part catalog synchronization."""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def _upsert_catalog_entity(self, model, payload: dict[str, Any]):
+        result = await self.db.execute(
+            select(model).where(
+                model.canonical_identifier == payload["canonical_identifier"]
+            )
+        )
+        entity = result.scalar_one_or_none()
+        if entity is None:
+            entity = model(**payload)
+            self.db.add(entity)
+        else:
+            entity.provider_identifiers = {
+                **(entity.provider_identifiers or {}),
+                **payload["provider_identifiers"],
+            }
+            entity.name = payload["name"]
+            entity.aliases = _merge_catalog_values(entity.aliases, payload["aliases"])
+            entity.mold_variants = _merge_catalog_values(
+                entity.mold_variants, payload["mold_variants"]
+            )
+            entity.image_urls = _merge_catalog_values(
+                entity.image_urls, payload["image_urls"]
+            )
+            for field in (
+                "first_known_year",
+                "last_known_year",
+                "source_name",
+                "source_url",
+                "source_updated_at",
+                "fetched_at",
+            ):
+                setattr(entity, field, payload.get(field))
+        await self.db.flush()
+        return entity
+
+    async def upsert_category(self, payload: dict[str, Any]) -> PartCategory:
+        return await self._upsert_catalog_entity(PartCategory, payload)
+
+    async def upsert_color(self, payload: dict[str, Any]) -> Color:
+        return await self._upsert_catalog_entity(Color, payload)
+
+    async def upsert_part(self, payload: dict[str, Any]) -> Part:
+        return await self._upsert_catalog_entity(Part, payload)
+
+    async def upsert_element(self, payload: dict[str, Any]) -> Element:
+        return await self._upsert_catalog_entity(Element, payload)
+
+    async def upsert_record(self, record) -> Part:
+        category = await self.upsert_category(record.category)
+        color = await self.upsert_color(record.color)
+        part = await self.upsert_part({**record.part, "category_id": category.id})
+        part.category_id = category.id
+        element = await self.upsert_element(
+            {**record.element, "part_id": part.id, "color_id": color.id}
+        )
+        if element.part_id != part.id:
+            element.part_id = part.id
+        if element.color_id != color.id:
+            element.color_id = color.id
+        await self.db.flush()
+        result = await self.db.execute(
+            select(Part)
+            .options(
+                selectinload(Part.category),
+                selectinload(Part.elements).selectinload(Element.color),
+            )
+            .execution_options(populate_existing=True)
+            .where(Part.id == part.id)
+        )
+        return result.scalar_one()
+
+    async def search(self, query: str, *, pagination: Pagination) -> list[Part]:
+        normalized = query.strip().lower()
+        statement = (
+            select(Part)
+            .options(
+                selectinload(Part.category),
+                selectinload(Part.elements).selectinload(Element.color),
+            )
+            .execution_options(populate_existing=True)
+            .where(
+                or_(
+                    Part.name.ilike(f"%{normalized}%"),
+                    Part.canonical_identifier.ilike(f"%{normalized}%"),
+                    Part.aliases.contains([normalized]),
+                )
+            )
+            .order_by(Part.name, Part.canonical_identifier)
+        )
+        result = await self.db.execute(_apply_pagination(statement, pagination))
+        return list(result.scalars().unique())
+
+
+def _merge_catalog_values(existing: list | None, incoming: list | None) -> list:
+    """Merge JSON list values without losing variants during a provider refresh."""
+    merged: list = []
+    seen: set[str] = set()
+    for value in [*(existing or []), *(incoming or [])]:
+        key = json.dumps(value, sort_keys=True, default=str)
+        if key not in seen:
+            seen.add(key)
+            merged.append(value)
+    return merged
 
 
 @dataclass(frozen=True)
