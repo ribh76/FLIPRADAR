@@ -20,18 +20,20 @@ def normalize_part_catalog_record(
     raw_record: Mapping[str, Any], *, provider: str, fetched_at: datetime | None = None
 ) -> NormalizedPartCatalogRecord:
     """Coerce a provider record while retaining all known identifiers and variants."""
+    if not isinstance(raw_record, Mapping):
+        raise ServiceIncompleteDataError("Provider record must be an object")
     provider = provider.strip().lower()
     if not provider:
         raise ServiceIncompleteDataError("Catalog provider is required")
     fetched_at = fetched_at or datetime.now(UTC)
-    source = (
-        raw_record.get("source")
-        if isinstance(raw_record.get("source"), Mapping)
-        else {}
-    )
+    raw_source = raw_record.get("source")
+    if raw_source is not None and not isinstance(raw_source, Mapping):
+        raise ServiceIncompleteDataError("Provider source metadata must be an object")
+    source = raw_source or {}
     common = {
-        "source_name": str(source.get("name") or f"{provider.title()} catalog"),
-        "source_url": source.get("url"),
+        "source_name": _optional_text(source.get("name"))
+        or f"{provider.title()} catalog",
+        "source_url": _optional_text(source.get("url")),
         "source_updated_at": _as_datetime(source.get("updated_at")),
         "fetched_at": fetched_at,
     }
@@ -51,14 +53,7 @@ def _normalize_entity(
 ) -> dict[str, Any]:
     if not isinstance(raw, Mapping):
         raise ServiceIncompleteDataError(f"Provider record is missing {kind} metadata")
-    identifier = _first_text(
-        raw.get("canonical_identifier"),
-        raw.get("id"),
-        raw.get(f"{kind}_id"),
-        raw.get("part_num"),
-        raw.get("part_number"),
-        raw.get("element_id"),
-    )
+    identifier = _identifier_for(raw, kind)
     name = _first_text(raw.get("name"), raw.get("display_name"))
     if not identifier or not name:
         raise ServiceIncompleteDataError(
@@ -85,10 +80,31 @@ def _normalize_entity(
         "image_urls": _text_list(
             raw.get("image_urls") or raw.get("images") or raw.get("image_url")
         ),
+        "quality_flags": _quality_flags(
+            raw,
+            aliases=raw.get("aliases"),
+            images=raw.get("image_urls") or raw.get("images") or raw.get("image_url"),
+            first_year=first_year,
+            last_year=last_year,
+            source_updated_at=common["source_updated_at"],
+        ),
         "first_known_year": first_year,
         "last_known_year": last_year,
         **common,
     }
+
+
+def _identifier_for(raw: Mapping[str, Any], kind: str) -> str | None:
+    identifiers = {
+        "category": ("canonical_identifier", "category_id", "id"),
+        "color": ("canonical_identifier", "color_id", "id"),
+        "part": ("canonical_identifier", "part_num", "part_number", "id"),
+        "element": ("canonical_identifier", "element_id", "id"),
+    }
+    identifier = _first_text(*(raw.get(key) for key in identifiers[kind]))
+    if identifier and identifier.lower().startswith(f"{kind}:"):
+        return identifier.split(":", 1)[1].strip() or None
+    return identifier
 
 
 def _known_year_range(raw: Mapping[str, Any]) -> tuple[int | None, int | None]:
@@ -120,16 +136,22 @@ def _known_year_range(raw: Mapping[str, Any]) -> tuple[int | None, int | None]:
 
 
 def _as_datetime(value: Any) -> datetime | None:
+    if value is None:
+        return None
     if isinstance(value, datetime):
-        return value
-    if isinstance(value, str):
+        parsed = value
+    elif isinstance(value, str):
         try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+            parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
         except ValueError as exc:
             raise ServiceIncompleteDataError(
                 "Provider source timestamp is invalid"
             ) from exc
-    return None
+    else:
+        raise ServiceIncompleteDataError("Provider source timestamp is invalid")
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def _first_text(*values: Any) -> str | None:
@@ -140,16 +162,63 @@ def _first_text(*values: Any) -> str | None:
 
 
 def _text_list(value: Any) -> list[str]:
-    values = value if isinstance(value, list) else [value] if value else []
-    return list(
-        dict.fromkeys(str(item).strip() for item in values if str(item).strip())
-    )
+    if value is None:
+        return []
+    if isinstance(value, (str, bytes)):
+        values = [value]
+    elif isinstance(value, list):
+        values = value
+    else:
+        raise ServiceIncompleteDataError(
+            "Provider text collection must be a string or list"
+        )
+    normalized: list[str] = []
+    for item in values:
+        if isinstance(item, (Mapping, list, tuple, set)):
+            raise ServiceIncompleteDataError(
+                "Provider text collection contains invalid data"
+            )
+        text = str(item).strip()
+        if text and text not in normalized:
+            normalized.append(text)
+    return normalized
 
 
 def _value_list(value: Any) -> list[Any]:
-    values = value if isinstance(value, list) else [value] if value else []
+    if value is None:
+        return []
+    values = value if isinstance(value, list) else [value]
     result: list[Any] = []
     for item in values:
         if item not in result:
             result.append(item)
     return result
+
+
+def _optional_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, (Mapping, list, tuple, set)):
+        raise ServiceIncompleteDataError("Provider source text is invalid")
+    return _first_text(value)
+
+
+def _quality_flags(
+    raw: Mapping[str, Any],
+    *,
+    aliases: Any,
+    images: Any,
+    first_year: int | None,
+    last_year: int | None,
+    source_updated_at: datetime | None,
+) -> list[str]:
+    flags = _text_list(raw.get("quality_flags"))
+    if not _text_list(aliases):
+        flags.append("missing_aliases")
+    if not _text_list(images):
+        flags.append("missing_images")
+    if first_year is None and last_year is None:
+        flags.append("missing_known_year_range")
+    if source_updated_at is None:
+        flags.append("source_timestamp_missing")
+    return list(dict.fromkeys(flags))

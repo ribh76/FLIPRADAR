@@ -13,6 +13,7 @@ class CatalogEntityResponse(BaseModel):
     aliases: list[str]
     mold_variants: list[dict | str]
     image_urls: list[str]
+    quality_flags: list[str]
     first_known_year: int | None
     last_known_year: int | None
     source_name: str | None

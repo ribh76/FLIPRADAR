@@ -148,6 +148,7 @@ class PartCatalogRepository:
             entity.image_urls = _merge_catalog_values(
                 entity.image_urls, payload["image_urls"]
             )
+            entity.quality_flags = payload["quality_flags"]
             for field in (
                 "first_known_year",
                 "last_known_year",

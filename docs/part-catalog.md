@@ -34,3 +34,10 @@ all catalog entities and part/category and element/part/color composite indexes
 support lookup and relation traversal. The current provider adapter is a
 deterministic BrickLink-compatible mock; replacing it with a live adapter does
 not change the normalized persistence contract.
+
+## Data quality
+
+`quality_flags` are recalculated for every provider refresh. They report missing
+aliases, images, known-year ranges, and provider source timestamps. The flags are
+observability signals rather than a verification guarantee; see
+[part catalog limitations](part-catalog-limitations.md) for the current scope.

@@ -420,6 +420,7 @@ def test_part_search_hydrates_catalog_and_uses_local_results(client: TestClient)
     provider_body = provider_response.json()
     assert provider_body["source"] == "provider"
     assert provider_body["results"][0]["canonical_identifier"] == "part:3001"
+    assert "source_timestamp_missing" in provider_body["results"][0]["quality_flags"]
     assert {
         color["name"] for color in provider_body["results"][0]["available_colors"]
     } == {

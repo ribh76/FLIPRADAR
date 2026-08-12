@@ -39,7 +39,23 @@ async def test_part_catalog_sync_merges_duplicate_parts_and_keeps_color_elements
     assert len(list((await db_session.execute(select(Element))).scalars())) == 2
     assert len(list((await db_session.execute(select(Color))).scalars())) == 2
     assert len(list((await db_session.execute(select(PartCategory))).scalars())) == 1
+    assert "source_timestamp_missing" in parts[0].quality_flags
 
     result = await service.search(db_session, "3001")
     assert result["source"] == "local"
     assert result["results"][0].name == "Brick 2 x 4"
+
+
+async def test_catalog_refresh_replaces_quality_flags_when_provider_data_improves(
+    db_session: AsyncSession,
+):
+    service = PartCatalogService()
+    await service.synchronize(db_session, "3001")
+    part = (await db_session.execute(select(Part))).scalar_one()
+    part.quality_flags = ["missing_images"]
+    await db_session.flush()
+
+    await service.synchronize(db_session, "3001")
+
+    refreshed = (await db_session.execute(select(Part))).scalar_one()
+    assert refreshed.quality_flags == ["source_timestamp_missing"]

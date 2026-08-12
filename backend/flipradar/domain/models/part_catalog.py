@@ -46,6 +46,9 @@ class CatalogRecordMetadata:
     image_urls: Mapped[list[str]] = mapped_column(
         JsonDocument, nullable=False, default=list
     )
+    quality_flags: Mapped[list[str]] = mapped_column(
+        JsonDocument, nullable=False, default=list
+    )
     first_known_year: Mapped[int | None] = mapped_column(Integer)
     last_known_year: Mapped[int | None] = mapped_column(Integer)
     source_name: Mapped[str | None] = mapped_column(String(120))
