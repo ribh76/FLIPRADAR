@@ -383,6 +383,11 @@ export const apiClient = {
     deleteAnalysis(analysisId: string) {
       return requestData(api.delete(`/portfolio/analyses/${analysisId}`));
     },
+    exportAnalysis(analysisId: string) {
+      return requestData(
+        api.get<Blob>(`/portfolio/analyses/${analysisId}/export`, { responseType: "blob" }),
+      );
+    },
     detail(itemId: string) {
       return requestData(
         api.get<PortfolioHoldingDetail>(`/portfolio/items/${itemId}/detail`),
@@ -464,6 +469,9 @@ export const apiClient = {
     },
   },
   watchlist: {
+    export() {
+      return requestData(api.get<Blob>("/watchlist/export", { responseType: "blob" }));
+    },
     list() {
       return requestData(api.get<WatchlistItem[]>("/watchlist"));
     },

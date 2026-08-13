@@ -20,7 +20,11 @@ from flipradar.domain.models.notification import (
     UserNotificationSettings,
 )
 from flipradar.domain.models.part_catalog import Color, Element, Part, PartCategory
-from flipradar.domain.models.portfolio import Portfolio, PortfolioItem
+from flipradar.domain.models.portfolio import (
+    Portfolio,
+    PortfolioImportAuditLog,
+    PortfolioItem,
+)
 from flipradar.domain.models.portfolio_analytics import (
     PortfolioAnalysis,
     PortfolioAnalyticsSnapshot,
@@ -71,6 +75,7 @@ __all__ = [
     "UserNotificationSettings",
     "PortfolioItem",
     "Portfolio",
+    "PortfolioImportAuditLog",
     "PortfolioAnalysis",
     "PortfolioAnalyticsSnapshot",
     "PortfolioHoldingAnalytics",

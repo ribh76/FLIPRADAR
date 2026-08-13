@@ -37,6 +37,7 @@ from flipradar.domain.models import (
     PortfolioAnalysis,
     PortfolioAnalyticsSnapshot,
     PortfolioHoldingAnalytics,
+    PortfolioImportAuditLog,
     PortfolioItem,
     PortfolioItemValuationSnapshot,
     PortfolioValuationDailyRollup,
@@ -60,6 +61,31 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_PAGE_LIMIT = 100
 MAX_PAGE_LIMIT = 500
+
+
+async def create_portfolio_import_audit_log(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    portfolio_id: UUID,
+    source_rows: int,
+    items_created: int,
+    merged_rows: int,
+    duplicate_handling: str,
+    file_sha256: str,
+) -> PortfolioImportAuditLog:
+    audit_log = PortfolioImportAuditLog(
+        user_id=user_id,
+        portfolio_id=portfolio_id,
+        source_rows=source_rows,
+        items_created=items_created,
+        merged_rows=merged_rows,
+        duplicate_handling=duplicate_handling,
+        file_sha256=file_sha256,
+    )
+    db.add(audit_log)
+    await db.flush()
+    return audit_log
 
 
 class RepositoryError(Exception):
@@ -462,7 +488,14 @@ async def create_user(db: AsyncSession, user_data: dict[str, Any]) -> User:
     db.add(user)
     try:
         await db.flush()
-        db.add(Portfolio(user_id=user.id, name="Default Portfolio", currency="USD", is_default=True))
+        db.add(
+            Portfolio(
+                user_id=user.id,
+                name="Default Portfolio",
+                currency="USD",
+                is_default=True,
+            )
+        )
         await db.flush()
         await db.refresh(user)
     except IntegrityError as exc:
@@ -1417,19 +1450,27 @@ async def get_default_portfolio_for_user(
     db: AsyncSession, user_id: UUID, *, create_if_missing: bool = True
 ) -> Portfolio | None:
     result = await db.execute(
-        select(Portfolio).where(Portfolio.user_id == user_id, Portfolio.is_default.is_(True))
+        select(Portfolio).where(
+            Portfolio.user_id == user_id, Portfolio.is_default.is_(True)
+        )
     )
     portfolio = result.scalar_one_or_none()
     if portfolio is not None or not create_if_missing:
         return portfolio
-    portfolio = Portfolio(user_id=user_id, name="Default Portfolio", currency="USD", is_default=True)
+    portfolio = Portfolio(
+        user_id=user_id, name="Default Portfolio", currency="USD", is_default=True
+    )
     db.add(portfolio)
     await db.flush()
     return portfolio
 
 
 async def get_portfolio_by_id_for_user(
-    db: AsyncSession, portfolio_id: UUID, user_id: UUID, *, include_archived: bool = True
+    db: AsyncSession,
+    portfolio_id: UUID,
+    user_id: UUID,
+    *,
+    include_archived: bool = True,
 ) -> Portfolio | None:
     filters = [Portfolio.id == portfolio_id, Portfolio.user_id == user_id]
     if not include_archived:
@@ -1453,11 +1494,15 @@ async def list_portfolios_for_user(
 
 
 async def count_portfolios_for_user(db: AsyncSession, user_id: UUID) -> int:
-    result = await db.execute(select(func.count()).select_from(Portfolio).where(Portfolio.user_id == user_id))
+    result = await db.execute(
+        select(func.count()).select_from(Portfolio).where(Portfolio.user_id == user_id)
+    )
     return int(result.scalar_one())
 
 
-async def create_portfolio(db: AsyncSession, user_id: UUID, portfolio_data: dict[str, Any]) -> Portfolio:
+async def create_portfolio(
+    db: AsyncSession, user_id: UUID, portfolio_data: dict[str, Any]
+) -> Portfolio:
     portfolio = Portfolio(user_id=user_id, **portfolio_data)
     db.add(portfolio)
     await db.flush()
@@ -1465,7 +1510,9 @@ async def create_portfolio(db: AsyncSession, user_id: UUID, portfolio_data: dict
     return portfolio
 
 
-async def update_portfolio(db: AsyncSession, portfolio: Portfolio, portfolio_data: dict[str, Any]) -> Portfolio:
+async def update_portfolio(
+    db: AsyncSession, portfolio: Portfolio, portfolio_data: dict[str, Any]
+) -> Portfolio:
     for field_name, value in portfolio_data.items():
         setattr(portfolio, field_name, value)
     await db.flush()
@@ -1474,11 +1521,17 @@ async def update_portfolio(db: AsyncSession, portfolio: Portfolio, portfolio_dat
 
 
 async def reassign_portfolio_items(
-    db: AsyncSession, user_id: UUID, source_portfolio_id: UUID, target_portfolio_id: UUID
+    db: AsyncSession,
+    user_id: UUID,
+    source_portfolio_id: UUID,
+    target_portfolio_id: UUID,
 ) -> int:
     result = await db.execute(
         update(PortfolioItem)
-        .where(PortfolioItem.user_id == user_id, PortfolioItem.portfolio_id == source_portfolio_id)
+        .where(
+            PortfolioItem.user_id == user_id,
+            PortfolioItem.portfolio_id == source_portfolio_id,
+        )
         .values(portfolio_id=target_portfolio_id)
     )
     return int(result.rowcount or 0)
@@ -1534,7 +1587,9 @@ async def get_portfolio_items_for_user(
         pagination = page()
     statement = (
         select(PortfolioItem)
-        .options(selectinload(PortfolioItem.lego_set), selectinload(PortfolioItem.portfolio))
+        .options(
+            selectinload(PortfolioItem.lego_set), selectinload(PortfolioItem.portfolio)
+        )
         .join(PortfolioItem.portfolio)
         .where(PortfolioItem.user_id == user_id, Portfolio.archived_at.is_(None))
     )
@@ -1583,7 +1638,9 @@ async def get_all_portfolio_items_for_user(
         filters.append(PortfolioItem.portfolio_id == portfolio_id)
     result = await db.execute(
         select(PortfolioItem)
-        .options(selectinload(PortfolioItem.lego_set), selectinload(PortfolioItem.portfolio))
+        .options(
+            selectinload(PortfolioItem.lego_set), selectinload(PortfolioItem.portfolio)
+        )
         .join(PortfolioItem.portfolio)
         .where(*filters, Portfolio.archived_at.is_(None))
         .order_by(PortfolioItem.created_at.desc())
@@ -1596,7 +1653,9 @@ async def get_portfolio_item_by_id(
 ) -> PortfolioItem | None:
     result = await db.execute(
         select(PortfolioItem)
-        .options(selectinload(PortfolioItem.lego_set), selectinload(PortfolioItem.portfolio))
+        .options(
+            selectinload(PortfolioItem.lego_set), selectinload(PortfolioItem.portfolio)
+        )
         .where(PortfolioItem.id == item_id, PortfolioItem.user_id == user_id)
     )
     return result.scalar_one_or_none()
@@ -1724,9 +1783,17 @@ async def create_portfolio_analysis(
 
 
 async def list_portfolio_analyses(
-    db: AsyncSession, user_id: UUID, *, limit: int, offset: int, portfolio_id: UUID | None = None
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    limit: int,
+    offset: int,
+    portfolio_id: UUID | None = None,
 ) -> list[PortfolioAnalysis]:
-    filters = [PortfolioAnalysis.user_id == user_id, PortfolioAnalysis.deleted_at.is_(None)]
+    filters = [
+        PortfolioAnalysis.user_id == user_id,
+        PortfolioAnalysis.deleted_at.is_(None),
+    ]
     if portfolio_id is None:
         filters.append(PortfolioAnalysis.portfolio_id.is_(None))
     else:

@@ -26,6 +26,20 @@ def _raise(exc: ServiceError) -> None:
     raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
+@router.get("/export", summary="Export the authenticated user's watchlist as CSV")
+async def export_watchlist(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> Response:
+    return Response(
+        await watchlist_service.export_watchlist_csv(db, current_user.id),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": 'attachment; filename="flipradar-watchlist.csv"'
+        },
+    )
+
+
 @router.get("", response_model=list[WatchlistItemResponse])
 async def list_watchlist_items(
     current_user: AuthenticatedUser,

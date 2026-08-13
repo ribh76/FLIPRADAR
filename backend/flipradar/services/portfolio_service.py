@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import io
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
@@ -23,6 +24,7 @@ from flipradar.database.repositories import (
     Pagination,
     count_portfolios_for_user,
     create_portfolio,
+    create_portfolio_import_audit_log,
     create_portfolio_item,
     create_portfolio_valuation_snapshot,
     delete_portfolio,
@@ -250,8 +252,11 @@ async def import_portfolio_csv(
             status_code=status.HTTP_409_CONFLICT,
             detail="A user may have at most 10 portfolios",
         )
+    # Everything which makes the import visible is enclosed by one savepoint.
+    # Any DB error (including audit persistence) rolls back the portfolio, every
+    # holding, and its valuation snapshot together.
     preview = await preview_portfolio_import(db, request)
-    portfolio_data, rows, _ = await _parse_portfolio_csv(db, request)
+    portfolio_data, rows, merged_rows = await _parse_portfolio_csv(db, request)
     async with db.begin_nested():
         portfolio = await create_portfolio(db, user_id, portfolio_data)
         for row in rows:
@@ -259,8 +264,18 @@ async def import_portfolio_csv(
             item["portfolio_id"] = portfolio.id
             await create_portfolio_item(db, user_id, item)
         await create_user_valuation_snapshot(db, user_id)
+        audit_log = await create_portfolio_import_audit_log(
+            db,
+            user_id=user_id,
+            portfolio_id=portfolio.id,
+            source_rows=len(rows) + len(merged_rows),
+            items_created=len(rows),
+            merged_rows=len(merged_rows),
+            duplicate_handling=request.duplicate_handling,
+            file_sha256=hashlib.sha256(request.csv_content.encode("utf-8")).hexdigest(),
+        )
     portfolio_dashboard_cache.invalidate_user(user_id)
-    return {**preview, "portfolio": portfolio}
+    return {**preview, "portfolio": portfolio, "audit_log_id": audit_log.id}
 
 
 async def list_user_portfolios(

@@ -21,6 +21,15 @@ function checkedAt(value: string | null) {
   return value ? new Date(value).toLocaleString() : "Not checked yet";
 }
 
+function downloadCsv(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function WatchlistPage() {
   const navigate = useNavigate();
   const query = useServerQuery<WatchlistItem[]>(
@@ -118,6 +127,15 @@ export function WatchlistPage() {
         >
           <RefreshCw className={refreshing ? "animate-spin" : ""} size={16} />
           {refreshing ? "Refreshing..." : "Refresh all"}
+        </button>
+        <button
+          className="secondary-button"
+          onClick={() => void apiClient.watchlist.export()
+            .then((blob) => downloadCsv(blob, "flipradar-watchlist.csv"))
+            .catch((error) => setMessage(getApiError(error)))}
+          type="button"
+        >
+          Export CSV
         </button>
       </div>
       {message ? (

@@ -43,7 +43,10 @@ class Portfolio(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -114,3 +117,38 @@ class PortfolioItem(Base):
     @property
     def set_number(self) -> str:
         return self.lego_set.set_number
+
+
+class PortfolioImportAuditLog(Base):
+    """Immutable record of a completed CSV import; file contents are never stored."""
+
+    __tablename__ = "portfolio_import_audit_logs"
+    __table_args__ = (
+        CheckConstraint("source_rows > 0", name="source_rows_positive"),
+        CheckConstraint("items_created >= 0", name="items_created_non_negative"),
+        CheckConstraint("merged_rows >= 0", name="merged_rows_non_negative"),
+        Index("ix_portfolio_import_audit_user_created", "user_id", "created_at"),
+    )
+
+    id: Mapped[PyUUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
+    user_id: Mapped[PyUUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    portfolio_id: Mapped[PyUUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("portfolios.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    source_rows: Mapped[int] = mapped_column(Integer, nullable=False)
+    items_created: Mapped[int] = mapped_column(Integer, nullable=False)
+    merged_rows: Mapped[int] = mapped_column(Integer, nullable=False)
+    duplicate_handling: Mapped[str] = mapped_column(String(20), nullable=False)
+    file_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user = relationship("User", back_populates="portfolio_import_audit_logs")
+    portfolio = relationship("Portfolio")

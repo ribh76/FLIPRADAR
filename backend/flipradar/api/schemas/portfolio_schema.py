@@ -130,6 +130,7 @@ class PortfolioImportPreviewResponse(BaseModel):
 
 class PortfolioImportResponse(PortfolioImportPreviewResponse):
     portfolio: PortfolioResponse
+    audit_log_id: UUID
 
 
 class PortfolioHoldingSummary(BaseModel):

@@ -256,6 +256,25 @@ async def compare_portfolio_analyses(
     )
 
 
+@router.get(
+    "/analyses/{analysis_id}/export", summary="Export a portfolio analysis as CSV"
+)
+async def export_portfolio_analysis(
+    analysis_id: UUID,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> Response:
+    return Response(
+        await portfolio_analysis_service.export_portfolio_analysis_csv(
+            db, current_user.id, analysis_id
+        ),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="portfolio-analysis-{analysis_id}.csv"'
+        },
+    )
+
+
 @router.patch(
     "/analyses/{analysis_id}",
     response_model=PortfolioAnalysisHistoryEntry,

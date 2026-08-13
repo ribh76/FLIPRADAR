@@ -1144,6 +1144,7 @@ def test_portfolio_csv_import_template_preview_validation_and_export(
     )
     assert imported.status_code == 201, imported.text
     assert imported.json()["portfolio"]["name"] == "Imported collection"
+    assert imported.json()["audit_log_id"]
     portfolio_id = imported.json()["portfolio"]["id"]
     holdings = collection_data(
         client.get("/portfolio", headers=headers, params={"portfolio_id": portfolio_id})
@@ -1183,6 +1184,68 @@ def test_portfolio_csv_import_template_preview_validation_and_export(
     )
     assert bad_headers.status_code == 422, bad_headers.text
     assert "headers must exactly" in bad_headers.json()["detail"]
+
+
+def test_portfolio_csv_import_rejects_malformed_and_large_files_without_writes(
+    client: TestClient,
+):
+    headers = auth_headers(client, "portfolio-csv-import-safety-user")
+    before = client.get("/portfolio/portfolios", headers=headers).json()
+    valid_header = (
+        "portfolio_name,portfolio_description,portfolio_currency,set_number,quantity,"
+        "purchase_price,currency,condition,purchase_date,notes"
+    )
+    malformed = client.post(
+        "/portfolio/import",
+        headers=headers,
+        json={
+            "csv_content": valid_header
+            + '\nBroken,description,USD,10307,1,10.00,USD,new,2024-01-01,"unterminated',
+            "duplicate_handling": "keep_separate",
+        },
+    )
+    assert malformed.status_code == 422, malformed.text
+    assert "could not read CSV" in malformed.json()["detail"]
+    assert client.get("/portfolio/portfolios", headers=headers).json() == before
+
+    oversized = client.post(
+        "/portfolio/import/preview",
+        headers=headers,
+        json={
+            "csv_content": "x" * 5_000_001,
+            "duplicate_handling": "keep_separate",
+        },
+    )
+    assert oversized.status_code == 422, oversized.text
+    assert client.get("/portfolio/portfolios", headers=headers).json() == before
+
+
+def test_watchlist_and_analysis_csv_exports_are_user_scoped(client: TestClient):
+    headers = auth_headers(client, "csv-export-user")
+    lego_set = create_lego_set(client, "76391")
+    watchlist = client.post(
+        "/watchlist", headers=headers, json={"set_number": lego_set["set_number"]}
+    )
+    assert watchlist.status_code == 201, watchlist.text
+    watchlist_export = client.get("/watchlist/export", headers=headers)
+    assert watchlist_export.status_code == 200, watchlist_export.text
+    assert lego_set["set_number"] in watchlist_export.text
+    assert "deal_score" in watchlist_export.text
+
+    holding = client.post(
+        "/portfolio/items",
+        headers=headers,
+        json={"set_number": lego_set["set_number"], "purchase_price": "99.99"},
+    )
+    assert holding.status_code == 201, holding.text
+    analysis = client.post("/portfolio/analyze", headers=headers)
+    assert analysis.status_code == 201, analysis.text
+    analysis_export = client.get(
+        f"/portfolio/analyses/{analysis.json()['id']}/export", headers=headers
+    )
+    assert analysis_export.status_code == 200, analysis_export.text
+    assert "analysis_id" in analysis_export.text
+    assert lego_set["set_number"] in analysis_export.text
 
 
 def test_saved_search_crud_limit_validation_and_ownership(client: TestClient):

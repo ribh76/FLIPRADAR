@@ -1,5 +1,8 @@
 """Orchestrate a refreshable portfolio analysis and its optional LLM narration."""
 
+import csv
+import io
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
@@ -27,6 +30,44 @@ from flipradar.services.portfolio_service import get_active_user_portfolio
 
 PORTFOLIO_ANALYSIS_METHOD_VERSION = "portfolio-analysis-method-v1"
 ANALYSIS_FRESHNESS_WINDOW = timedelta(hours=24)
+
+
+async def export_portfolio_analysis_csv(
+    db: AsyncSession, user_id: UUID, analysis_id: UUID
+) -> str:
+    analysis = await get_portfolio_analysis_for_user(db, user_id, analysis_id)
+    if analysis is None:
+        raise _analysis_not_found()
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer)
+    writer.writerow(
+        [
+            "analysis_id",
+            "generated_at",
+            "set_number",
+            "set_name",
+            "label",
+            "confidence",
+            "reasoning",
+            "flags",
+            "portfolio_annotation",
+        ]
+    )
+    for recommendation in analysis.item_recommendations:
+        writer.writerow(
+            [
+                analysis.id,
+                analysis.generated_at.isoformat(),
+                recommendation.get("set_number", ""),
+                recommendation.get("set_name", ""),
+                recommendation.get("label", ""),
+                recommendation.get("confidence", ""),
+                recommendation.get("reasoning", ""),
+                json.dumps(recommendation.get("flags", []), separators=(",", ":")),
+                analysis.annotation or "",
+            ]
+        )
+    return buffer.getvalue()
 
 
 async def analyze_portfolio(
@@ -85,11 +126,18 @@ async def analyze_portfolio(
 
 
 async def get_portfolio_analysis_history(
-    db: AsyncSession, user_id: UUID, *, limit: int, offset: int, portfolio_id: UUID | None = None
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    limit: int,
+    offset: int,
+    portfolio_id: UUID | None = None,
 ) -> list[dict]:
     if portfolio_id is not None:
         await get_active_user_portfolio(db, user_id, portfolio_id)
-    analyses = await list_portfolio_analyses(db, user_id, limit=limit, offset=offset, portfolio_id=portfolio_id)
+    analyses = await list_portfolio_analyses(
+        db, user_id, limit=limit, offset=offset, portfolio_id=portfolio_id
+    )
     newest_id = analyses[0].id if analyses else None
     return [
         _history_entry(analysis, is_current=analysis.id == newest_id)

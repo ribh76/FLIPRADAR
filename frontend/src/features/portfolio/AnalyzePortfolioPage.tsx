@@ -33,6 +33,15 @@ import { currency, numberValue, percent } from "../../utils/format";
 
 type SortKey = "priority" | "label" | "confidence" | "set";
 
+function downloadCsv(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 const labelCopy: Record<PortfolioItemRecommendation["label"], string> = {
   consider_selling: "Consider selling",
   hold: "Hold",
@@ -310,6 +319,16 @@ export function AnalyzePortfolioPage() {
             />
             {analyzeMutation.isPending ? "Analyzing..." : "Analyze portfolio"}
           </button>
+          {analysis ? (
+            <button
+              className="secondary-button"
+              onClick={() => void apiClient.portfolio.exportAnalysis(analysis.id)
+                .then((blob) => downloadCsv(blob, `portfolio-analysis-${analysis.id}.csv`))}
+              type="button"
+            >
+              Export analysis CSV
+            </button>
+          ) : null}
         </div>
       </Card>
 

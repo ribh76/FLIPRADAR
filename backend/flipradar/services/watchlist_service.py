@@ -1,3 +1,5 @@
+import csv
+import io
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
@@ -20,6 +22,53 @@ from flipradar.services.errors import ServiceConflictError, ServiceNotFoundError
 
 MANUAL_REFRESH_COOLDOWN = timedelta(hours=1)
 _last_manual_refresh_by_user: dict[UUID, datetime] = {}
+
+
+async def export_watchlist_csv(db: AsyncSession, user_id: UUID) -> str:
+    """Export the current user-scoped watchlist and its latest calculated signals."""
+    entries = await list_watchlist_items(db, user_id)
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer)
+    writer.writerow(
+        [
+            "entry_type",
+            "set_number",
+            "listing_id",
+            "target_price",
+            "notes",
+            "current_price",
+            "valuation",
+            "discount_percent",
+            "deal_score",
+            "recommendation",
+            "last_known_listing_status",
+            "saved_at",
+            "last_checked_at",
+        ]
+    )
+    for entry in entries:
+        writer.writerow(
+            [
+                entry["entry_type"],
+                entry["set_number"],
+                entry["listing_id"] or "",
+                entry["target_price"] if entry["target_price"] is not None else "",
+                entry["notes"] or "",
+                entry["current_price"] or "",
+                entry["valuation"] or "",
+                entry["discount_percent"] or "",
+                entry["deal_score"] or "",
+                entry["recommendation"],
+                entry["last_known_listing_status"] or "",
+                entry["saved_at"].isoformat(),
+                (
+                    entry["last_checked_at"].isoformat()
+                    if entry["last_checked_at"]
+                    else ""
+                ),
+            ]
+        )
+    return buffer.getvalue()
 
 
 async def get_watchlist_monitoring_preference(db: AsyncSession, user_id: UUID) -> dict:

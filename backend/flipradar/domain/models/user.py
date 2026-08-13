@@ -89,6 +89,12 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    portfolio_import_audit_logs = relationship(
+        "PortfolioImportAuditLog",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
     revoked_refresh_tokens = relationship(
         "RefreshTokenBlacklist",
         back_populates="user",
