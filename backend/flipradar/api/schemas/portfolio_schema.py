@@ -84,6 +84,7 @@ class PortfolioResponse(BaseModel):
     description: str | None
     currency: str
     is_default: bool
+    archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
 

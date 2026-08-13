@@ -45,6 +45,7 @@ class Portfolio(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     user = relationship("User", back_populates="portfolios")
     items = relationship("PortfolioItem", back_populates="portfolio")

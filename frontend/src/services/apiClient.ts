@@ -341,10 +341,14 @@ export const apiClient = {
     },
   },
   portfolio: {
-    analyze() {
-      return requestData(api.post<PortfolioAnalysis>("/portfolio/analyze"));
+    analyze(portfolioId?: string) {
+      return requestData(
+        api.post<PortfolioAnalysis>("/portfolio/analyze", undefined, {
+          params: portfolioId ? { portfolio_id: portfolioId } : {},
+        }),
+      );
     },
-    analyses(options: { limit?: number; offset?: number } = {}) {
+    analyses(options: { limit?: number; offset?: number; portfolio_id?: string } = {}) {
       return requestData(
         api.get<CollectionResponse<PortfolioAnalysisHistoryEntry>>(
           "/portfolio/analyses",
@@ -385,6 +389,13 @@ export const apiClient = {
       return requestData(
         api.get<PortfolioDashboard>("/portfolio/dashboard", {
           params: { ...filters, range },
+        }),
+      );
+    },
+    portfolios(includeArchived = false) {
+      return requestData(
+        api.get<import("../types").Portfolio[]>("/portfolio/portfolios", {
+          params: { include_archived: includeArchived },
         }),
       );
     },

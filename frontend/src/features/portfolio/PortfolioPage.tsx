@@ -26,6 +26,7 @@ import type {
   PortfolioFilters,
   PortfolioItem,
   PortfolioItemCreate,
+  Portfolio,
 } from "../../types";
 import { currency, percent, signedCurrency } from "../../utils/format";
 import { PortfolioInsights } from "./PortfolioInsights";
@@ -169,22 +170,37 @@ export function PortfolioPage() {
   const [historyRange, setHistoryRange] = useState<
     "1d" | "1w" | "1m" | "3m" | "180d" | "1y" | "all"
   >("1m");
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>("");
+  const portfoliosQuery = useServerQuery(
+    ["portfolios"],
+    useCallback(() => apiClient.portfolio.portfolios(), []),
+  );
   const debouncedFilters = useDebouncedValue(filters);
+  const selectedPortfolio = portfoliosQuery.data?.find(
+    (portfolio) => portfolio.id === selectedPortfolioId,
+  );
+  const scopedFilters = useMemo(
+    () => ({
+      ...debouncedFilters,
+      ...(selectedPortfolioId ? { portfolio_id: selectedPortfolioId } : {}),
+    }),
+    [debouncedFilters, selectedPortfolioId],
+  );
   const dashboardQuery = useServerQuery(
-    [...portfolioDashboardKey, JSON.stringify(debouncedFilters), historyRange],
+    [...portfolioDashboardKey, JSON.stringify(scopedFilters), historyRange],
     useCallback(
-      () => apiClient.portfolio.dashboard(debouncedFilters, historyRange),
-      [debouncedFilters, historyRange],
+      () => apiClient.portfolio.dashboard(scopedFilters, historyRange),
+      [scopedFilters, historyRange],
     ),
   );
   const refreshPortfolio = useCallback(async () => {
     invalidateServerState([
       ...portfolioDashboardKey,
-      JSON.stringify(debouncedFilters),
+      JSON.stringify(scopedFilters),
       historyRange,
     ]);
     await dashboardQuery.refetch();
-  }, [dashboardQuery, debouncedFilters, historyRange]);
+  }, [dashboardQuery, scopedFilters, historyRange]);
   const addMutation = useServerMutation(apiClient.portfolio.addItem, {
     onSuccess: refreshPortfolio,
   });
@@ -322,6 +338,31 @@ export function PortfolioPage() {
           estimate, before selling costs.
         </PageState>
       </div>
+      <Card className="mb-5">
+        <CardHeader className="mb-3">
+          <CardTitle>Portfolio view</CardTitle>
+        </CardHeader>
+        <SelectField
+          label="Viewing"
+          onChange={(event) => {
+            setSelectedPortfolioId(event.target.value);
+            setFilters((current) => ({ ...current, offset: 0 }));
+          }}
+          value={selectedPortfolioId}
+        >
+          <option value="">All portfolios (cross-portfolio totals)</option>
+          {(portfoliosQuery.data ?? []).map((portfolio: Portfolio) => (
+            <option key={portfolio.id} value={portfolio.id}>
+              {portfolio.name}
+            </option>
+          ))}
+        </SelectField>
+        <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+          {selectedPortfolio
+            ? `Viewing analytics and holdings for ${selectedPortfolio.name}.`
+            : "Viewing combined holdings and analytics across all portfolios."}
+        </p>
+      </Card>
       <div
         className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5"
         data-testid="portfolio-metrics"
@@ -375,7 +416,7 @@ export function PortfolioPage() {
           isBusy={addMutation.isPending}
           key={prefilledSetNumber}
           onSubmit={(payload) =>
-            void addMutation.mutate(payload).then(() => {
+            void addMutation.mutate({ ...payload, portfolio_id: selectedPortfolioId || undefined }).then(() => {
               if (prefilledSetNumber) setSearchParams({});
             })
           }

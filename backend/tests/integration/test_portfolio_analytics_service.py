@@ -16,6 +16,7 @@ from flipradar.domain.models import (
     PortfolioAnalysis,
     PortfolioAnalyticsSnapshot,
     PortfolioHoldingAnalytics,
+    Portfolio,
     PortfolioItem,
     PriceSnapshot,
     User,
@@ -77,11 +78,15 @@ async def _seed_analytics_data(db: AsyncSession) -> User:
     )
     db.add_all([user, ebay, bricklink, rising, falling, unvalued])
     await db.flush()
+    portfolio = Portfolio(user_id=user.id, name="Default Portfolio", is_default=True)
+    db.add(portfolio)
+    await db.flush()
     acquired_at = ANALYSIS_AT - timedelta(days=365)
     db.add_all(
         [
             PortfolioItem(
                 user_id=user.id,
+                portfolio_id=portfolio.id,
                 lego_set_id=rising.id,
                 quantity=1,
                 purchase_price=Decimal("100.00"),
@@ -91,6 +96,7 @@ async def _seed_analytics_data(db: AsyncSession) -> User:
             ),
             PortfolioItem(
                 user_id=user.id,
+                portfolio_id=portfolio.id,
                 lego_set_id=falling.id,
                 quantity=1,
                 purchase_price=Decimal("150.00"),
@@ -100,6 +106,7 @@ async def _seed_analytics_data(db: AsyncSession) -> User:
             ),
             PortfolioItem(
                 user_id=user.id,
+                portfolio_id=portfolio.id,
                 lego_set_id=unvalued.id,
                 quantity=1,
                 purchase_price=Decimal("50.00"),

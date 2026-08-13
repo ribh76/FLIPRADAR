@@ -221,11 +221,12 @@ async def refresh_portfolio_analytics(
     db: AsyncSession,
     user_id: UUID,
     *,
+    portfolio_id: UUID | None = None,
     analysis_at: datetime | None = None,
 ) -> dict:
     """Calculate and persist a complete point-in-time portfolio analysis."""
     now = _as_utc(analysis_at) if analysis_at is not None else _current_time()
-    items = await get_all_portfolio_items_for_user(db, user_id)
+    items = await get_all_portfolio_items_for_user(db, user_id, portfolio_id)
     value_map = await _current_unit_value_map(db, items)
     set_numbers = {item.set_number for item in items}
     historical_snapshots, listings_by_set = await _market_evidence(db, set_numbers, now)
@@ -259,6 +260,7 @@ async def refresh_portfolio_analytics(
         db,
         snapshot_data={
             "user_id": user_id,
+            "portfolio_id": portfolio_id,
             "generated_at": now,
             "currency": currencies.pop() if len(currencies) == 1 else "USD",
             "schema_version": ANALYTICS_SCHEMA_VERSION,
@@ -275,8 +277,10 @@ async def refresh_portfolio_analytics(
     return _snapshot_response(snapshot)
 
 
-async def get_latest_portfolio_analytics(db: AsyncSession, user_id: UUID) -> dict:
-    snapshot = await get_latest_portfolio_analytics_snapshot(db, user_id)
+async def get_latest_portfolio_analytics(
+    db: AsyncSession, user_id: UUID, portfolio_id: UUID | None = None
+) -> dict:
+    snapshot = await get_latest_portfolio_analytics_snapshot(db, user_id, portfolio_id)
     if snapshot is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

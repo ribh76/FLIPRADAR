@@ -1429,18 +1429,24 @@ async def get_default_portfolio_for_user(
 
 
 async def get_portfolio_by_id_for_user(
-    db: AsyncSession, portfolio_id: UUID, user_id: UUID
+    db: AsyncSession, portfolio_id: UUID, user_id: UUID, *, include_archived: bool = True
 ) -> Portfolio | None:
-    result = await db.execute(
-        select(Portfolio).where(Portfolio.id == portfolio_id, Portfolio.user_id == user_id)
-    )
+    filters = [Portfolio.id == portfolio_id, Portfolio.user_id == user_id]
+    if not include_archived:
+        filters.append(Portfolio.archived_at.is_(None))
+    result = await db.execute(select(Portfolio).where(*filters))
     return result.scalar_one_or_none()
 
 
-async def list_portfolios_for_user(db: AsyncSession, user_id: UUID) -> list[Portfolio]:
+async def list_portfolios_for_user(
+    db: AsyncSession, user_id: UUID, *, include_archived: bool = False
+) -> list[Portfolio]:
+    filters = [Portfolio.user_id == user_id]
+    if not include_archived:
+        filters.append(Portfolio.archived_at.is_(None))
     result = await db.execute(
         select(Portfolio)
-        .where(Portfolio.user_id == user_id)
+        .where(*filters)
         .order_by(Portfolio.is_default.desc(), Portfolio.created_at.asc())
     )
     return list(result.scalars())
@@ -1686,12 +1692,17 @@ async def create_portfolio_analytics_snapshot(
 
 
 async def get_latest_portfolio_analytics_snapshot(
-    db: AsyncSession, user_id: UUID
+    db: AsyncSession, user_id: UUID, portfolio_id: UUID | None = None
 ) -> PortfolioAnalyticsSnapshot | None:
+    filters = [PortfolioAnalyticsSnapshot.user_id == user_id]
+    if portfolio_id is None:
+        filters.append(PortfolioAnalyticsSnapshot.portfolio_id.is_(None))
+    else:
+        filters.append(PortfolioAnalyticsSnapshot.portfolio_id == portfolio_id)
     result = await db.execute(
         select(PortfolioAnalyticsSnapshot)
         .options(selectinload(PortfolioAnalyticsSnapshot.holding_metrics))
-        .where(PortfolioAnalyticsSnapshot.user_id == user_id)
+        .where(*filters)
         .order_by(
             PortfolioAnalyticsSnapshot.generated_at.desc(),
             PortfolioAnalyticsSnapshot.created_at.desc(),
@@ -1711,12 +1722,16 @@ async def create_portfolio_analysis(
 
 
 async def list_portfolio_analyses(
-    db: AsyncSession, user_id: UUID, *, limit: int, offset: int
+    db: AsyncSession, user_id: UUID, *, limit: int, offset: int, portfolio_id: UUID | None = None
 ) -> list[PortfolioAnalysis]:
+    filters = [PortfolioAnalysis.user_id == user_id, PortfolioAnalysis.deleted_at.is_(None)]
+    if portfolio_id is None:
+        filters.append(PortfolioAnalysis.portfolio_id.is_(None))
+    else:
+        filters.append(PortfolioAnalysis.portfolio_id == portfolio_id)
     result = await db.execute(
         select(PortfolioAnalysis)
-        .where(PortfolioAnalysis.user_id == user_id)
-        .where(PortfolioAnalysis.deleted_at.is_(None))
+        .where(*filters)
         .order_by(
             PortfolioAnalysis.generated_at.desc(), PortfolioAnalysis.created_at.desc()
         )

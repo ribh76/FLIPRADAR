@@ -27,6 +27,7 @@ import type {
   PortfolioAnalysisComparison,
   PortfolioAnalysisHistoryEntry,
   PortfolioItemRecommendation,
+  Portfolio,
 } from "../../types";
 import { currency, numberValue, percent } from "../../utils/format";
 
@@ -138,19 +139,27 @@ export function AnalyzePortfolioPage() {
   const [comparison, setComparison] =
     useState<PortfolioAnalysisComparison | null>(null);
   const [historyOffset, setHistoryOffset] = useState(0);
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState("");
+  const portfoliosQuery = useServerQuery(
+    ["portfolios"],
+    useCallback(() => apiClient.portfolio.portfolios(), []),
+  );
   const historyQuery = useServerQuery(
-    ["portfolio-analysis-history", historyOffset],
+    ["portfolio-analysis-history", selectedPortfolioId, historyOffset],
     useCallback(
-      () => apiClient.portfolio.analyses({ limit: 10, offset: historyOffset }),
-      [historyOffset],
+      () => apiClient.portfolio.analyses({ limit: 10, offset: historyOffset, ...(selectedPortfolioId ? { portfolio_id: selectedPortfolioId } : {}) }),
+      [historyOffset, selectedPortfolioId],
     ),
   );
-  const analyzeMutation = useServerMutation(apiClient.portfolio.analyze, {
+  const analyzeMutation = useServerMutation(
+    () => apiClient.portfolio.analyze(selectedPortfolioId || undefined),
+    {
     onSuccess: async (result) => {
       setAnalysis(result);
       await historyQuery.refetch();
     },
-  });
+    },
+  );
   const compareMutation = useServerMutation(
     ({ previousId, currentId }: { previousId: string; currentId: string }) =>
       apiClient.portfolio.compareAnalyses(previousId, currentId),
@@ -264,6 +273,22 @@ export function AnalyzePortfolioPage() {
 
   return (
     <section className="space-y-5">
+      <Card>
+        <SelectField
+          label="Analysis view"
+          onChange={(event) => {
+            setSelectedPortfolioId(event.target.value);
+            setHistoryOffset(0);
+            setAnalysis(null);
+          }}
+          value={selectedPortfolioId}
+        >
+          <option value="">All portfolios (cross-portfolio analysis)</option>
+          {(portfoliosQuery.data ?? []).map((portfolio: Portfolio) => (
+            <option key={portfolio.id} value={portfolio.id}>{portfolio.name}</option>
+          ))}
+        </SelectField>
+      </Card>
       <Card className="border-[var(--color-accent)] bg-[rgba(73,252,226,0.06)]">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>

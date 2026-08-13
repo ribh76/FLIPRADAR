@@ -39,8 +39,12 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/portfolios", response_model=list[PortfolioResponse], summary="List portfolios")
-async def list_portfolios(current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)):
-    return await portfolio_service.list_user_portfolios(db, current_user.id)
+async def list_portfolios(
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+    include_archived: bool = Query(default=False),
+):
+    return await portfolio_service.list_user_portfolios(db, current_user.id, include_archived=include_archived)
 
 
 @router.post("/portfolios", response_model=PortfolioResponse, status_code=status.HTTP_201_CREATED, summary="Create a secondary portfolio")
@@ -59,6 +63,22 @@ async def delete_portfolio(portfolio_id: UUID, payload: PortfolioReassignment, c
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post("/portfolios/{portfolio_id}/archive", response_model=PortfolioResponse, summary="Archive a portfolio")
+async def archive_portfolio(portfolio_id: UUID, current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)):
+    return await portfolio_service.archive_user_portfolio(db, current_user.id, portfolio_id, archive=True)
+
+
+@router.post("/portfolios/{portfolio_id}/unarchive", response_model=PortfolioResponse, summary="Unarchive a portfolio")
+async def unarchive_portfolio(portfolio_id: UUID, current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)):
+    return await portfolio_service.archive_user_portfolio(db, current_user.id, portfolio_id, archive=False)
+
+
+@router.get("/portfolios/{portfolio_id}/export", summary="Export portfolio holdings as CSV")
+async def export_portfolio(portfolio_id: UUID, current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)) -> Response:
+    csv_data = await portfolio_service.export_portfolio_csv(db, current_user.id, portfolio_id)
+    return Response(csv_data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="portfolio-{portfolio_id}.csv"'})
+
+
 @router.post(
     "/analyze",
     response_model=PortfolioAnalysisResponse,
@@ -72,9 +92,10 @@ async def delete_portfolio(portfolio_id: UUID, payload: PortfolioReassignment, c
 async def analyze_portfolio(
     current_user: AuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
+    portfolio_id: UUID | None = Query(default=None),
 ) -> dict:
     logger.info("request started route=analyze_portfolio user_id=%s", current_user.id)
-    response = await portfolio_analysis_service.analyze_portfolio(db, current_user.id)
+    response = await portfolio_analysis_service.analyze_portfolio(db, current_user.id, portfolio_id)
     logger.info(
         "request finished route=analyze_portfolio user_id=%s holdings=%s ai_status=%s",
         current_user.id,
@@ -95,9 +116,10 @@ async def list_portfolio_analyses(
     db: AsyncSession = Depends(get_db_session),
     limit: int = Query(default=25, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    portfolio_id: UUID | None = Query(default=None),
 ) -> dict:
     analyses = await portfolio_analysis_service.get_portfolio_analysis_history(
-        db, current_user.id, limit=limit + 1, offset=offset
+        db, current_user.id, limit=limit + 1, offset=offset, portfolio_id=portfolio_id
     )
     return collection_response(analyses, limit=limit, offset=offset)
 
@@ -169,9 +191,10 @@ async def delete_portfolio_analysis(
 async def get_portfolio_analytics(
     current_user: AuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
+    portfolio_id: UUID | None = Query(default=None),
 ) -> dict:
     return await portfolio_analytics_service.get_latest_portfolio_analytics(
-        db, current_user.id
+        db, current_user.id, portfolio_id
     )
 
 
@@ -188,9 +211,10 @@ async def get_portfolio_analytics(
 async def refresh_portfolio_analytics(
     current_user: AuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
+    portfolio_id: UUID | None = Query(default=None),
 ) -> dict:
     return await portfolio_analytics_service.refresh_portfolio_analytics(
-        db, current_user.id
+        db, current_user.id, portfolio_id=portfolio_id
     )
 
 
@@ -202,6 +226,7 @@ async def refresh_portfolio_analytics(
 async def get_portfolio_dashboard(
     current_user: AuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
+    portfolio_id: UUID | None = Query(default=None),
     limit: int = Query(default=25, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     condition: str | None = Query(default=None),
@@ -217,6 +242,7 @@ async def get_portfolio_dashboard(
     return await portfolio_service.get_portfolio_dashboard(
         db,
         current_user.id,
+        portfolio_id=portfolio_id,
         limit=limit,
         offset=offset,
         condition=condition,
@@ -368,8 +394,9 @@ async def delete_portfolio_item(
 async def get_portfolio_summary(
     current_user: AuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
+    portfolio_id: UUID | None = Query(default=None),
 ) -> dict:
-    return await portfolio_service.calculate_portfolio_summary(db, current_user.id)
+    return await portfolio_service.calculate_portfolio_summary(db, current_user.id, portfolio_id)
 
 
 @router.get(

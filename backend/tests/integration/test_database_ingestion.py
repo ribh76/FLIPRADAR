@@ -25,6 +25,7 @@ from flipradar.domain.models import (
     LegoSet,
     Marketplace,
     MarketplaceListing,
+    Portfolio,
     PortfolioItem,
     PriceSnapshot,
     Recommendation,
@@ -635,6 +636,9 @@ async def test_portfolio_summary_batches_snapshot_queries(db_session: AsyncSessi
     sets = [make_random_lego_set() for _ in range(3)]
     db_session.add_all([user, marketplace, *sets])
     await db_session.flush()
+    portfolio = Portfolio(user_id=user.id, name="Default Portfolio", is_default=True)
+    db_session.add(portfolio)
+    await db_session.flush()
 
     for index, lego_set in enumerate(sets):
         db_session.add(
@@ -651,6 +655,7 @@ async def test_portfolio_summary_batches_snapshot_queries(db_session: AsyncSessi
         db_session.add(
             PortfolioItem(
                 user_id=user.id,
+                portfolio_id=portfolio.id,
                 lego_set_id=lego_set.id,
                 quantity=1,
                 purchase_price=Decimal("75.00"),

@@ -162,6 +162,7 @@ export type LlmRecommendationNarrative = {
 export type PortfolioItem = {
   id: string;
   user_id?: string;
+  portfolio_id?: string;
   set_number: string;
   quantity: number;
   purchase_price: string | number;
@@ -183,6 +184,7 @@ export type PortfolioItem = {
 };
 
 export type PortfolioItemCreate = {
+  portfolio_id?: string;
   set_number: string;
   quantity: number;
   purchase_price: number;
@@ -193,6 +195,18 @@ export type PortfolioItemCreate = {
 };
 
 export type PortfolioItemUpdate = Partial<PortfolioItemCreate>;
+
+export type Portfolio = {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  currency: string;
+  is_default: boolean;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 export type Listing = {
   id: string;
@@ -313,6 +327,7 @@ export type ManualListingEntry = {
 };
 
 export type PortfolioFilters = {
+  portfolio_id?: string;
   condition?: Condition | "";
   theme?: string;
   year?: number | "";

@@ -1,3 +1,5 @@
+import csv
+import io
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -49,9 +51,34 @@ def _money(value: Decimal | int) -> Decimal:
 MAX_PORTFOLIOS_PER_USER = 10
 
 
-async def list_user_portfolios(db: AsyncSession, user_id: UUID) -> list:
+async def list_user_portfolios(
+    db: AsyncSession, user_id: UUID, *, include_archived: bool = False
+) -> list:
     await get_default_portfolio_for_user(db, user_id)
-    return await list_portfolios_for_user(db, user_id)
+    return await list_portfolios_for_user(db, user_id, include_archived=include_archived)
+
+
+async def archive_user_portfolio(db: AsyncSession, user_id: UUID, portfolio_id: UUID, *, archive: bool):
+    portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
+    if portfolio is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+    if portfolio.is_default and archive:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The default portfolio cannot be archived")
+    portfolio.archived_at = datetime.now(UTC) if archive else None
+    return await update_portfolio(db, portfolio, {})
+
+
+async def export_portfolio_csv(db: AsyncSession, user_id: UUID, portfolio_id: UUID) -> str:
+    portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
+    if portfolio is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+    items = await get_all_portfolio_items_for_user(db, user_id, portfolio_id)
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["portfolio", "set_number", "set_name", "quantity", "purchase_price", "currency", "condition", "purchase_date", "notes"])
+    for item in items:
+        writer.writerow([portfolio.name, item.set_number, item.lego_set.name, item.quantity, item.purchase_price, item.currency, item.condition, item.purchase_date.isoformat() if item.purchase_date else "", item.notes or ""])
+    return buffer.getvalue()
 
 
 async def create_user_portfolio(db: AsyncSession, user_id: UUID, payload: PortfolioCreate):
@@ -368,8 +395,10 @@ async def delete_user_portfolio_item(
     portfolio_dashboard_cache.invalidate_user(user_id)
 
 
-async def calculate_portfolio_summary(db: AsyncSession, user_id: UUID) -> dict:
-    items = await get_all_portfolio_items_for_user(db, user_id)
+async def calculate_portfolio_summary(
+    db: AsyncSession, user_id: UUID, portfolio_id: UUID | None = None
+) -> dict:
+    items = await get_all_portfolio_items_for_user(db, user_id, portfolio_id)
     value_map = await _current_unit_value_map(db, items)
     holdings = []
     total_quantity = 0
@@ -455,6 +484,7 @@ async def get_portfolio_dashboard(
     db: AsyncSession,
     user_id: UUID,
     *,
+    portfolio_id: UUID | None,
     limit: int,
     offset: int,
     condition: str | None,
@@ -467,6 +497,7 @@ async def get_portfolio_dashboard(
     """Serve all dashboard panels from one valuation pass and one bounded cache key."""
     key = (
         user_id,
+        portfolio_id,
         limit,
         offset,
         condition,
@@ -478,7 +509,7 @@ async def get_portfolio_dashboard(
     )
 
     async def load() -> dict:
-        items = await get_all_portfolio_items_for_user(db, user_id)
+        items = await get_all_portfolio_items_for_user(db, user_id, portfolio_id)
         value_map = await _current_unit_value_map(db, items)
         responses = [_portfolio_item_response(item, value_map) for item in items]
         filtered = _filter_and_order_portfolio_responses(
@@ -493,6 +524,8 @@ async def get_portfolio_dashboard(
         history: dict | None = None
         history_unavailable: str | None = None
         try:
+            if portfolio_id is not None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio-specific valuation history is not yet available.")
             history = await get_portfolio_valuation_history(db, user_id, history_range)
         except HTTPException as exc:
             if exc.status_code != status.HTTP_404_NOT_FOUND:

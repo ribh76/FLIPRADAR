@@ -28,11 +28,13 @@ PORTFOLIO_ANALYSIS_METHOD_VERSION = "portfolio-analysis-method-v1"
 ANALYSIS_FRESHNESS_WINDOW = timedelta(hours=24)
 
 
-async def analyze_portfolio(db: AsyncSession, user_id: UUID) -> dict:
+async def analyze_portfolio(
+    db: AsyncSession, user_id: UUID, portfolio_id: UUID | None = None
+) -> dict:
     """Refresh deterministic analytics, derive labels, then optionally narrate them."""
 
     analytics = await portfolio_analytics_service.refresh_portfolio_analytics(
-        db, user_id
+        db, user_id, portfolio_id=portfolio_id
     )
     recommendations = [
         _item_recommendation(holding) for holding in analytics["holdings"]
@@ -57,6 +59,7 @@ async def analyze_portfolio(db: AsyncSession, user_id: UUID) -> dict:
         db,
         analysis_data={
             "user_id": user_id,
+            "portfolio_id": portfolio_id,
             "analytics_snapshot_id": analytics["id"],
             "generated_at": analytics["generated_at"],
             "method_version": PORTFOLIO_ANALYSIS_METHOD_VERSION,
@@ -81,9 +84,9 @@ async def analyze_portfolio(db: AsyncSession, user_id: UUID) -> dict:
 
 
 async def get_portfolio_analysis_history(
-    db: AsyncSession, user_id: UUID, *, limit: int, offset: int
+    db: AsyncSession, user_id: UUID, *, limit: int, offset: int, portfolio_id: UUID | None = None
 ) -> list[dict]:
-    analyses = await list_portfolio_analyses(db, user_id, limit=limit, offset=offset)
+    analyses = await list_portfolio_analyses(db, user_id, limit=limit, offset=offset, portfolio_id=portfolio_id)
     newest_id = analyses[0].id if analyses else None
     return [
         _history_entry(analysis, is_current=analysis.id == newest_id)

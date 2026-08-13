@@ -1015,12 +1015,12 @@ Classification: SHIP LATER
 PHASE 52: MULTI-PORTFOLIO SUPPORT
 Classification: SHIP LATER
 
-1. Create a portfolio entity.
-2. Migrate existing holdings into a default portfolio.
-3. Add portfolio name, description, and currency.
-4. Add portfolio creation.
-5. Add editing.
-6. Add deletion and reassignment.
+1. Create a portfolio entity. - (Complete) 
+2. Migrate existing holdings into a default portfolio. - (Complete) 
+3. Add portfolio name, description, and currency. - (Complete) 
+4. Add portfolio creation. - (Complete) 
+5. Add editing. - (Complete) 
+6. Add deletion and reassignment. - (Complete) 
 7. Add portfolio switching.
 8. Add cross-portfolio totals.
 9. Add portfolio-specific dashboards.

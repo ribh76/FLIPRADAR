@@ -39,6 +39,7 @@ class PortfolioAnalyticsSnapshot(Base):
             "user_id",
             "generated_at",
         ),
+        Index("ix_portfolio_analytics_snapshots_portfolio_generated_at", "portfolio_id", "generated_at"),
     )
 
     id: Mapped[PyUUID] = mapped_column(
@@ -46,6 +47,9 @@ class PortfolioAnalyticsSnapshot(Base):
     )
     user_id: Mapped[PyUUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    portfolio_id: Mapped[PyUUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("portfolios.id", ondelete="SET NULL")
     )
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
@@ -62,6 +66,7 @@ class PortfolioAnalyticsSnapshot(Base):
     )
 
     user = relationship("User", back_populates="portfolio_analytics_snapshots")
+    portfolio = relationship("Portfolio")
     holding_metrics = relationship(
         "PortfolioHoldingAnalytics",
         back_populates="analytics_snapshot",
@@ -142,6 +147,9 @@ class PortfolioAnalysis(Base):
     user_id: Mapped[PyUUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
+    portfolio_id: Mapped[PyUUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("portfolios.id", ondelete="SET NULL")
+    )
     analytics_snapshot_id: Mapped[PyUUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("portfolio_analytics_snapshots.id", ondelete="CASCADE"),
@@ -172,4 +180,5 @@ class PortfolioAnalysis(Base):
     )
 
     user = relationship("User", back_populates="portfolio_analyses")
+    portfolio = relationship("Portfolio")
     analytics_snapshot = relationship("PortfolioAnalyticsSnapshot")
