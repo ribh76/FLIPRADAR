@@ -208,6 +208,36 @@ export type Portfolio = {
   updated_at: string;
 };
 
+export type PortfolioImportDuplicateHandling =
+  | "keep_separate"
+  | "merge"
+  | "reject";
+
+export type PortfolioImportPreviewRow = {
+  row_number: number;
+  set_number: string;
+  set_name: string;
+  quantity: number;
+  purchase_price: string | number;
+  currency: string;
+  action: "create" | "merge";
+};
+
+export type PortfolioImportPreview = {
+  portfolio_name: string;
+  portfolio_description: string | null;
+  portfolio_currency: string;
+  source_rows: number;
+  items_to_create: number;
+  merged_rows: number;
+  duplicate_handling: PortfolioImportDuplicateHandling;
+  changes: PortfolioImportPreviewRow[];
+};
+
+export type PortfolioImportResult = PortfolioImportPreview & {
+  portfolio: Portfolio;
+};
+
 export type Listing = {
   id: string;
   lego_set_id: string;

@@ -17,6 +17,9 @@ from flipradar.api.schemas import (
     PortfolioCreate,
     PortfolioDashboardResponse,
     PortfolioHoldingDetailResponse,
+    PortfolioImportPreviewResponse,
+    PortfolioImportRequest,
+    PortfolioImportResponse,
     PortfolioItemCollectionResponse,
     PortfolioItemCreate,
     PortfolioItemResponse,
@@ -38,45 +41,153 @@ router = APIRouter(prefix="/portfolio", tags=["Portfolio"])
 logger = logging.getLogger(__name__)
 
 
-@router.get("/portfolios", response_model=list[PortfolioResponse], summary="List portfolios")
+@router.get(
+    "/portfolios", response_model=list[PortfolioResponse], summary="List portfolios"
+)
 async def list_portfolios(
     current_user: AuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
     include_archived: bool = Query(default=False),
 ):
-    return await portfolio_service.list_user_portfolios(db, current_user.id, include_archived=include_archived)
+    return await portfolio_service.list_user_portfolios(
+        db, current_user.id, include_archived=include_archived
+    )
 
 
-@router.post("/portfolios", response_model=PortfolioResponse, status_code=status.HTTP_201_CREATED, summary="Create a secondary portfolio")
-async def create_portfolio(payload: PortfolioCreate, current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)):
+@router.post(
+    "/portfolios",
+    response_model=PortfolioResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a secondary portfolio",
+)
+async def create_portfolio(
+    payload: PortfolioCreate,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+):
     return await portfolio_service.create_user_portfolio(db, current_user.id, payload)
 
 
-@router.patch("/portfolios/{portfolio_id}", response_model=PortfolioResponse, summary="Update a portfolio")
-async def update_portfolio(portfolio_id: UUID, payload: PortfolioUpdate, current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)):
-    return await portfolio_service.update_user_portfolio(db, current_user.id, portfolio_id, payload)
+@router.patch(
+    "/portfolios/{portfolio_id}",
+    response_model=PortfolioResponse,
+    summary="Update a portfolio",
+)
+async def update_portfolio(
+    portfolio_id: UUID,
+    payload: PortfolioUpdate,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+):
+    return await portfolio_service.update_user_portfolio(
+        db, current_user.id, portfolio_id, payload
+    )
 
 
-@router.delete("/portfolios/{portfolio_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a portfolio and reassign its holdings")
-async def delete_portfolio(portfolio_id: UUID, payload: PortfolioReassignment, current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)) -> Response:
-    await portfolio_service.delete_user_portfolio(db, current_user.id, portfolio_id, payload.target_portfolio_id)
+@router.delete(
+    "/portfolios/{portfolio_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a portfolio and reassign its holdings",
+)
+async def delete_portfolio(
+    portfolio_id: UUID,
+    payload: PortfolioReassignment,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> Response:
+    await portfolio_service.delete_user_portfolio(
+        db, current_user.id, portfolio_id, payload.target_portfolio_id
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/portfolios/{portfolio_id}/archive", response_model=PortfolioResponse, summary="Archive a portfolio")
-async def archive_portfolio(portfolio_id: UUID, current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)):
-    return await portfolio_service.archive_user_portfolio(db, current_user.id, portfolio_id, archive=True)
+@router.post(
+    "/portfolios/{portfolio_id}/archive",
+    response_model=PortfolioResponse,
+    summary="Archive a portfolio",
+)
+async def archive_portfolio(
+    portfolio_id: UUID,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+):
+    return await portfolio_service.archive_user_portfolio(
+        db, current_user.id, portfolio_id, archive=True
+    )
 
 
-@router.post("/portfolios/{portfolio_id}/unarchive", response_model=PortfolioResponse, summary="Unarchive a portfolio")
-async def unarchive_portfolio(portfolio_id: UUID, current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)):
-    return await portfolio_service.archive_user_portfolio(db, current_user.id, portfolio_id, archive=False)
+@router.post(
+    "/portfolios/{portfolio_id}/unarchive",
+    response_model=PortfolioResponse,
+    summary="Unarchive a portfolio",
+)
+async def unarchive_portfolio(
+    portfolio_id: UUID,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+):
+    return await portfolio_service.archive_user_portfolio(
+        db, current_user.id, portfolio_id, archive=False
+    )
 
 
-@router.get("/portfolios/{portfolio_id}/export", summary="Export portfolio holdings as CSV")
-async def export_portfolio(portfolio_id: UUID, current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)) -> Response:
-    csv_data = await portfolio_service.export_portfolio_csv(db, current_user.id, portfolio_id)
-    return Response(csv_data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="portfolio-{portfolio_id}.csv"'})
+@router.get(
+    "/portfolios/{portfolio_id}/export", summary="Export portfolio holdings as CSV"
+)
+async def export_portfolio(
+    portfolio_id: UUID,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> Response:
+    csv_data = await portfolio_service.export_portfolio_csv(
+        db, current_user.id, portfolio_id
+    )
+    return Response(
+        csv_data,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="portfolio-{portfolio_id}.csv"'
+        },
+    )
+
+
+@router.get("/import-template", summary="Download the portfolio import CSV template")
+async def portfolio_import_template() -> Response:
+    return Response(
+        portfolio_service.portfolio_csv_template(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": 'attachment; filename="flipradar-portfolio-import-template.csv"'
+        },
+    )
+
+
+@router.post(
+    "/import/preview",
+    response_model=PortfolioImportPreviewResponse,
+    summary="Validate and preview a portfolio CSV import",
+)
+async def preview_import_portfolio(
+    payload: PortfolioImportRequest,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    del current_user  # The preview validates catalog data only; it does not mutate user data.
+    return await portfolio_service.preview_portfolio_import(db, payload)
+
+
+@router.post(
+    "/import",
+    response_model=PortfolioImportResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a portfolio from a validated CSV import",
+)
+async def import_portfolio(
+    payload: PortfolioImportRequest,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    return await portfolio_service.import_portfolio_csv(db, current_user.id, payload)
 
 
 @router.post(
@@ -95,7 +206,9 @@ async def analyze_portfolio(
     portfolio_id: UUID | None = Query(default=None),
 ) -> dict:
     logger.info("request started route=analyze_portfolio user_id=%s", current_user.id)
-    response = await portfolio_analysis_service.analyze_portfolio(db, current_user.id, portfolio_id)
+    response = await portfolio_analysis_service.analyze_portfolio(
+        db, current_user.id, portfolio_id
+    )
     logger.info(
         "request finished route=analyze_portfolio user_id=%s holdings=%s ai_status=%s",
         current_user.id,
@@ -396,7 +509,9 @@ async def get_portfolio_summary(
     db: AsyncSession = Depends(get_db_session),
     portfolio_id: UUID | None = Query(default=None),
 ) -> dict:
-    return await portfolio_service.calculate_portfolio_summary(db, current_user.id, portfolio_id)
+    return await portfolio_service.calculate_portfolio_summary(
+        db, current_user.id, portfolio_id
+    )
 
 
 @router.get(

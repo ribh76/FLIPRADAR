@@ -3,14 +3,17 @@ import io
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas import (
     PortfolioCreate,
+    PortfolioImportRequest,
     PortfolioItemCreate,
     PortfolioItemUpdate,
     PortfolioUpdate,
@@ -50,19 +53,234 @@ def _money(value: Decimal | int) -> Decimal:
 
 MAX_PORTFOLIOS_PER_USER = 10
 
+PORTFOLIO_CSV_COLUMNS = [
+    "portfolio_name",
+    "portfolio_description",
+    "portfolio_currency",
+    "set_number",
+    "quantity",
+    "purchase_price",
+    "currency",
+    "condition",
+    "purchase_date",
+    "notes",
+]
+PORTFOLIO_CSV_TEMPLATE_ROW = [
+    "My LEGO portfolio",
+    "Optional description",
+    "USD",
+    "10307",
+    "1",
+    "199.99",
+    "USD",
+    "new",
+    "2024-01-15",
+    "Optional purchase note",
+]
+
+
+def portfolio_csv_template() -> str:
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer)
+    writer.writerow(PORTFOLIO_CSV_COLUMNS)
+    writer.writerow(PORTFOLIO_CSV_TEMPLATE_ROW)
+    return buffer.getvalue()
+
+
+def _import_error(row_number: int | None, message: str) -> HTTPException:
+    location = f"Row {row_number}" if row_number is not None else "CSV"
+    return HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail=f"{location}: {message}",
+    )
+
+
+async def _parse_portfolio_csv(
+    db: AsyncSession, request: PortfolioImportRequest
+) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Parse in file order and stop at the first invalid or unknown row."""
+    try:
+        reader = csv.DictReader(
+            io.StringIO(request.csv_content, newline=""), strict=True
+        )
+        if reader.fieldnames != PORTFOLIO_CSV_COLUMNS:
+            received = ", ".join(reader.fieldnames or []) or "no header"
+            raise _import_error(
+                None,
+                "headers must exactly be: "
+                + ", ".join(PORTFOLIO_CSV_COLUMNS)
+                + f". Received: {received}",
+            )
+        rows = list(reader)
+    except HTTPException:
+        raise
+    except csv.Error as exc:
+        raise _import_error(None, f"could not read CSV ({exc})") from exc
+
+    if not rows:
+        raise _import_error(None, "must include at least one purchase row")
+    if len(rows) > 1_000:
+        raise _import_error(None, "may contain at most 1,000 purchase rows")
+
+    portfolio_data: dict[str, Any] | None = None
+    parsed_rows: list[dict[str, Any]] = []
+    known_sets: dict[str, Any] = {}
+    duplicate_indexes: dict[tuple[Any, ...], int] = {}
+    merged_rows: list[dict[str, Any]] = []
+    for row_number, row in enumerate(rows, start=2):
+        if None in row or any(value is None for value in row.values()):
+            raise _import_error(row_number, "has more fields than the header")
+        if not any(str(value).strip() for value in row.values()):
+            raise _import_error(row_number, "is blank; remove blank rows from the file")
+        try:
+            current_portfolio = PortfolioCreate.model_validate(
+                {
+                    "name": row["portfolio_name"].strip(),
+                    "description": row["portfolio_description"].strip() or None,
+                    "currency": row["portfolio_currency"].strip(),
+                }
+            ).model_dump()
+            purchase_date = row["purchase_date"].strip()
+            if purchase_date and len(purchase_date) == 10:
+                # The template uses the human-friendly ISO date form; exports
+                # retain their full timestamp and are accepted as well.
+                purchase_date = f"{purchase_date}T00:00:00+00:00"
+            item = PortfolioItemCreate.model_validate(
+                {
+                    "set_number": row["set_number"].strip(),
+                    "quantity": row["quantity"].strip(),
+                    "purchase_price": row["purchase_price"].strip(),
+                    "currency": row["currency"].strip(),
+                    "condition": row["condition"].strip(),
+                    "purchase_date": purchase_date or None,
+                    "notes": row["notes"].strip() or None,
+                }
+            ).model_dump(exclude_none=True)
+        except (ValidationError, ValueError) as exc:
+            details = "; ".join(
+                error["msg"] for error in getattr(exc, "errors", lambda: [])()
+            ) or str(exc)
+            raise _import_error(
+                row_number, f"has invalid field format ({details})"
+            ) from exc
+        if portfolio_data is None:
+            portfolio_data = current_portfolio
+        elif current_portfolio != portfolio_data:
+            raise _import_error(
+                row_number,
+                "portfolio_name, portfolio_description, and portfolio_currency must match row 2",
+            )
+
+        set_number = item["set_number"]
+        lego_set = known_sets.get(set_number)
+        if lego_set is None:
+            lego_set = await get_set_by_number(db, set_number)
+            if lego_set is None:
+                raise _import_error(row_number, f"unknown set_number '{set_number}'")
+            known_sets[set_number] = lego_set
+
+        duplicate_key = (
+            item["set_number"],
+            item["purchase_price"],
+            item["currency"],
+            (
+                item["condition"].value
+                if hasattr(item["condition"], "value")
+                else item["condition"]
+            ),
+            item.get("purchase_date"),
+            item.get("notes"),
+        )
+        if duplicate_key in duplicate_indexes:
+            if request.duplicate_handling == "reject":
+                raise _import_error(row_number, "duplicates an earlier purchase row")
+            if request.duplicate_handling == "merge":
+                original = parsed_rows[duplicate_indexes[duplicate_key]]
+                original["item"]["quantity"] += item["quantity"]
+                merged_rows.append(
+                    {
+                        "row_number": row_number,
+                        "item": original["item"],
+                        "lego_set": lego_set,
+                    }
+                )
+                continue
+        duplicate_indexes.setdefault(duplicate_key, len(parsed_rows))
+        parsed_rows.append(
+            {"row_number": row_number, "item": item, "lego_set": lego_set}
+        )
+
+    assert portfolio_data is not None
+    return portfolio_data, parsed_rows, merged_rows
+
+
+async def preview_portfolio_import(
+    db: AsyncSession, request: PortfolioImportRequest
+) -> dict[str, Any]:
+    portfolio_data, rows, merged_rows = await _parse_portfolio_csv(db, request)
+    changes = [
+        {
+            "row_number": row["row_number"],
+            "set_number": row["item"]["set_number"],
+            "set_name": row["lego_set"].name,
+            "quantity": row["item"]["quantity"],
+            "purchase_price": row["item"]["purchase_price"],
+            "currency": row["item"]["currency"],
+            "action": "create",
+        }
+        for row in rows
+    ]
+    return {
+        "portfolio_name": portfolio_data["name"],
+        "portfolio_description": portfolio_data["description"],
+        "portfolio_currency": portfolio_data["currency"],
+        "source_rows": len(rows) + len(merged_rows),
+        "items_to_create": len(rows),
+        "merged_rows": len(merged_rows),
+        "duplicate_handling": request.duplicate_handling,
+        "changes": changes,
+    }
+
+
+async def import_portfolio_csv(
+    db: AsyncSession, user_id: UUID, request: PortfolioImportRequest
+) -> dict[str, Any]:
+    if await count_portfolios_for_user(db, user_id) >= MAX_PORTFOLIOS_PER_USER:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A user may have at most 10 portfolios",
+        )
+    preview = await preview_portfolio_import(db, request)
+    portfolio_data, rows, _ = await _parse_portfolio_csv(db, request)
+    async with db.begin_nested():
+        portfolio = await create_portfolio(db, user_id, portfolio_data)
+        for row in rows:
+            item = dict(row["item"])
+            item["portfolio_id"] = portfolio.id
+            await create_portfolio_item(db, user_id, item)
+        await create_user_valuation_snapshot(db, user_id)
+    portfolio_dashboard_cache.invalidate_user(user_id)
+    return {**preview, "portfolio": portfolio}
+
 
 async def list_user_portfolios(
     db: AsyncSession, user_id: UUID, *, include_archived: bool = False
 ) -> list:
     await get_default_portfolio_for_user(db, user_id)
-    return await list_portfolios_for_user(db, user_id, include_archived=include_archived)
+    return await list_portfolios_for_user(
+        db, user_id, include_archived=include_archived
+    )
 
 
-async def get_active_user_portfolio(db: AsyncSession, user_id: UUID, portfolio_id: UUID):
+async def get_active_user_portfolio(
+    db: AsyncSession, user_id: UUID, portfolio_id: UUID
+):
     """Resolve a portfolio only when it belongs to the user and is viewable."""
     portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
     if portfolio is None or portfolio.archived_at is not None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
     return portfolio
 
 
@@ -71,50 +289,93 @@ async def archive_user_portfolio(
 ):
     portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
     if portfolio is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
     if portfolio.is_default and archive:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The default portfolio cannot be archived")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The default portfolio cannot be archived",
+        )
     portfolio.archived_at = datetime.now(UTC) if archive else None
     return await update_portfolio(db, portfolio, {})
 
 
-async def export_portfolio_csv(db: AsyncSession, user_id: UUID, portfolio_id: UUID) -> str:
+async def export_portfolio_csv(
+    db: AsyncSession, user_id: UUID, portfolio_id: UUID
+) -> str:
     portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
     if portfolio is None or portfolio.archived_at is not None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
     items = await get_all_portfolio_items_for_user(db, user_id, portfolio_id)
     buffer = io.StringIO()
     writer = csv.writer(buffer)
-    writer.writerow(["portfolio", "set_number", "set_name", "quantity", "purchase_price", "currency", "condition", "purchase_date", "notes"])
+    writer.writerow(PORTFOLIO_CSV_COLUMNS)
     for item in items:
-        writer.writerow([portfolio.name, item.set_number, item.lego_set.name, item.quantity, item.purchase_price, item.currency, item.condition, item.purchase_date.isoformat() if item.purchase_date else "", item.notes or ""])
+        writer.writerow(
+            [
+                portfolio.name,
+                portfolio.description or "",
+                portfolio.currency,
+                item.set_number,
+                item.quantity,
+                item.purchase_price,
+                item.currency,
+                item.condition,
+                item.purchase_date.isoformat() if item.purchase_date else "",
+                item.notes or "",
+            ]
+        )
     return buffer.getvalue()
 
 
-async def create_user_portfolio(db: AsyncSession, user_id: UUID, payload: PortfolioCreate):
+async def create_user_portfolio(
+    db: AsyncSession, user_id: UUID, payload: PortfolioCreate
+):
     if await count_portfolios_for_user(db, user_id) >= MAX_PORTFOLIOS_PER_USER:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A user may have at most 10 portfolios")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A user may have at most 10 portfolios",
+        )
     return await create_portfolio(db, user_id, payload.model_dump())
 
 
-async def update_user_portfolio(db: AsyncSession, user_id: UUID, portfolio_id: UUID, payload: PortfolioUpdate):
+async def update_user_portfolio(
+    db: AsyncSession, user_id: UUID, portfolio_id: UUID, payload: PortfolioUpdate
+):
     portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
     if portfolio is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
     return await update_portfolio(db, portfolio, payload.model_dump(exclude_unset=True))
 
 
-async def delete_user_portfolio(db: AsyncSession, user_id: UUID, portfolio_id: UUID, target_portfolio_id: UUID) -> int:
+async def delete_user_portfolio(
+    db: AsyncSession, user_id: UUID, portfolio_id: UUID, target_portfolio_id: UUID
+) -> int:
     portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
     target = await get_portfolio_by_id_for_user(db, target_portfolio_id, user_id)
     if portfolio is None or target is None or target.archived_at is not None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+        )
     if portfolio.id == target.id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Choose a different portfolio for reassignment")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Choose a different portfolio for reassignment",
+        )
     if portfolio.is_default:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The default portfolio cannot be deleted")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The default portfolio cannot be deleted",
+        )
     async with db.begin_nested():
-        reassigned = await reassign_portfolio_items(db, user_id, portfolio.id, target.id)
+        reassigned = await reassign_portfolio_items(
+            db, user_id, portfolio.id, target.id
+        )
         await delete_portfolio(db, portfolio)
         await create_user_valuation_snapshot(db, user_id)
     portfolio_dashboard_cache.invalidate_user(user_id)
@@ -233,7 +494,9 @@ async def update_user_portfolio_item(
     update_data = payload.model_dump(exclude_unset=True)
     existing = await get_portfolio_item_by_id(db, item_id, user_id)
     if existing is None or existing.portfolio.archived_at is not None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found"
+        )
     if "set_number" in update_data:
         lego_set = await get_set_by_number(db, update_data["set_number"])
         if lego_set is None:
@@ -266,7 +529,9 @@ async def get_portfolio_holding_detail(
             status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found"
         )
     if item.portfolio.archived_at is not None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found"
+        )
 
     all_items = await get_all_portfolio_items_for_user(db, user_id)
     value_map = await _current_unit_value_map(db, all_items)
@@ -399,7 +664,9 @@ async def delete_user_portfolio_item(
 ) -> None:
     item = await get_portfolio_item_by_id(db, item_id, user_id)
     if item is None or item.portfolio.archived_at is not None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found"
+        )
     async with db.begin_nested():
         deleted = await delete_portfolio_item(db, item_id, user_id)
         if not deleted:
@@ -545,7 +812,10 @@ async def get_portfolio_dashboard(
         history_unavailable: str | None = None
         try:
             if portfolio_id is not None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio-specific valuation history is not yet available.")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Portfolio-specific valuation history is not yet available.",
+                )
             history = await get_portfolio_valuation_history(db, user_id, history_range)
         except HTTPException as exc:
             if exc.status_code != status.HTTP_404_NOT_FOUND:

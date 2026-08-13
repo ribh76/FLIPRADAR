@@ -20,6 +20,9 @@ import type {
   PortfolioAnalysisComparison,
   PortfolioAnalysisHistoryEntry,
   PortfolioHoldingDetail,
+  PortfolioImportDuplicateHandling,
+  PortfolioImportPreview,
+  PortfolioImportResult,
   PortfolioHistory,
   PortfolioSummary,
   PartCatalogSearchResponse,
@@ -424,6 +427,40 @@ export const apiClient = {
     },
     deleteItem(itemId: string) {
       return requestData(api.delete<void>(`/portfolio/items/${itemId}`));
+    },
+    importTemplate() {
+      return requestData(
+        api.get<Blob>("/portfolio/import-template", { responseType: "blob" }),
+      );
+    },
+    export(portfolioId: string) {
+      return requestData(
+        api.get<Blob>(`/portfolio/portfolios/${portfolioId}/export`, {
+          responseType: "blob",
+        }),
+      );
+    },
+    previewImport(
+      csvContent: string,
+      duplicateHandling: PortfolioImportDuplicateHandling,
+    ) {
+      return requestData(
+        api.post<PortfolioImportPreview>("/portfolio/import/preview", {
+          csv_content: csvContent,
+          duplicate_handling: duplicateHandling,
+        }),
+      );
+    },
+    importCsv(
+      csvContent: string,
+      duplicateHandling: PortfolioImportDuplicateHandling,
+    ) {
+      return requestData(
+        api.post<PortfolioImportResult>("/portfolio/import", {
+          csv_content: csvContent,
+          duplicate_handling: duplicateHandling,
+        }),
+      );
     },
   },
   watchlist: {

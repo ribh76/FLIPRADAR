@@ -27,12 +27,23 @@ import type {
   PortfolioItem,
   PortfolioItemCreate,
   Portfolio,
+  PortfolioImportDuplicateHandling,
+  PortfolioImportPreview,
 } from "../../types";
 import { currency, percent, signedCurrency } from "../../utils/format";
 import { PortfolioInsights } from "./PortfolioInsights";
 
 const portfolioDashboardKey = ["portfolio-dashboard"];
 const pageSize = 25;
+
+function downloadCsv(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 type ItemFormProps = {
   defaultSetNumber?: string;
@@ -171,6 +182,14 @@ export function PortfolioPage() {
     "1d" | "1w" | "1m" | "3m" | "180d" | "1y" | "all"
   >("1m");
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>("");
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [csvContent, setCsvContent] = useState("");
+  const [selectedFileName, setSelectedFileName] = useState("");
+  const [duplicateHandling, setDuplicateHandling] =
+    useState<PortfolioImportDuplicateHandling>("keep_separate");
+  const [importPreview, setImportPreview] =
+    useState<PortfolioImportPreview | null>(null);
+  const [transferError, setTransferError] = useState("");
   const portfoliosQuery = useServerQuery(
     ["portfolios"],
     useCallback(() => apiClient.portfolio.portfolios(), []),
@@ -212,6 +231,25 @@ export function PortfolioPage() {
   const deleteMutation = useServerMutation(apiClient.portfolio.deleteItem, {
     onSuccess: refreshPortfolio,
   });
+  const previewImportMutation = useServerMutation(
+    ({ content, handling }: { content: string; handling: PortfolioImportDuplicateHandling }) =>
+      apiClient.portfolio.previewImport(content, handling),
+  );
+  const importMutation = useServerMutation(
+    ({ content, handling }: { content: string; handling: PortfolioImportDuplicateHandling }) =>
+      apiClient.portfolio.importCsv(content, handling),
+    {
+      onSuccess: async (result) => {
+        invalidateServerState(["portfolios"]);
+        await portfoliosQuery.refetch();
+        setSelectedPortfolioId(result.portfolio.id);
+        setIsImportOpen(false);
+        setImportPreview(null);
+        setCsvContent("");
+        setSelectedFileName("");
+      },
+    },
+  );
   const items = dashboardQuery.data?.portfolio.data ?? [];
   const pagination = dashboardQuery.data?.portfolio.pagination;
   const error =
@@ -219,6 +257,7 @@ export function PortfolioPage() {
     addMutation.error ||
     updateMutation.error ||
     deleteMutation.error;
+  const importError = previewImportMutation.error || importMutation.error || transferError;
   const filterValues = useMemo(
     () => ({
       ...filters,
@@ -362,6 +401,44 @@ export function PortfolioPage() {
             ? `Viewing analytics and holdings for ${selectedPortfolio.name}.`
             : "Viewing combined holdings and analytics across all portfolios."}
         </p>
+      </Card>
+      <Card className="mb-5">
+        <CardHeader className="mb-3">
+          <CardTitle>Import and export</CardTitle>
+        </CardHeader>
+        <p className="mb-4 text-sm text-[var(--color-text-muted)]">
+          Export includes this portfolio’s holdings and purchase data. Imports create a new portfolio after you review every proposed change.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <button
+            className="secondary-button"
+            onClick={() =>
+              void apiClient.portfolio.importTemplate()
+                .then((blob) => downloadCsv(blob, "flipradar-portfolio-import-template.csv"))
+                .catch(() => setTransferError("Could not download the import template."))
+            }
+            type="button"
+          >
+            Download import template
+          </button>
+          <button className="primary-button" onClick={() => setIsImportOpen(true)} type="button">
+            Import CSV portfolio
+          </button>
+          <button
+            className="secondary-button"
+            disabled={!selectedPortfolioId}
+            onClick={() => {
+              if (!selectedPortfolioId) return;
+              void apiClient.portfolio.export(selectedPortfolioId)
+                .then((blob) => downloadCsv(blob, `portfolio-${selectedPortfolioId}.csv`))
+                .catch(() => setTransferError("Could not export this portfolio."));
+            }}
+            type="button"
+          >
+            Export selected portfolio
+          </button>
+        </div>
+        {!selectedPortfolioId ? <p className="mt-3 text-sm text-[var(--color-text-muted)]">Choose one portfolio above to export it.</p> : null}
       </Card>
       <div
         className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5"
@@ -589,6 +666,68 @@ export function PortfolioPage() {
         }}
         title="Delete portfolio item"
       />
+      <Modal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        title="Import portfolio CSV"
+      >
+        {importError ? <div className="mb-4"><FormAlert>{importError}</FormAlert></div> : null}
+        <p className="mb-4 text-sm text-[var(--color-text-muted)]">
+          Upload the template format. Validation stops at the first invalid or unknown row; no data is saved until you confirm the preview.
+        </p>
+        <label className="block text-sm font-semibold text-[var(--color-text)]">
+          CSV file
+          <input
+            accept=".csv,text/csv"
+            className="mt-2 block w-full text-sm"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              setImportPreview(null);
+              if (!file) return;
+              void file.text().then((content) => {
+                setCsvContent(content);
+                setSelectedFileName(file.name);
+              });
+            }}
+            type="file"
+          />
+        </label>
+        {selectedFileName ? <p className="mt-2 text-sm text-[var(--color-text-muted)]">Selected: {selectedFileName}</p> : null}
+        <div className="mt-4">
+          <SelectField label="Duplicate purchase rows" onChange={(event) => { setDuplicateHandling(event.target.value as PortfolioImportDuplicateHandling); setImportPreview(null); }} value={duplicateHandling}>
+            <option value="keep_separate">Keep as separate purchases</option>
+            <option value="merge">Merge identical purchase data</option>
+            <option value="reject">Reject duplicate rows</option>
+          </SelectField>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button
+            className="primary-button"
+            disabled={!csvContent || previewImportMutation.isPending}
+            onClick={() => void previewImportMutation.mutate({ content: csvContent, handling: duplicateHandling }).then((preview) => preview && setImportPreview(preview))}
+            type="button"
+          >
+            {previewImportMutation.isPending ? "Validating..." : "Validate and preview"}
+          </button>
+        </div>
+        {importPreview ? (
+          <div className="mt-5 border-t border-[var(--color-border-soft)] pt-4">
+            <h3 className="font-bold text-[var(--color-text)]">Ready to create “{importPreview.portfolio_name}”</h3>
+            <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+              {importPreview.source_rows} CSV rows → {importPreview.items_to_create} holdings{importPreview.merged_rows ? ` (${importPreview.merged_rows} merged)` : ""}.
+            </p>
+            <ul className="mt-3 max-h-40 space-y-1 overflow-y-auto text-sm text-[var(--color-text-muted)]">
+              {importPreview.changes.map((row) => <li key={row.row_number}>Row {row.row_number}: {row.set_number} — {row.set_name}, qty {row.quantity}, {currency(row.purchase_price, row.currency)}</li>)}
+            </ul>
+            <div className="mt-4 flex justify-end gap-3">
+              <button className="secondary-button" onClick={() => setImportPreview(null)} type="button">Change file</button>
+              <button className="primary-button" disabled={importMutation.isPending} onClick={() => void importMutation.mutate({ content: csvContent, handling: duplicateHandling })} type="button">
+                {importMutation.isPending ? "Importing..." : "Create portfolio"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </section>
   );
 }

@@ -941,7 +941,11 @@ def test_secondary_portfolio_crud_and_holding_reassignment(client: TestClient):
     created = client.post(
         "/portfolio/portfolios",
         headers=headers,
-        json={"name": "Retirement", "description": "Long-term holdings", "currency": "USD"},
+        json={
+            "name": "Retirement",
+            "description": "Long-term holdings",
+            "currency": "USD",
+        },
     )
     assert created.status_code == 201, created.text
     secondary = created.json()
@@ -951,8 +955,10 @@ def test_secondary_portfolio_crud_and_holding_reassignment(client: TestClient):
         "/portfolio/items",
         headers=headers,
         json={
-            "portfolio_id": secondary["id"], "set_number": lego_set["set_number"],
-            "purchase_price": "100.00", "condition": "new",
+            "portfolio_id": secondary["id"],
+            "set_number": lego_set["set_number"],
+            "purchase_price": "100.00",
+            "condition": "new",
         },
     )
     assert holding.status_code == 201, holding.text
@@ -1003,13 +1009,25 @@ def test_portfolio_scopes_archive_export_and_authorization(client: TestClient):
     holding = client.post(
         "/portfolio/items",
         headers=owner_headers,
-        json={"portfolio_id": portfolio["id"], "set_number": lego_set["set_number"], "purchase_price": "42.00"},
+        json={
+            "portfolio_id": portfolio["id"],
+            "set_number": lego_set["set_number"],
+            "purchase_price": "42.00",
+        },
     )
     assert holding.status_code == 201, holding.text
 
-    scoped = collection_data(client.get("/portfolio", headers=owner_headers, params={"portfolio_id": portfolio["id"]}))
+    scoped = collection_data(
+        client.get(
+            "/portfolio",
+            headers=owner_headers,
+            params={"portfolio_id": portfolio["id"]},
+        )
+    )
     assert [item["id"] for item in scoped] == [holding.json()["id"]]
-    export = client.get(f"/portfolio/portfolios/{portfolio['id']}/export", headers=owner_headers)
+    export = client.get(
+        f"/portfolio/portfolios/{portfolio['id']}/export", headers=owner_headers
+    )
     assert export.status_code == 200, export.text
     assert "set_number" in export.text and lego_set["set_number"] in export.text
 
@@ -1024,26 +1042,147 @@ def test_portfolio_scopes_archive_export_and_authorization(client: TestClient):
         kwargs = {"headers": other_headers}
         if method == "patch":
             kwargs["json"] = {"name": "Not allowed"}
-        if path in {"/portfolio/dashboard", "/portfolio/analytics", "/portfolio/analyze"}:
+        if path in {
+            "/portfolio/dashboard",
+            "/portfolio/analytics",
+            "/portfolio/analyze",
+        }:
             kwargs["params"] = {"portfolio_id": portfolio["id"]}
         response = getattr(client, method)(path, **kwargs)
         assert response.status_code == 404, response.text
 
-    archived = client.post(f"/portfolio/portfolios/{portfolio['id']}/archive", headers=owner_headers)
+    archived = client.post(
+        f"/portfolio/portfolios/{portfolio['id']}/archive", headers=owner_headers
+    )
     assert archived.status_code == 200, archived.text
-    assert portfolio["id"] not in {item["id"] for item in client.get("/portfolio/portfolios", headers=owner_headers).json()}
-    archived_list = client.get("/portfolio/portfolios", headers=owner_headers, params={"include_archived": True})
-    assert portfolio["id"] in {item["id"] for item in archived_list.json()}
-    assert client.get("/portfolio", headers=owner_headers, params={"portfolio_id": portfolio["id"]}).status_code == 404
-    assert client.post("/portfolio/items", headers=owner_headers, json={"portfolio_id": portfolio["id"], "set_number": lego_set["set_number"], "purchase_price": "10.00"}).status_code == 404
-    assert client.post(f"/portfolio/portfolios/{portfolio['id']}/unarchive", headers=owner_headers).status_code == 200
-    assert client.request(
-        "DELETE",
-        f"/portfolio/portfolios/{portfolio['id']}",
+    assert portfolio["id"] not in {
+        item["id"]
+        for item in client.get("/portfolio/portfolios", headers=owner_headers).json()
+    }
+    archived_list = client.get(
+        "/portfolio/portfolios",
         headers=owner_headers,
-        json={"target_portfolio_id": other_default["id"]},
-    ).status_code == 404
+        params={"include_archived": True},
+    )
+    assert portfolio["id"] in {item["id"] for item in archived_list.json()}
+    assert (
+        client.get(
+            "/portfolio",
+            headers=owner_headers,
+            params={"portfolio_id": portfolio["id"]},
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            "/portfolio/items",
+            headers=owner_headers,
+            json={
+                "portfolio_id": portfolio["id"],
+                "set_number": lego_set["set_number"],
+                "purchase_price": "10.00",
+            },
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            f"/portfolio/portfolios/{portfolio['id']}/unarchive", headers=owner_headers
+        ).status_code
+        == 200
+    )
+    assert (
+        client.request(
+            "DELETE",
+            f"/portfolio/portfolios/{portfolio['id']}",
+            headers=owner_headers,
+            json={"target_portfolio_id": other_default["id"]},
+        ).status_code
+        == 404
+    )
     assert owner_default["id"] != other_default["id"]
+
+
+def test_portfolio_csv_import_template_preview_validation_and_export(
+    client: TestClient,
+):
+    headers = auth_headers(client, "portfolio-csv-import-user")
+    first_set = create_lego_set(client, "10307")
+    second_set = create_lego_set(client, "21342")
+
+    template = client.get("/portfolio/import-template", headers=headers)
+    assert template.status_code == 200, template.text
+    assert template.headers["content-type"].startswith("text/csv")
+    assert template.text.startswith(
+        "portfolio_name,portfolio_description,portfolio_currency,set_number,quantity,purchase_price,currency,condition,purchase_date,notes"
+    )
+
+    csv_content = "\n".join(
+        [
+            "portfolio_name,portfolio_description,portfolio_currency,set_number,quantity,purchase_price,currency,condition,purchase_date,notes",
+            "Imported collection,Tracked purchases,USD,10307,1,199.99,USD,new,2024-01-15,First purchase",
+            "Imported collection,Tracked purchases,USD,10307,2,199.99,USD,new,2024-01-15,First purchase",
+            "Imported collection,Tracked purchases,USD,21342,1,99.50,USD,used,,Second purchase",
+        ]
+    )
+    preview = client.post(
+        "/portfolio/import/preview",
+        headers=headers,
+        json={"csv_content": csv_content, "duplicate_handling": "merge"},
+    )
+    assert preview.status_code == 200, preview.text
+    assert preview.json()["source_rows"] == 3
+    assert preview.json()["items_to_create"] == 2
+    assert preview.json()["merged_rows"] == 1
+    assert preview.json()["changes"][0]["quantity"] == 3
+    assert preview.json()["changes"][1]["set_name"] == second_set["name"]
+
+    imported = client.post(
+        "/portfolio/import",
+        headers=headers,
+        json={"csv_content": csv_content, "duplicate_handling": "merge"},
+    )
+    assert imported.status_code == 201, imported.text
+    assert imported.json()["portfolio"]["name"] == "Imported collection"
+    portfolio_id = imported.json()["portfolio"]["id"]
+    holdings = collection_data(
+        client.get("/portfolio", headers=headers, params={"portfolio_id": portfolio_id})
+    )
+    assert {(item["set_number"], item["quantity"]) for item in holdings} == {
+        (first_set["set_number"], 3),
+        (second_set["set_number"], 1),
+    }
+    assert {item["purchase_date"] for item in holdings} == {None, "2024-01-15T00:00:00"}
+
+    exported = client.get(
+        f"/portfolio/portfolios/{portfolio_id}/export", headers=headers
+    )
+    assert exported.status_code == 200, exported.text
+    assert "portfolio_description" in exported.text
+    assert "First purchase" in exported.text
+
+    invalid = client.post(
+        "/portfolio/import/preview",
+        headers=headers,
+        json={
+            "csv_content": csv_content.replace("21342", "999999"),
+            "duplicate_handling": "keep_separate",
+        },
+    )
+    assert invalid.status_code == 422, invalid.text
+    assert "Row 4" in invalid.json()["detail"]
+    assert "unknown set_number" in invalid.json()["detail"]
+
+    bad_headers = client.post(
+        "/portfolio/import/preview",
+        headers=headers,
+        json={
+            "csv_content": "set_number,quantity\n10307,1",
+            "duplicate_handling": "keep_separate",
+        },
+    )
+    assert bad_headers.status_code == 422, bad_headers.text
+    assert "headers must exactly" in bad_headers.json()["detail"]
 
 
 def test_saved_search_crud_limit_validation_and_ownership(client: TestClient):

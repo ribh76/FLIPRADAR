@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -68,13 +69,17 @@ class PortfolioItemResponse(BaseModel):
 class PortfolioCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
-    currency: str = Field(default="USD", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
+    currency: str = Field(
+        default="USD", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$"
+    )
 
 
 class PortfolioUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
-    currency: str | None = Field(default=None, min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
+    currency: str | None = Field(
+        default=None, min_length=3, max_length=3, pattern=r"^[A-Z]{3}$"
+    )
 
 
 class PortfolioResponse(BaseModel):
@@ -93,6 +98,38 @@ class PortfolioResponse(BaseModel):
 
 class PortfolioReassignment(BaseModel):
     target_portfolio_id: UUID
+
+
+class PortfolioImportRequest(BaseModel):
+    """A CSV file is posted as text after the browser has read the uploaded file."""
+
+    csv_content: str = Field(..., min_length=1, max_length=5_000_000)
+    duplicate_handling: Literal["keep_separate", "merge", "reject"] = "keep_separate"
+
+
+class PortfolioImportPreviewRow(BaseModel):
+    row_number: int
+    set_number: str
+    set_name: str
+    quantity: int
+    purchase_price: Decimal
+    currency: str
+    action: Literal["create", "merge"]
+
+
+class PortfolioImportPreviewResponse(BaseModel):
+    portfolio_name: str
+    portfolio_description: str | None
+    portfolio_currency: str
+    source_rows: int
+    items_to_create: int
+    merged_rows: int
+    duplicate_handling: str
+    changes: list[PortfolioImportPreviewRow]
+
+
+class PortfolioImportResponse(PortfolioImportPreviewResponse):
+    portfolio: PortfolioResponse
 
 
 class PortfolioHoldingSummary(BaseModel):
