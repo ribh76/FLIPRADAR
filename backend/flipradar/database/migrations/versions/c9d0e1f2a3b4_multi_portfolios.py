@@ -5,7 +5,7 @@ Revises: 7f8e9d0c1b2a
 Create Date: 2026-08-13 00:00:00.000000
 """
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import sqlalchemy as sa
 from alembic import op
@@ -35,7 +35,13 @@ def upgrade() -> None:
     bind = op.get_bind()
     users = bind.execute(sa.text("SELECT id FROM users")).mappings()
     defaults = [
-        {"id": uuid4(), "user_id": row["id"], "name": "Default Portfolio", "currency": "USD", "is_default": True}
+        {
+            "id": uuid4(),
+            "user_id": UUID(str(row["id"])),
+            "name": "Default Portfolio",
+            "currency": "USD",
+            "is_default": True,
+        }
         for row in users
     ]
     if defaults:
@@ -51,7 +57,13 @@ def upgrade() -> None:
     op.add_column("portfolio_items", sa.Column("portfolio_id", sa.Uuid(), nullable=True))
     for default in defaults:
         bind.execute(
-            sa.text("UPDATE portfolio_items SET portfolio_id = :portfolio_id WHERE user_id = :user_id"),
+            sa.text(
+                "UPDATE portfolio_items SET portfolio_id = :portfolio_id "
+                "WHERE user_id = :user_id"
+            ).bindparams(
+                sa.bindparam("portfolio_id", type_=sa.Uuid()),
+                sa.bindparam("user_id", type_=sa.Uuid()),
+            ),
             {"portfolio_id": default["id"], "user_id": default["user_id"]},
         )
     with op.batch_alter_table("portfolio_items") as batch_op:

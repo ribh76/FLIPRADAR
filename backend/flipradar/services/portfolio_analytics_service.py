@@ -17,6 +17,7 @@ from flipradar.database.repositories import (
     get_active_listing_supply_for_set_numbers,
     get_all_portfolio_items_for_user,
     get_latest_portfolio_analytics_snapshot,
+    get_portfolio_by_id_for_user,
     get_price_snapshots_for_set_numbers,
 )
 from flipradar.domain.engines import hold_sell_engine
@@ -225,6 +226,10 @@ async def refresh_portfolio_analytics(
     analysis_at: datetime | None = None,
 ) -> dict:
     """Calculate and persist a complete point-in-time portfolio analysis."""
+    if portfolio_id is not None:
+        portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
+        if portfolio is None or portfolio.archived_at is not None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
     now = _as_utc(analysis_at) if analysis_at is not None else _current_time()
     items = await get_all_portfolio_items_for_user(db, user_id, portfolio_id)
     value_map = await _current_unit_value_map(db, items)
@@ -280,6 +285,10 @@ async def refresh_portfolio_analytics(
 async def get_latest_portfolio_analytics(
     db: AsyncSession, user_id: UUID, portfolio_id: UUID | None = None
 ) -> dict:
+    if portfolio_id is not None:
+        portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
+        if portfolio is None or portfolio.archived_at is not None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
     snapshot = await get_latest_portfolio_analytics_snapshot(db, user_id, portfolio_id)
     if snapshot is None:
         raise HTTPException(

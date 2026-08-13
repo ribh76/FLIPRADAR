@@ -986,6 +986,66 @@ def test_portfolio_limit_includes_default_portfolio(client: TestClient):
     assert response.status_code == 409, response.text
 
 
+def test_portfolio_scopes_archive_export_and_authorization(client: TestClient):
+    owner_headers = auth_headers(client, "portfolio-scope-owner")
+    other_headers = auth_headers(client, "portfolio-scope-other")
+    owner_default = client.get("/portfolio/portfolios", headers=owner_headers).json()[0]
+    other_default = client.get("/portfolio/portfolios", headers=other_headers).json()[0]
+    created = client.post(
+        "/portfolio/portfolios",
+        headers=owner_headers,
+        json={"name": "Exportable", "currency": "USD"},
+    )
+    assert created.status_code == 201, created.text
+    portfolio = created.json()
+
+    lego_set = create_lego_set(client)
+    holding = client.post(
+        "/portfolio/items",
+        headers=owner_headers,
+        json={"portfolio_id": portfolio["id"], "set_number": lego_set["set_number"], "purchase_price": "42.00"},
+    )
+    assert holding.status_code == 201, holding.text
+
+    scoped = collection_data(client.get("/portfolio", headers=owner_headers, params={"portfolio_id": portfolio["id"]}))
+    assert [item["id"] for item in scoped] == [holding.json()["id"]]
+    export = client.get(f"/portfolio/portfolios/{portfolio['id']}/export", headers=owner_headers)
+    assert export.status_code == 200, export.text
+    assert "set_number" in export.text and lego_set["set_number"] in export.text
+
+    for path, method in (
+        (f"/portfolio/portfolios/{portfolio['id']}", "patch"),
+        (f"/portfolio/portfolios/{portfolio['id']}/archive", "post"),
+        (f"/portfolio/portfolios/{portfolio['id']}/export", "get"),
+        ("/portfolio/dashboard", "get"),
+        ("/portfolio/analytics", "get"),
+        ("/portfolio/analyze", "post"),
+    ):
+        kwargs = {"headers": other_headers}
+        if method == "patch":
+            kwargs["json"] = {"name": "Not allowed"}
+        if path in {"/portfolio/dashboard", "/portfolio/analytics", "/portfolio/analyze"}:
+            kwargs["params"] = {"portfolio_id": portfolio["id"]}
+        response = getattr(client, method)(path, **kwargs)
+        assert response.status_code == 404, response.text
+
+    archived = client.post(f"/portfolio/portfolios/{portfolio['id']}/archive", headers=owner_headers)
+    assert archived.status_code == 200, archived.text
+    assert portfolio["id"] not in {item["id"] for item in client.get("/portfolio/portfolios", headers=owner_headers).json()}
+    archived_list = client.get("/portfolio/portfolios", headers=owner_headers, params={"include_archived": True})
+    assert portfolio["id"] in {item["id"] for item in archived_list.json()}
+    assert client.get("/portfolio", headers=owner_headers, params={"portfolio_id": portfolio["id"]}).status_code == 404
+    assert client.post("/portfolio/items", headers=owner_headers, json={"portfolio_id": portfolio["id"], "set_number": lego_set["set_number"], "purchase_price": "10.00"}).status_code == 404
+    assert client.post(f"/portfolio/portfolios/{portfolio['id']}/unarchive", headers=owner_headers).status_code == 200
+    assert client.request(
+        "DELETE",
+        f"/portfolio/portfolios/{portfolio['id']}",
+        headers=owner_headers,
+        json={"target_portfolio_id": other_default["id"]},
+    ).status_code == 404
+    assert owner_default["id"] != other_default["id"]
+
+
 def test_saved_search_crud_limit_validation_and_ownership(client: TestClient):
     owner_headers = auth_headers(client, "saved-search-owner")
     other_headers = auth_headers(client, "saved-search-other")

@@ -1021,15 +1021,15 @@ Classification: SHIP LATER
 4. Add portfolio creation. - (Complete) 
 5. Add editing. - (Complete) 
 6. Add deletion and reassignment. - (Complete) 
-7. Add portfolio switching.
-8. Add cross-portfolio totals.
-9. Add portfolio-specific dashboards.
-10. Add portfolio-specific analysis.
-11. Add move and copy actions.
-12. Add archived portfolios.
-13. Add exports.
-14. Add migration and authorization tests.
-15. Update all existing portfolio workflows.
+7. Add portfolio switching. - (Complete) 
+8. Add cross-portfolio totals. - (Complete) 
+9. Add portfolio-specific dashboards. - (Complete) 
+10. Add portfolio-specific analysis. - (Complete) 
+11. Add move and copy actions. - (Complete) 
+12. Add archived portfolios. - (Complete) 
+13. Add exports. - (Complete) 
+14. Add migration and authorization tests. - (Complete) 
+15. Update all existing portfolio workflows. - (Complete) 
 
 PHASE 53: IMPORT AND EXPORT
 Classification: SHIP LATER

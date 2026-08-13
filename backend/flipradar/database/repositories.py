@@ -1534,8 +1534,9 @@ async def get_portfolio_items_for_user(
         pagination = page()
     statement = (
         select(PortfolioItem)
-        .options(selectinload(PortfolioItem.lego_set))
-        .where(PortfolioItem.user_id == user_id)
+        .options(selectinload(PortfolioItem.lego_set), selectinload(PortfolioItem.portfolio))
+        .join(PortfolioItem.portfolio)
+        .where(PortfolioItem.user_id == user_id, Portfolio.archived_at.is_(None))
     )
     if portfolio_id is not None:
         statement = statement.where(PortfolioItem.portfolio_id == portfolio_id)
@@ -1582,8 +1583,9 @@ async def get_all_portfolio_items_for_user(
         filters.append(PortfolioItem.portfolio_id == portfolio_id)
     result = await db.execute(
         select(PortfolioItem)
-        .options(selectinload(PortfolioItem.lego_set))
-        .where(*filters)
+        .options(selectinload(PortfolioItem.lego_set), selectinload(PortfolioItem.portfolio))
+        .join(PortfolioItem.portfolio)
+        .where(*filters, Portfolio.archived_at.is_(None))
         .order_by(PortfolioItem.created_at.desc())
     )
     return list(result.scalars())
@@ -1594,7 +1596,7 @@ async def get_portfolio_item_by_id(
 ) -> PortfolioItem | None:
     result = await db.execute(
         select(PortfolioItem)
-        .options(selectinload(PortfolioItem.lego_set))
+        .options(selectinload(PortfolioItem.lego_set), selectinload(PortfolioItem.portfolio))
         .where(PortfolioItem.id == item_id, PortfolioItem.user_id == user_id)
     )
     return result.scalar_one_or_none()

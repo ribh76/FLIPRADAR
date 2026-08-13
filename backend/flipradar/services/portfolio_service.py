@@ -58,7 +58,17 @@ async def list_user_portfolios(
     return await list_portfolios_for_user(db, user_id, include_archived=include_archived)
 
 
-async def archive_user_portfolio(db: AsyncSession, user_id: UUID, portfolio_id: UUID, *, archive: bool):
+async def get_active_user_portfolio(db: AsyncSession, user_id: UUID, portfolio_id: UUID):
+    """Resolve a portfolio only when it belongs to the user and is viewable."""
+    portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
+    if portfolio is None or portfolio.archived_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+    return portfolio
+
+
+async def archive_user_portfolio(
+    db: AsyncSession, user_id: UUID, portfolio_id: UUID, *, archive: bool
+):
     portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
     if portfolio is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
@@ -70,7 +80,7 @@ async def archive_user_portfolio(db: AsyncSession, user_id: UUID, portfolio_id: 
 
 async def export_portfolio_csv(db: AsyncSession, user_id: UUID, portfolio_id: UUID) -> str:
     portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
-    if portfolio is None:
+    if portfolio is None or portfolio.archived_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
     items = await get_all_portfolio_items_for_user(db, user_id, portfolio_id)
     buffer = io.StringIO()
@@ -97,7 +107,7 @@ async def update_user_portfolio(db: AsyncSession, user_id: UUID, portfolio_id: U
 async def delete_user_portfolio(db: AsyncSession, user_id: UUID, portfolio_id: UUID, target_portfolio_id: UUID) -> int:
     portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
     target = await get_portfolio_by_id_for_user(db, target_portfolio_id, user_id)
-    if portfolio is None or target is None:
+    if portfolio is None or target is None or target.archived_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
     if portfolio.id == target.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Choose a different portfolio for reassignment")
@@ -119,10 +129,8 @@ async def add_item_to_portfolio(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="LEGO set not found"
         )
-    if payload.portfolio_id is not None and await get_portfolio_by_id_for_user(
-        db, payload.portfolio_id, user_id
-    ) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+    if payload.portfolio_id is not None:
+        await get_active_user_portfolio(db, user_id, payload.portfolio_id)
 
     try:
         async with db.begin_nested():
@@ -158,6 +166,8 @@ async def list_user_portfolio_page(
     performance: str | None = None,
     order: str = "created_at_desc",
 ) -> list[dict]:
+    if portfolio_id is not None:
+        await get_active_user_portfolio(db, user_id, portfolio_id)
     # Valuation-derived filters and orders must be applied after fair values are
     # calculated. Fetching the matching ownership rows first keeps all DB access
     # user-scoped and preserves independently purchased duplicate holdings.
@@ -221,16 +231,17 @@ async def update_user_portfolio_item(
     db: AsyncSession, user_id: UUID, item_id: UUID, payload: PortfolioItemUpdate
 ) -> dict:
     update_data = payload.model_dump(exclude_unset=True)
+    existing = await get_portfolio_item_by_id(db, item_id, user_id)
+    if existing is None or existing.portfolio.archived_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found")
     if "set_number" in update_data:
         lego_set = await get_set_by_number(db, update_data["set_number"])
         if lego_set is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="LEGO set not found"
             )
-    if "portfolio_id" in update_data and await get_portfolio_by_id_for_user(
-        db, update_data["portfolio_id"], user_id
-    ) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+    if "portfolio_id" in update_data:
+        await get_active_user_portfolio(db, user_id, update_data["portfolio_id"])
 
     async with db.begin_nested():
         item = await update_portfolio_item(db, item_id, user_id, update_data)
@@ -254,6 +265,8 @@ async def get_portfolio_holding_detail(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found"
         )
+    if item.portfolio.archived_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found")
 
     all_items = await get_all_portfolio_items_for_user(db, user_id)
     value_map = await _current_unit_value_map(db, all_items)
@@ -384,6 +397,9 @@ async def get_portfolio_holding_detail(
 async def delete_user_portfolio_item(
     db: AsyncSession, user_id: UUID, item_id: UUID
 ) -> None:
+    item = await get_portfolio_item_by_id(db, item_id, user_id)
+    if item is None or item.portfolio.archived_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio item not found")
     async with db.begin_nested():
         deleted = await delete_portfolio_item(db, item_id, user_id)
         if not deleted:
@@ -398,6 +414,8 @@ async def delete_user_portfolio_item(
 async def calculate_portfolio_summary(
     db: AsyncSession, user_id: UUID, portfolio_id: UUID | None = None
 ) -> dict:
+    if portfolio_id is not None:
+        await get_active_user_portfolio(db, user_id, portfolio_id)
     items = await get_all_portfolio_items_for_user(db, user_id, portfolio_id)
     value_map = await _current_unit_value_map(db, items)
     holdings = []
@@ -495,6 +513,8 @@ async def get_portfolio_dashboard(
     history_range: str,
 ) -> dict:
     """Serve all dashboard panels from one valuation pass and one bounded cache key."""
+    if portfolio_id is not None:
+        await get_active_user_portfolio(db, user_id, portfolio_id)
     key = (
         user_id,
         portfolio_id,

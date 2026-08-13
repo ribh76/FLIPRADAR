@@ -23,6 +23,7 @@ from flipradar.services import portfolio_analytics_service
 from flipradar.services.llm_portfolio_analysis_service import (
     maybe_generate_portfolio_narrative,
 )
+from flipradar.services.portfolio_service import get_active_user_portfolio
 
 PORTFOLIO_ANALYSIS_METHOD_VERSION = "portfolio-analysis-method-v1"
 ANALYSIS_FRESHNESS_WINDOW = timedelta(hours=24)
@@ -86,6 +87,8 @@ async def analyze_portfolio(
 async def get_portfolio_analysis_history(
     db: AsyncSession, user_id: UUID, *, limit: int, offset: int, portfolio_id: UUID | None = None
 ) -> list[dict]:
+    if portfolio_id is not None:
+        await get_active_user_portfolio(db, user_id, portfolio_id)
     analyses = await list_portfolio_analyses(db, user_id, limit=limit, offset=offset, portfolio_id=portfolio_id)
     newest_id = analyses[0].id if analyses else None
     return [
