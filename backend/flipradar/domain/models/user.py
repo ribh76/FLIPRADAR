@@ -59,6 +59,12 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    portfolios = relationship(
+        "Portfolio",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
     portfolio_valuation_snapshots = relationship(
         "PortfolioValuationSnapshot",
         back_populates="user",

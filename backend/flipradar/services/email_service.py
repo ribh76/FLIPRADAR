@@ -60,7 +60,7 @@ class SmtpEmailService:
                 smtp.starttls()
                 smtp.login(self.settings.smtp_username, self.settings.password or "")
                 smtp.send_message(message)
-        except OSError, smtplib.SMTPException:
+        except (OSError, smtplib.SMTPException):
             logger.exception("email send failed to=%s", to_address)
             return EmailSendResult(attempted=True, sent=False, reason="send_failed")
 

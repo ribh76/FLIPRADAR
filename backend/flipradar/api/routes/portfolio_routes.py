@@ -14,13 +14,17 @@ from flipradar.api.schemas import (
     PortfolioAnalysisMetadataUpdate,
     PortfolioAnalysisResponse,
     PortfolioAnalyticsResponse,
+    PortfolioCreate,
     PortfolioDashboardResponse,
     PortfolioHoldingDetailResponse,
     PortfolioItemCollectionResponse,
     PortfolioItemCreate,
     PortfolioItemResponse,
     PortfolioItemUpdate,
+    PortfolioReassignment,
+    PortfolioResponse,
     PortfolioSummaryResponse,
+    PortfolioUpdate,
     PortfolioValuationHistoryResponse,
 )
 from flipradar.api.schemas.common_schema import collection_response
@@ -32,6 +36,27 @@ from flipradar.services import (
 
 router = APIRouter(prefix="/portfolio", tags=["Portfolio"])
 logger = logging.getLogger(__name__)
+
+
+@router.get("/portfolios", response_model=list[PortfolioResponse], summary="List portfolios")
+async def list_portfolios(current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)):
+    return await portfolio_service.list_user_portfolios(db, current_user.id)
+
+
+@router.post("/portfolios", response_model=PortfolioResponse, status_code=status.HTTP_201_CREATED, summary="Create a secondary portfolio")
+async def create_portfolio(payload: PortfolioCreate, current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)):
+    return await portfolio_service.create_user_portfolio(db, current_user.id, payload)
+
+
+@router.patch("/portfolios/{portfolio_id}", response_model=PortfolioResponse, summary="Update a portfolio")
+async def update_portfolio(portfolio_id: UUID, payload: PortfolioUpdate, current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)):
+    return await portfolio_service.update_user_portfolio(db, current_user.id, portfolio_id, payload)
+
+
+@router.delete("/portfolios/{portfolio_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a portfolio and reassign its holdings")
+async def delete_portfolio(portfolio_id: UUID, payload: PortfolioReassignment, current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)) -> Response:
+    await portfolio_service.delete_user_portfolio(db, current_user.id, portfolio_id, payload.target_portfolio_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
@@ -212,6 +237,7 @@ async def get_portfolio_dashboard(
 async def list_portfolio(
     current_user: AuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
+    portfolio_id: UUID | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     condition: str | None = Query(default=None),
@@ -227,6 +253,7 @@ async def list_portfolio(
     items = await portfolio_service.list_user_portfolio_page(
         db,
         current_user.id,
+        portfolio_id=portfolio_id,
         limit=limit + 1,
         offset=offset,
         condition=condition,

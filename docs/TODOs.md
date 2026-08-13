@@ -1003,33 +1003,14 @@ Classification: SHIP LATER
 5. Calculate marketplace spread. - (Complete)
 6. Calculate liquidity proxies. - (Complete)
 7. Calculate drawdown from recorded highs. - (Complete)
-8. Add condition-adjusted comparisons.
-9. Add theme benchmark indices.
-10. Add retirement annotations.
-11. Add MSRP comparisons.
-12. Add inflation-adjusted views.
-13. Add confidence bands.
-14. Add advanced chart controls.
-15. Validate metrics.
-
-PHASE 51: PREDICTIVE PRICE EXPERIMENTATION
-Classification: SHIP LATER
-
-1. Define forecast use cases.
-2. Assemble historical training data.
-3. Audit data quality and bias.
-4. Build a simple baseline model.
-5. Compare with naive forecasts.
-6. Add time-based validation.
-7. Add features such as age, theme, retirement, MSRP, and volume.
-8. Evaluate forecast error.
-9. Calculate prediction intervals.
-10. Reject low-quality forecasts.
-11. Version models.
-12. Add experimentation notebooks or pipelines.
-13. Add model monitoring.
-14. Label forecasts as experimental.
-15. Keep forecasts out of core decisions until validated.
+8. Add condition-adjusted comparisons. - (Complete)
+9. Add theme benchmark indices. - (Complete)
+10. Add retirement annotations. - (Complete)
+11. Add MSRP comparisons. - (Complete)
+12. Add inflation-adjusted views. - (Complete)
+13. Add confidence bands. - (Complete)
+14. Add advanced chart controls. - (Complete)
+15. Validate metrics. - (Complete)
 
 PHASE 52: MULTI-PORTFOLIO SUPPORT
 Classification: SHIP LATER

@@ -14,6 +14,7 @@ from flipradar.domain.models.enums import PortfolioCondition
 
 
 class PortfolioItemCreate(BaseModel):
+    portfolio_id: UUID | None = None
     set_number: SetNumber = Field(..., min_length=1, max_length=32)
     quantity: int = Field(default=1, gt=0)
     purchase_price: Money = Field(..., ge=0, decimal_places=2)
@@ -26,6 +27,7 @@ class PortfolioItemCreate(BaseModel):
 
 
 class PortfolioItemUpdate(BaseModel):
+    portfolio_id: UUID | None = None
     set_number: SetNumber | None = Field(default=None, min_length=1, max_length=32)
     quantity: int | None = Field(default=None, gt=0)
     purchase_price: OptionalMoney = Field(default=None, ge=0, decimal_places=2)
@@ -40,6 +42,7 @@ class PortfolioItemUpdate(BaseModel):
 class PortfolioItemResponse(BaseModel):
     id: UUID
     user_id: UUID
+    portfolio_id: UUID
     set_number: str
     quantity: int
     purchase_price: Decimal
@@ -60,6 +63,35 @@ class PortfolioItemResponse(BaseModel):
     valuation_confidence: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PortfolioCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=2000)
+    currency: str = Field(default="USD", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
+
+
+class PortfolioUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=2000)
+    currency: str | None = Field(default=None, min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
+
+
+class PortfolioResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    name: str
+    description: str | None
+    currency: str
+    is_default: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PortfolioReassignment(BaseModel):
+    target_portfolio_id: UUID
 
 
 class PortfolioHoldingSummary(BaseModel):

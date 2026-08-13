@@ -931,6 +931,61 @@ def bearer_headers(access_token: str) -> dict:
     return {"Authorization": f"Bearer {access_token}"}
 
 
+def test_secondary_portfolio_crud_and_holding_reassignment(client: TestClient):
+    headers = auth_headers(client, "multi-portfolio-owner")
+    portfolios = client.get("/portfolio/portfolios", headers=headers)
+    assert portfolios.status_code == 200, portfolios.text
+    default = portfolios.json()[0]
+    assert default["is_default"] is True
+
+    created = client.post(
+        "/portfolio/portfolios",
+        headers=headers,
+        json={"name": "Retirement", "description": "Long-term holdings", "currency": "USD"},
+    )
+    assert created.status_code == 201, created.text
+    secondary = created.json()
+
+    lego_set = create_lego_set(client)
+    holding = client.post(
+        "/portfolio/items",
+        headers=headers,
+        json={
+            "portfolio_id": secondary["id"], "set_number": lego_set["set_number"],
+            "purchase_price": "100.00", "condition": "new",
+        },
+    )
+    assert holding.status_code == 201, holding.text
+    assert holding.json()["portfolio_id"] == secondary["id"]
+
+    deleted = client.request(
+        "DELETE",
+        f"/portfolio/portfolios/{secondary['id']}",
+        headers=headers,
+        json={"target_portfolio_id": default["id"]},
+    )
+    assert deleted.status_code == 204, deleted.text
+    items = collection_data(client.get("/portfolio", headers=headers))
+    assert items[0]["portfolio_id"] == default["id"]
+
+
+def test_portfolio_limit_includes_default_portfolio(client: TestClient):
+    headers = auth_headers(client, "portfolio-limit-owner")
+    for index in range(9):
+        response = client.post(
+            "/portfolio/portfolios",
+            headers=headers,
+            json={"name": f"Portfolio {index + 1}", "currency": "USD"},
+        )
+        assert response.status_code == 201, response.text
+    response = client.post(
+        "/portfolio/portfolios",
+        headers=headers,
+        json={"name": "One too many", "currency": "USD"},
+    )
+    assert response.status_code == 409, response.text
+
+
 def test_saved_search_crud_limit_validation_and_ownership(client: TestClient):
     owner_headers = auth_headers(client, "saved-search-owner")
     other_headers = auth_headers(client, "saved-search-other")

@@ -21,6 +21,35 @@ from flipradar.database.base import Base
 from flipradar.domain.models.enums import PortfolioCondition, sql_values
 
 
+class Portfolio(Base):
+    __tablename__ = "portfolios"
+    __table_args__ = (
+        CheckConstraint("currency = upper(currency)", name="currency_uppercase"),
+        Index("ix_portfolios_user_id", "user_id"),
+        Index("ix_portfolios_user_created_at", "user_id", "created_at"),
+    )
+
+    id: Mapped[PyUUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid4
+    )
+    user_id: Mapped[PyUUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
+    is_default: Mapped[bool] = mapped_column(nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    user = relationship("User", back_populates="portfolios")
+    items = relationship("PortfolioItem", back_populates="portfolio")
+
+
 class PortfolioItem(Base):
     __tablename__ = "portfolio_items"
     __table_args__ = (
@@ -32,6 +61,7 @@ class PortfolioItem(Base):
             name="condition_allowed",
         ),
         Index("ix_portfolio_items_user_id", "user_id"),
+        Index("ix_portfolio_items_portfolio_id", "portfolio_id"),
         Index("ix_portfolio_items_lego_set_id", "lego_set_id"),
         Index("ix_portfolio_items_user_lego_set", "user_id", "lego_set_id"),
         Index("ix_portfolio_items_user_created_at", "user_id", "created_at"),
@@ -42,6 +72,11 @@ class PortfolioItem(Base):
     )
     user_id: Mapped[PyUUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    portfolio_id: Mapped[PyUUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("portfolios.id", ondelete="RESTRICT"),
+        nullable=False,
     )
     lego_set_id: Mapped[PyUUID] = mapped_column(
         Uuid(as_uuid=True),
@@ -67,6 +102,7 @@ class PortfolioItem(Base):
     )
 
     user = relationship("User", back_populates="portfolio_items")
+    portfolio = relationship("Portfolio", back_populates="items")
     lego_set = relationship("LegoSet", back_populates="portfolio_items")
     valuation_snapshots = relationship(
         "PortfolioItemValuationSnapshot",

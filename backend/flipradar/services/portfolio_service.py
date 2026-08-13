@@ -7,22 +7,35 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from flipradar.api.schemas import PortfolioItemCreate, PortfolioItemUpdate
+from flipradar.api.schemas import (
+    PortfolioCreate,
+    PortfolioItemCreate,
+    PortfolioItemUpdate,
+    PortfolioUpdate,
+)
 from flipradar.database.repositories import (
     DEFAULT_PAGE_LIMIT,
     Pagination,
+    count_portfolios_for_user,
+    create_portfolio,
     create_portfolio_item,
     create_portfolio_valuation_snapshot,
+    delete_portfolio,
     delete_portfolio_item,
     get_all_portfolio_items_for_user,
+    get_default_portfolio_for_user,
     get_latest_snapshots_by_set_number,
     get_latest_snapshots_for_set_numbers,
+    get_portfolio_by_id_for_user,
     get_portfolio_item_by_id,
     get_portfolio_items_for_user,
     get_portfolio_valuation_snapshot_for_window,
     get_recent_snapshots_by_set_number,
     get_set_by_number,
     list_portfolio_history,
+    list_portfolios_for_user,
+    reassign_portfolio_items,
+    update_portfolio,
     update_portfolio_item,
 )
 from flipradar.domain.engines import portfolio_valuation, price_estimator
@@ -33,6 +46,44 @@ def _money(value: Decimal | int) -> Decimal:
     return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
+MAX_PORTFOLIOS_PER_USER = 10
+
+
+async def list_user_portfolios(db: AsyncSession, user_id: UUID) -> list:
+    await get_default_portfolio_for_user(db, user_id)
+    return await list_portfolios_for_user(db, user_id)
+
+
+async def create_user_portfolio(db: AsyncSession, user_id: UUID, payload: PortfolioCreate):
+    if await count_portfolios_for_user(db, user_id) >= MAX_PORTFOLIOS_PER_USER:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A user may have at most 10 portfolios")
+    return await create_portfolio(db, user_id, payload.model_dump())
+
+
+async def update_user_portfolio(db: AsyncSession, user_id: UUID, portfolio_id: UUID, payload: PortfolioUpdate):
+    portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
+    if portfolio is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+    return await update_portfolio(db, portfolio, payload.model_dump(exclude_unset=True))
+
+
+async def delete_user_portfolio(db: AsyncSession, user_id: UUID, portfolio_id: UUID, target_portfolio_id: UUID) -> int:
+    portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
+    target = await get_portfolio_by_id_for_user(db, target_portfolio_id, user_id)
+    if portfolio is None or target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+    if portfolio.id == target.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Choose a different portfolio for reassignment")
+    if portfolio.is_default:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The default portfolio cannot be deleted")
+    async with db.begin_nested():
+        reassigned = await reassign_portfolio_items(db, user_id, portfolio.id, target.id)
+        await delete_portfolio(db, portfolio)
+        await create_user_valuation_snapshot(db, user_id)
+    portfolio_dashboard_cache.invalidate_user(user_id)
+    return reassigned
+
+
 async def add_item_to_portfolio(
     db: AsyncSession, user_id: UUID, payload: PortfolioItemCreate
 ) -> dict:
@@ -41,6 +92,10 @@ async def add_item_to_portfolio(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="LEGO set not found"
         )
+    if payload.portfolio_id is not None and await get_portfolio_by_id_for_user(
+        db, payload.portfolio_id, user_id
+    ) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
 
     try:
         async with db.begin_nested():
@@ -67,6 +122,7 @@ async def list_user_portfolio_page(
     db: AsyncSession,
     user_id: UUID,
     *,
+    portfolio_id: UUID | None = None,
     limit: int = DEFAULT_PAGE_LIMIT,
     offset: int = 0,
     condition: str | None = None,
@@ -83,6 +139,7 @@ async def list_user_portfolio_page(
         items = await get_portfolio_items_for_user(
             db,
             user_id,
+            portfolio_id=portfolio_id,
             condition=condition,
             theme=theme,
             year=year,
@@ -122,6 +179,7 @@ async def list_user_portfolio_page(
     items = await get_portfolio_items_for_user(
         db,
         user_id,
+        portfolio_id=portfolio_id,
         pagination=Pagination(limit=limit, offset=offset),
         condition=condition,
         theme=theme,
@@ -142,6 +200,10 @@ async def update_user_portfolio_item(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="LEGO set not found"
             )
+    if "portfolio_id" in update_data and await get_portfolio_by_id_for_user(
+        db, update_data["portfolio_id"], user_id
+    ) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
 
     async with db.begin_nested():
         item = await update_portfolio_item(db, item_id, user_id, update_data)
@@ -551,6 +613,7 @@ def _portfolio_item_response(item, value_map: dict[tuple[str, str], tuple]) -> d
     return {
         "id": item.id,
         "user_id": item.user_id,
+        "portfolio_id": item.portfolio_id,
         "set_number": item.set_number,
         "quantity": item.quantity,
         "purchase_price": item.purchase_price,
