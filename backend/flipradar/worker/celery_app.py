@@ -41,6 +41,10 @@ celery_app.conf.update(
             "task": "flipradar.notifications.deliver_email_digests",
             "schedule": 60 * 60,
         },
+        "clear-mfa-token-blacklist-daily": {
+            "task": "flipradar.auth.clear_mfa_token_blacklist",
+            "schedule": 24 * 60 * 60,
+        },
     },
 )
 

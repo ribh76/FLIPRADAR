@@ -11,6 +11,8 @@ from flipradar.api.schemas import (
     AccountDeletionResponse,
     AccountSettingsUpdate,
     EmailChangeRequest,
+    MfaSettingsResponse,
+    MfaSettingsUpdate,
     PasswordChangeRequest,
     RefreshSessionResponse,
     UserResponse,
@@ -43,6 +45,20 @@ async def update_current_user_settings(
     db: AsyncSession = Depends(get_db_session),
 ) -> User:
     return await auth_service.update_account_settings(db, current_user, payload)
+
+
+@router.put(
+    "/me/mfa",
+    response_model=MfaSettingsResponse,
+    summary="Update MFA settings",
+    description="Enable or disable email MFA after confirming the current password.",
+)
+async def update_current_user_mfa_settings(
+    payload: MfaSettingsUpdate,
+    current_user: AuthenticatedUser,
+    db: AsyncSession = Depends(get_db_session),
+) -> MfaSettingsResponse:
+    return await auth_service.update_mfa_settings(db, current_user, payload)
 
 
 @router.post(

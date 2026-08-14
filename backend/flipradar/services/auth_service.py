@@ -1,3 +1,6 @@
+import hashlib
+import hmac
+import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -7,10 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from flipradar.api.dependencies.auth import (
     create_access_token,
     create_account_token,
+    create_mfa_token,
     create_refresh_token,
     decode_account_token,
+    decode_mfa_token,
     decode_refresh_token,
     hash_account_token,
+    hash_mfa_token,
     hash_password,
     hash_refresh_token,
     verify_password,
@@ -25,6 +31,10 @@ from flipradar.api.schemas import (
     EmailVerificationRequest,
     EmailVerificationResponse,
     LogoutRequest,
+    MfaChallengeResponse,
+    MfaSettingsResponse,
+    MfaSettingsUpdate,
+    MfaVerifyRequest,
     PasswordChangeRequest,
     PasswordResetConfirmRequest,
     PasswordResetRequest,
@@ -42,17 +52,21 @@ from flipradar.core.settings import get_settings
 from flipradar.database.repositories import (
     DuplicateRecordError,
     apply_user_email_change,
+    blacklist_mfa_token,
     blacklist_refresh_token,
     create_account_token_record,
+    create_mfa_challenge,
     create_refresh_token_session,
     create_user,
     get_account_token_by_hash,
     get_latest_account_token_for_user,
+    get_mfa_challenge_by_hash,
     get_refresh_token_session_by_hash,
     get_refresh_token_session_for_user,
     get_user_by_email,
     get_user_by_id,
     get_user_by_username_or_email,
+    is_mfa_token_blacklisted,
     is_refresh_token_blacklisted,
     list_active_refresh_token_sessions_for_user,
     mark_account_token_sent,
@@ -64,6 +78,7 @@ from flipradar.database.repositories import (
     schedule_user_deletion,
     stage_user_email_change,
     update_user_display_name,
+    update_user_mfa_enabled,
     update_user_password_hash,
 )
 from flipradar.domain.models import User
@@ -71,6 +86,7 @@ from flipradar.domain.models.refresh_token import RefreshTokenSession
 from flipradar.services.email_service import (
     send_account_deletion_confirmation_email,
     send_email_change_confirmation_email,
+    send_mfa_access_code_email,
     send_password_reset_email,
     send_registration_email,
     send_security_email,
@@ -105,6 +121,64 @@ async def _token_response(db: AsyncSession, user: User) -> TokenResponse:
         refresh_token=refresh_token,
         user=UserResponse.model_validate(user),
     )
+
+
+def _mfa_code_hash(code: str) -> str:
+    """HMAC prevents offline recovery of the intentionally short email code."""
+    secret = get_settings().auth.jwt_secret_key.encode("utf-8")
+    return hmac.new(secret, code.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _invalid_mfa_challenge() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Invalid, expired, or already-used MFA challenge",
+    )
+
+
+def _mfa_token_expiry(payload: dict) -> datetime:
+    expires_at = payload.get("exp")
+    if not isinstance(expires_at, int):
+        raise _invalid_mfa_challenge()
+    return datetime.fromtimestamp(expires_at, UTC)
+
+
+def _mfa_token_subject(payload: dict) -> UUID:
+    try:
+        return UUID(str(payload.get("sub")))
+    except (TypeError, ValueError) as exc:
+        raise _invalid_mfa_challenge() from exc
+
+
+def _mfa_token_jti(payload: dict) -> str:
+    token_jti = payload.get("jti")
+    if not isinstance(token_jti, str) or not token_jti:
+        raise _invalid_mfa_challenge()
+    return token_jti
+
+
+async def _issue_mfa_challenge(
+    db: AsyncSession, user: User
+) -> MfaChallengeResponse:
+    code = f"{secrets.randbelow(100_000_000):08d}"
+    token = create_mfa_token(str(user.id))
+    try:
+        payload = decode_mfa_token(token)
+    except HTTPException as exc:
+        raise _invalid_mfa_challenge() from exc
+    expires_at = _mfa_token_expiry(payload)
+    await create_mfa_challenge(
+        db,
+        user_id=user.id,
+        token_hash=hash_mfa_token(token),
+        token_jti=_mfa_token_jti(payload),
+        code_hash=_mfa_code_hash(code),
+        expires_at=expires_at,
+    )
+    await send_mfa_access_code_email(
+        to_address=user.email, username=user.username, code=code
+    )
+    return MfaChallengeResponse(challenge_token=token, expires_at=expires_at)
 
 
 def _invalid_email_verification_token() -> HTTPException:
@@ -288,13 +362,78 @@ async def register_user(db: AsyncSession, payload: UserCreate) -> TokenResponse:
     return await _token_response(db, user)
 
 
-async def authenticate_user(db: AsyncSession, payload: UserLogin) -> TokenResponse:
+async def authenticate_user(
+    db: AsyncSession, payload: UserLogin
+) -> TokenResponse | MfaChallengeResponse:
     user = await get_user_by_username_or_email(db, payload.username_or_email)
     if user is None or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
         )
+    if user.mfa_enabled:
+        return await _issue_mfa_challenge(db, user)
     return await _token_response(db, user)
+
+
+async def verify_mfa_challenge(
+    db: AsyncSession, payload: MfaVerifyRequest
+) -> TokenResponse:
+    try:
+        token_payload = decode_mfa_token(payload.challenge_token)
+    except HTTPException as exc:
+        raise _invalid_mfa_challenge() from exc
+
+    token_hash = hash_mfa_token(payload.challenge_token)
+    user_id = _mfa_token_subject(token_payload)
+    token_jti = _mfa_token_jti(token_payload)
+    expires_at = _mfa_token_expiry(token_payload)
+    now = datetime.now(UTC)
+    if expires_at <= now or await is_mfa_token_blacklisted(db, token_hash):
+        raise _invalid_mfa_challenge()
+
+    challenge = await get_mfa_challenge_by_hash(db, token_hash, lock=True)
+    if (
+        challenge is None
+        or await is_mfa_token_blacklisted(db, token_hash)
+        or challenge.user_id != user_id
+        or challenge.token_jti != token_jti
+        or _aware_utc(challenge.expires_at) <= now
+        or not hmac.compare_digest(challenge.code_hash, _mfa_code_hash(payload.code))
+    ):
+        raise _invalid_mfa_challenge()
+    user = await get_user_by_id(db, user_id)
+    if user is None or not user.mfa_enabled:
+        raise _invalid_mfa_challenge()
+    await blacklist_mfa_token(
+        db, user_id=user.id, token_hash=token_hash, token_jti=token_jti
+    )
+    return await _token_response(db, user)
+
+
+async def update_mfa_settings(
+    db: AsyncSession, current_user: User, payload: MfaSettingsUpdate
+) -> MfaSettingsResponse:
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+    if payload.enabled and not current_user.is_email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verify your email address before enabling MFA",
+        )
+    user = await update_user_mfa_enabled(db, current_user, payload.enabled)
+    await send_security_email(
+        to_address=user.email,
+        username=user.username,
+        event_label=(
+            "Multi-factor authentication was enabled"
+            if payload.enabled
+            else "Multi-factor authentication was disabled"
+        ),
+    )
+    return MfaSettingsResponse(enabled=user.mfa_enabled)
 
 
 async def get_user_profile(user: User) -> User:

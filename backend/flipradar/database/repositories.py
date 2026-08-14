@@ -28,6 +28,8 @@ from flipradar.domain.models import (
     ListingEvaluation,
     Marketplace,
     MarketplaceListing,
+    MfaChallenge,
+    MfaTokenBlacklist,
     Notification,
     NotificationAuditLog,
     NotificationPreference,
@@ -699,6 +701,59 @@ async def is_refresh_token_blacklisted(db: AsyncSession, token_hash: str) -> boo
         )
     )
     return result.scalar_one_or_none() is not None
+
+
+async def create_mfa_challenge(
+    db: AsyncSession, *, user_id: UUID, token_hash: str, token_jti: str,
+    code_hash: str, expires_at: datetime,
+) -> MfaChallenge:
+    challenge = MfaChallenge(
+        user_id=user_id, token_hash=token_hash, token_jti=token_jti,
+        code_hash=code_hash, expires_at=expires_at,
+    )
+    db.add(challenge)
+    await db.flush()
+    return challenge
+
+
+async def get_mfa_challenge_by_hash(
+    db: AsyncSession, token_hash: str, *, lock: bool = False
+) -> MfaChallenge | None:
+    statement = select(MfaChallenge).where(MfaChallenge.token_hash == token_hash)
+    if lock:
+        statement = statement.with_for_update()
+    result = await db.execute(statement)
+    return result.scalar_one_or_none()
+
+
+async def is_mfa_token_blacklisted(db: AsyncSession, token_hash: str) -> bool:
+    result = await db.execute(
+        select(MfaTokenBlacklist.id).where(MfaTokenBlacklist.token_hash == token_hash)
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def blacklist_mfa_token(
+    db: AsyncSession, *, user_id: UUID, token_hash: str, token_jti: str
+) -> MfaTokenBlacklist:
+    token = MfaTokenBlacklist(
+        user_id=user_id, token_hash=token_hash, token_jti=token_jti
+    )
+    db.add(token)
+    await db.flush()
+    return token
+
+
+async def clear_mfa_token_blacklist(db: AsyncSession) -> int:
+    result = await db.execute(delete(MfaTokenBlacklist))
+    return int(result.rowcount or 0)
+
+
+async def update_user_mfa_enabled(db: AsyncSession, user: User, enabled: bool) -> User:
+    user.mfa_enabled = enabled
+    await db.flush()
+    await db.refresh(user)
+    return user
 
 
 async def blacklist_refresh_token(

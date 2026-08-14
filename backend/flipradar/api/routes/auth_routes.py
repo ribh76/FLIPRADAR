@@ -10,6 +10,8 @@ from flipradar.api.schemas import (
     EmailVerificationRequest,
     EmailVerificationResponse,
     LogoutRequest,
+    MfaChallengeResponse,
+    MfaVerifyRequest,
     PasswordResetConfirmRequest,
     PasswordResetRequest,
     PasswordResetResponse,
@@ -45,16 +47,31 @@ async def register_user(
 
 @router.post(
     "/login",
-    response_model=TokenResponse,
+    response_model=TokenResponse | MfaChallengeResponse,
     summary="Log in",
     description="Authenticate with username or email and return an access/refresh token pair.",
 )
 async def login_user(
     payload: UserLogin, db: AsyncSession = Depends(get_db_session)
-) -> TokenResponse:
+) -> TokenResponse | MfaChallengeResponse:
     logger.info("request started route=login_user")
     token = await auth_service.authenticate_user(db, payload)
     logger.info("request finished route=login_user")
+    return token
+
+
+@router.post(
+    "/mfa/verify",
+    response_model=TokenResponse,
+    summary="Verify MFA sign-in code",
+    description="Exchange a valid one-time email code and MFA challenge for an auth session.",
+)
+async def verify_mfa_login(
+    payload: MfaVerifyRequest, db: AsyncSession = Depends(get_db_session)
+) -> TokenResponse:
+    logger.info("request started route=verify_mfa_login")
+    token = await auth_service.verify_mfa_challenge(db, payload)
+    logger.info("request finished route=verify_mfa_login")
     return token
 
 

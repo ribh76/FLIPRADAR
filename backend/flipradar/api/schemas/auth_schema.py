@@ -87,6 +87,7 @@ class UserResponse(BaseModel):
     email: str
     pending_email: str | None = None
     is_email_verified: bool
+    mfa_enabled: bool
     deletion_requested_at: datetime | None = None
     deletion_scheduled_at: datetime | None = None
     created_at: datetime
@@ -100,6 +101,26 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class MfaChallengeResponse(BaseModel):
+    mfa_required: bool = True
+    challenge_token: str
+    expires_at: datetime
+
+
+class MfaVerifyRequest(BaseModel):
+    challenge_token: str = Field(..., min_length=1)
+    code: str = Field(..., pattern=r"^\d{8}$")
+
+
+class MfaSettingsUpdate(BaseModel):
+    enabled: bool
+    current_password: str = Field(..., min_length=1, max_length=128)
+
+
+class MfaSettingsResponse(BaseModel):
+    enabled: bool
 
 
 class RefreshTokenRequest(BaseModel):

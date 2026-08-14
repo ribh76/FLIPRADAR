@@ -1034,21 +1034,21 @@ Classification: SHIP LATER
 PHASE 53: IMPORT AND EXPORT
 Classification: SHIP LATER
 
-1. Define a portfolio CSV format.
-2. Add a downloadable import template.
-3. Add CSV upload.
-4. Validate rows.
-5. Preview changes.
-6. Match set numbers.
-7. Report invalid or unknown rows.
-8. Add duplicate-handling options.
-9. Import purchase data.
-10. Make imports transactional.
-11. Add portfolio export.
-12. Add watchlist export.
-13. Add analysis export.
-14. Add import audit logs.
-15. Add malformed and large-file tests.
+1. Define a portfolio CSV format. - (Complete) 
+2. Add a downloadable import template. - (Complete) 
+3. Add CSV upload. - (Complete) 
+4. Validate rows. - (Complete) 
+5. Preview changes. - (Complete) 
+6. Match set numbers. - (Complete) 
+7. Report invalid or unknown rows. - (Complete) 
+8. Add duplicate-handling options. - (Complete) 
+9. Import purchase data. - (Complete) 
+10. Make imports transactional. - (Complete) 
+11. Add portfolio export. - (Complete) 
+12. Add watchlist export. - (Complete) 
+13. Add analysis export. - (Complete) 
+14. Add import audit logs. - (Complete) 
+15. Add malformed and large-file tests. - (Complete) 
 
 PHASE 54: MFA
 Classification: SHIP LATER
@@ -1071,7 +1071,7 @@ Classification: SHIP LATER
 
 
 
-PHASE 60: PLATFORM SCALABILITY
+PHASE 55: PLATFORM SCALABILITY
 Classification: SHIP LATER
 
 1. Measure production bottlenecks.
@@ -1095,7 +1095,7 @@ Classification: SHIP LATER
 PART XII - Deployment and Release 
 ==================================================
 
-PHASE 61: V1 DEPLOYMENT Classification: MUST SHIP ------------------------------------ REVISIT AFTER PHASES 51 - 62
+PHASE 56: V1 DEPLOYMENT Classification: MUST SHIP ------------------------------------ REVISIT AFTER PHASES 51 - 62
 
 Select frontend, backend, and database hosting.
 Configure production PostgreSQL with backups.
@@ -1114,7 +1114,7 @@ Create a deployment checklist.
 Rehearse staging-to-production deployment.
 
 
-PHASE 62: LEGAL, PRIVACY, AND DISCLAIMERS Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62
+PHASE 57: LEGAL, PRIVACY, AND DISCLAIMERS Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62
 
 Write a privacy policy.
 Write terms of use.
@@ -1133,7 +1133,7 @@ Review catalog and image usage rights.
 Track policy versions.
 
 
-PHASE 63: V1 RELEASE VERIFICATION Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62
+PHASE 58: V1 RELEASE VERIFICATION Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62
 
 Test registration.
 Test verification and password reset.
@@ -1152,7 +1152,7 @@ Test backup restoration.
 Complete a signed release checklist.
 
 
-PHASE 64: PUBLIC V1 LAUNCH Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62
+PHASE 59: PUBLIC V1 LAUNCH Classification: MUST SHIP------------------------------------ REVISIT AFTER PHASES 51 - 62
 
 Create a concise landing page.
 State the product value clearly.

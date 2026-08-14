@@ -2090,6 +2090,70 @@ def test_login_success(client: TestClient):
     assert "hashed_password" not in body["user"]
 
 
+def test_email_mfa_login_issues_one_time_eight_digit_code(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    verification_urls: list[str] = []
+    mfa_codes: list[str] = []
+
+    async def capture_verification_email(**kwargs):
+        verification_urls.append(kwargs["verification_url"])
+
+    async def capture_mfa_email(**kwargs):
+        mfa_codes.append(kwargs["code"])
+
+    async def capture_security_email(**kwargs):
+        del kwargs
+
+    monkeypatch.setattr(
+        auth_service, "send_verification_email", capture_verification_email
+    )
+    monkeypatch.setattr(auth_service, "send_mfa_access_code_email", capture_mfa_email)
+    monkeypatch.setattr(auth_service, "send_security_email", capture_security_email)
+    registration = client.post(
+        "/auth/register",
+        json={
+            "username": "mfalogin",
+            "email": "mfalogin@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    assert registration.status_code == 201
+    access_token = registration.json()["access_token"]
+    assert client.post(
+        "/auth/verify-email",
+        json={"token": verification_token_from_url(verification_urls[0])},
+    ).status_code == 200
+    enabled = client.put(
+        "/users/me/mfa",
+        headers=bearer_headers(access_token),
+        json={"enabled": True, "current_password": VALID_PASSWORD},
+    )
+    assert enabled.status_code == 200, enabled.text
+    assert enabled.json() == {"enabled": True}
+
+    challenge = client.post(
+        "/auth/login",
+        json={"username_or_email": "mfalogin", "password": VALID_PASSWORD},
+    )
+    assert challenge.status_code == 200, challenge.text
+    assert challenge.json()["mfa_required"] is True
+    assert len(mfa_codes) == 1
+    assert len(mfa_codes[0]) == 8 and mfa_codes[0].isdigit()
+
+    verified = client.post(
+        "/auth/mfa/verify",
+        json={"challenge_token": challenge.json()["challenge_token"], "code": mfa_codes[0]},
+    )
+    assert verified.status_code == 200, verified.text
+    assert verified.json()["access_token"]
+    reused = client.post(
+        "/auth/mfa/verify",
+        json={"challenge_token": challenge.json()["challenge_token"], "code": mfa_codes[0]},
+    )
+    assert reused.status_code == 400
+
+
 def test_login_bad_password_fails(client: TestClient):
     client.post(
         "/auth/register",

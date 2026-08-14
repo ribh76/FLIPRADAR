@@ -32,6 +32,20 @@ JOB_LOCK_TTL_SECONDS = 24 * 60 * 60
 EXPIRED_LISTING_STATUSES = {"ended", "removed", "sold"}
 
 
+@celery_app.task(name="flipradar.auth.clear_mfa_token_blacklist")
+def clear_mfa_token_blacklist() -> int:
+    """Remove consumed MFA token hashes after every possible token has expired."""
+    return asyncio.run(_clear_mfa_token_blacklist())
+
+
+async def _clear_mfa_token_blacklist() -> int:
+    async with SessionLocal() as db:
+        deleted = await repositories.clear_mfa_token_blacklist(db)
+        await db.commit()
+    logger.info("mfa token blacklist cleared deleted=%s", deleted)
+    return deleted
+
+
 def _reserve_provider_refresh(provider: str) -> bool:
     """Allow a bounded number of provider refreshes in each rolling hour."""
     settings = get_settings()

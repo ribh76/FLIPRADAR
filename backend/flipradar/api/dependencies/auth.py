@@ -47,6 +47,10 @@ def hash_account_token(token: str) -> str:
     return hash_jwt_token(token)
 
 
+def hash_mfa_token(token: str) -> str:
+    return hash_jwt_token(token)
+
+
 def _create_token(
     subject: str,
     *,
@@ -99,6 +103,14 @@ def create_account_token(
     )
 
 
+def create_mfa_token(subject: str) -> str:
+    settings = get_settings().auth
+    expires_at = datetime.now(UTC) + timedelta(
+        minutes=settings.mfa_token_expire_minutes
+    )
+    return _create_token(subject, token_type="mfa", expires_at=expires_at)
+
+
 def decode_token(token: str, *, expected_type: str) -> dict:
     settings = get_settings().auth
     try:
@@ -125,6 +137,10 @@ def decode_account_token(token: str, *, expected_purpose: str) -> dict:
     if payload.get("purpose") != expected_purpose:
         raise _not_authenticated()
     return payload
+
+
+def decode_mfa_token(token: str) -> dict:
+    return decode_token(token, expected_type="mfa")
 
 
 async def get_current_user(

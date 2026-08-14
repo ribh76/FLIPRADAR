@@ -36,6 +36,9 @@ class User(Base):
     is_email_verified: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=false()
     )
+    mfa_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deletion_requested_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True)
@@ -109,6 +112,18 @@ class User(Base):
     )
     account_tokens = relationship(
         "AccountToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    mfa_challenges = relationship(
+        "MfaChallenge",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    used_mfa_tokens = relationship(
+        "MfaTokenBlacklist",
         back_populates="user",
         cascade="all, delete-orphan",
         passive_deletes=True,

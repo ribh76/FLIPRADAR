@@ -180,6 +180,22 @@ def security_email_template(*, username: str, event_label: str) -> EmailTemplate
     return EmailTemplate(subject=subject, text_body=text_body, html_body=html_body)
 
 
+def mfa_access_code_email_template(*, username: str, code: str) -> EmailTemplate:
+    subject = "Your FlipRadar sign-in code"
+    text_body = (
+        f"Hi {username},\n\nUse this 8-digit code to complete your sign-in:\n\n"
+        f"{code}\n\nThis code expires in one hour and can only be used once. "
+        "If you did not try to sign in, secure your account immediately."
+    )
+    html_body = f"""
+    <p>Hi {username},</p>
+    <p>Use this 8-digit code to complete your sign-in:</p>
+    <p><strong style=\"font-size: 1.5em; letter-spacing: 0.15em\">{code}</strong></p>
+    <p>This code expires in one hour and can only be used once. If you did not try to sign in, secure your account immediately.</p>
+    """
+    return EmailTemplate(subject=subject, text_body=text_body, html_body=html_body)
+
+
 async def _send_template(
     *,
     to_address: str,
@@ -284,5 +300,16 @@ async def send_security_email(
     return await _send_template(
         to_address=to_address,
         template=security_email_template(username=username, event_label=event_label),
+        email_service=email_service,
+    )
+
+
+async def send_mfa_access_code_email(
+    *, to_address: str, username: str, code: str,
+    email_service: EmailService | None = None,
+) -> EmailSendResult:
+    return await _send_template(
+        to_address=to_address,
+        template=mfa_access_code_email_template(username=username, code=code),
         email_service=email_service,
     )
