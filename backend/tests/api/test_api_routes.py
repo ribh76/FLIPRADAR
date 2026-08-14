@@ -15,7 +15,6 @@ from sqlalchemy.pool import StaticPool
 import flipradar.domain.models  # noqa: F401
 from flipradar.api.schemas.portfolio_analysis_schema import (
     LlmPortfolioNarrative,
-    LlmPortfolioObservation,
 )
 from flipradar.core.settings import get_settings
 from flipradar.database import Base, get_db_session, repositories
@@ -2095,6 +2094,14 @@ def test_email_mfa_login_issues_one_time_eight_digit_code(
 ):
     verification_urls: list[str] = []
     mfa_codes: list[str] = []
+    reset_urls: list[str] = []
+    security_answers = {
+        "first_pet": "Rex",
+        "childhood_street": "Maple Street",
+        "first_school": "Lincoln School",
+        "favorite_teacher": "Garcia",
+        "birth_city": "Seattle",
+    }
 
     async def capture_verification_email(**kwargs):
         verification_urls.append(kwargs["verification_url"])
@@ -2105,11 +2112,15 @@ def test_email_mfa_login_issues_one_time_eight_digit_code(
     async def capture_security_email(**kwargs):
         del kwargs
 
+    async def capture_reset_email(**kwargs):
+        reset_urls.append(kwargs["reset_url"])
+
     monkeypatch.setattr(
         auth_service, "send_verification_email", capture_verification_email
     )
     monkeypatch.setattr(auth_service, "send_mfa_access_code_email", capture_mfa_email)
     monkeypatch.setattr(auth_service, "send_security_email", capture_security_email)
+    monkeypatch.setattr(auth_service, "send_mfa_reset_email", capture_reset_email)
     registration = client.post(
         "/auth/register",
         json={
@@ -2127,7 +2138,14 @@ def test_email_mfa_login_issues_one_time_eight_digit_code(
     enabled = client.put(
         "/users/me/mfa",
         headers=bearer_headers(access_token),
-        json={"enabled": True, "current_password": VALID_PASSWORD},
+        json={
+            "enabled": True,
+            "current_password": VALID_PASSWORD,
+            "security_answers": [
+                {"question_id": question_id, "answer": answer}
+                for question_id, answer in security_answers.items()
+            ],
+        },
     )
     assert enabled.status_code == 200, enabled.text
     assert enabled.json() == {"enabled": True}
@@ -2143,15 +2161,54 @@ def test_email_mfa_login_issues_one_time_eight_digit_code(
 
     verified = client.post(
         "/auth/mfa/verify",
-        json={"challenge_token": challenge.json()["challenge_token"], "code": mfa_codes[0]},
+        json={
+            "challenge_token": challenge.json()["challenge_token"],
+            "code": mfa_codes[0],
+            "security_answer": security_answers[challenge.json()["security_question_id"]],
+        },
     )
     assert verified.status_code == 200, verified.text
     assert verified.json()["access_token"]
     reused = client.post(
         "/auth/mfa/verify",
-        json={"challenge_token": challenge.json()["challenge_token"], "code": mfa_codes[0]},
+        json={
+            "challenge_token": challenge.json()["challenge_token"],
+            "code": mfa_codes[0],
+            "security_answer": security_answers[challenge.json()["security_question_id"]],
+        },
     )
     assert reused.status_code == 400
+
+    rate_limited_challenge = client.post(
+        "/auth/login",
+        json={"username_or_email": "mfalogin", "password": VALID_PASSWORD},
+    ).json()
+    for attempt in range(5):
+        limited = client.post(
+            "/auth/mfa/verify",
+            json={
+                "challenge_token": rate_limited_challenge["challenge_token"],
+                "code": mfa_codes[1],
+                "security_answer": "wrong answer",
+            },
+        )
+        assert limited.status_code == (429 if attempt == 4 else 400)
+
+    reset_requested = client.post("/auth/mfa/reset/request", json={"email": "mfalogin@example.com"})
+    assert reset_requested.status_code == 200
+    reset_confirmed = client.post(
+        "/auth/mfa/reset/confirm",
+        json={"token": reset_token_from_url(reset_urls[0])},
+    )
+    assert reset_confirmed.status_code == 200, reset_confirmed.text
+    assert client.post(
+        "/auth/mfa/reset/confirm",
+        json={"token": reset_token_from_url(reset_urls[0])},
+    ).status_code == 400
+    assert client.post(
+        "/auth/login",
+        json={"username_or_email": "mfalogin", "password": VALID_PASSWORD},
+    ).json()["access_token"]
 
 
 def test_login_bad_password_fails(client: TestClient):

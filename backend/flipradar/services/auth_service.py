@@ -32,6 +32,8 @@ from flipradar.api.schemas import (
     EmailVerificationResponse,
     LogoutRequest,
     MfaChallengeResponse,
+    MfaResetConfirmRequest,
+    MfaResetRequest,
     MfaSettingsResponse,
     MfaSettingsUpdate,
     MfaVerifyRequest,
@@ -58,20 +60,24 @@ from flipradar.database.repositories import (
     create_mfa_challenge,
     create_refresh_token_session,
     create_user,
+    delete_mfa_challenges_for_user,
     get_account_token_by_hash,
     get_latest_account_token_for_user,
     get_mfa_challenge_by_hash,
+    get_mfa_security_question,
     get_refresh_token_session_by_hash,
     get_refresh_token_session_for_user,
     get_user_by_email,
     get_user_by_id,
     get_user_by_username_or_email,
+    increment_mfa_challenge_failures,
     is_mfa_token_blacklisted,
     is_refresh_token_blacklisted,
     list_active_refresh_token_sessions_for_user,
     mark_account_token_sent,
     mark_account_token_used,
     mark_user_email_verified,
+    replace_mfa_security_questions,
     revoke_account_tokens_for_user,
     revoke_active_refresh_token_sessions_for_user,
     revoke_refresh_token_session,
@@ -87,6 +93,7 @@ from flipradar.services.email_service import (
     send_account_deletion_confirmation_email,
     send_email_change_confirmation_email,
     send_mfa_access_code_email,
+    send_mfa_reset_email,
     send_password_reset_email,
     send_registration_email,
     send_security_email,
@@ -96,7 +103,16 @@ from flipradar.services.email_service import (
 EMAIL_VERIFICATION_PURPOSE = "email_verification"
 PASSWORD_RESET_PURPOSE = "password_reset"
 EMAIL_CHANGE_PURPOSE = "email_change"
+MFA_RESET_PURPOSE = "mfa_reset"
 ACCOUNT_DELETION_DELAY = timedelta(hours=24)
+
+MFA_SECURITY_QUESTIONS = {
+    "first_pet": "What was the name of your first pet?",
+    "childhood_street": "What street did you grow up on?",
+    "first_school": "What was the name of your first school?",
+    "favorite_teacher": "What was the last name of your favorite teacher?",
+    "birth_city": "In what city were you born?",
+}
 
 
 def _invalid_refresh_token() -> HTTPException:
@@ -127,6 +143,11 @@ def _mfa_code_hash(code: str) -> str:
     """HMAC prevents offline recovery of the intentionally short email code."""
     secret = get_settings().auth.jwt_secret_key.encode("utf-8")
     return hmac.new(secret, code.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _mfa_answer_hash(answer: str) -> str:
+    normalized = " ".join(answer.strip().casefold().split())
+    return _mfa_code_hash(normalized)
 
 
 def _invalid_mfa_challenge() -> HTTPException:
@@ -161,6 +182,7 @@ async def _issue_mfa_challenge(
     db: AsyncSession, user: User
 ) -> MfaChallengeResponse:
     code = f"{secrets.randbelow(100_000_000):08d}"
+    question_id = secrets.choice(tuple(MFA_SECURITY_QUESTIONS))
     token = create_mfa_token(str(user.id))
     try:
         payload = decode_mfa_token(token)
@@ -173,12 +195,18 @@ async def _issue_mfa_challenge(
         token_hash=hash_mfa_token(token),
         token_jti=_mfa_token_jti(payload),
         code_hash=_mfa_code_hash(code),
+        security_question_id=question_id,
         expires_at=expires_at,
     )
     await send_mfa_access_code_email(
         to_address=user.email, username=user.username, code=code
     )
-    return MfaChallengeResponse(challenge_token=token, expires_at=expires_at)
+    return MfaChallengeResponse(
+        challenge_token=token,
+        expires_at=expires_at,
+        security_question_id=question_id,
+        security_question=MFA_SECURITY_QUESTIONS[question_id],
+    )
 
 
 def _invalid_email_verification_token() -> HTTPException:
@@ -234,6 +262,11 @@ def _verification_url(token: str) -> str:
 def _password_reset_url(token: str) -> str:
     frontend_url = get_settings().application.frontend_url.rstrip("/")
     return f"{frontend_url}/reset-password?token={token}"
+
+
+def _mfa_reset_url(token: str) -> str:
+    frontend_url = get_settings().application.frontend_url.rstrip("/")
+    return f"{frontend_url}/mfa-reset?token={token}"
 
 
 def _email_change_url(token: str) -> str:
@@ -400,6 +433,35 @@ async def verify_mfa_challenge(
         or _aware_utc(challenge.expires_at) <= now
         or not hmac.compare_digest(challenge.code_hash, _mfa_code_hash(payload.code))
     ):
+        failures = await increment_mfa_challenge_failures(db, challenge)
+        if failures >= get_settings().auth.mfa_max_attempts:
+            await blacklist_mfa_token(db, user_id=user_id, token_hash=token_hash, token_jti=token_jti)
+            user = await get_user_by_id(db, user_id)
+            if user is not None:
+                await send_security_email(to_address=user.email, username=user.username, event_label="MFA sign-in challenge was rate limited")
+            await db.commit()
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many MFA attempts; request a new sign-in code")
+        await db.commit()
+        raise _invalid_mfa_challenge()
+    question = await get_mfa_security_question(
+        db, user_id=user_id, question_id=challenge.security_question_id
+    )
+    if question is None or not hmac.compare_digest(question.answer_hash, _mfa_answer_hash(payload.security_answer)):
+        failures = await increment_mfa_challenge_failures(db, challenge)
+        if failures >= get_settings().auth.mfa_max_attempts:
+            await blacklist_mfa_token(
+                db, user_id=user_id, token_hash=token_hash, token_jti=token_jti
+            )
+            user = await get_user_by_id(db, user_id)
+            if user is not None:
+                await send_security_email(
+                    to_address=user.email,
+                    username=user.username,
+                    event_label="MFA sign-in challenge was rate limited",
+                )
+            await db.commit()
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many MFA attempts; request a new sign-in code")
+        await db.commit()
         raise _invalid_mfa_challenge()
     user = await get_user_by_id(db, user_id)
     if user is None or not user.mfa_enabled:
@@ -423,6 +485,16 @@ async def update_mfa_settings(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verify your email address before enabling MFA",
         )
+    if payload.enabled:
+        answers = payload.security_answers or []
+        question_ids = {item.question_id for item in answers}
+        if question_ids != set(MFA_SECURITY_QUESTIONS) or len(answers) != len(MFA_SECURITY_QUESTIONS):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Provide answers for each supported MFA security question")
+        await replace_mfa_security_questions(
+            db,
+            user_id=current_user.id,
+            questions={item.question_id: _mfa_answer_hash(item.answer) for item in answers},
+        )
     user = await update_user_mfa_enabled(db, current_user, payload.enabled)
     await send_security_email(
         to_address=user.email,
@@ -434,6 +506,38 @@ async def update_mfa_settings(
         ),
     )
     return MfaSettingsResponse(enabled=user.mfa_enabled)
+
+
+async def request_mfa_reset(db: AsyncSession, payload: MfaResetRequest) -> PasswordResetResponse:
+    user = await get_user_by_email(db, normalize_email_address(payload.email))
+    if user is not None and user.mfa_enabled:
+        token = await _issue_account_token(db, user=user, purpose=MFA_RESET_PURPOSE, mark_sent=True)
+        await send_mfa_reset_email(to_address=user.email, username=user.username, reset_url=_mfa_reset_url(token))
+        await send_security_email(to_address=user.email, username=user.username, event_label="An MFA reset was requested")
+    return PasswordResetResponse(message="If an account with MFA exists, a reset link has been sent")
+
+
+async def confirm_mfa_reset(db: AsyncSession, payload: MfaResetConfirmRequest) -> PasswordResetResponse:
+    try:
+        token_payload = decode_account_token(payload.token, expected_purpose=MFA_RESET_PURPOSE)
+    except HTTPException as exc:
+        raise _invalid_mfa_challenge() from exc
+    user_id = _account_token_subject(token_payload)
+    token = await get_account_token_by_hash(
+        db, hash_account_token(payload.token), MFA_RESET_PURPOSE
+    )
+    now = datetime.now(UTC)
+    if token is None or token.user_id != user_id or token.used_at is not None or token.revoked_at is not None or _aware_utc(token.expires_at) <= now:
+        raise _invalid_mfa_challenge()
+    user = await get_user_by_id(db, user_id)
+    if user is None:
+        raise _invalid_mfa_challenge()
+    await mark_account_token_used(db, token, now)
+    await delete_mfa_challenges_for_user(db, user.id)
+    await update_user_mfa_enabled(db, user, False)
+    await revoke_active_refresh_token_sessions_for_user(db, user_id=user.id, revoked_at=now, reason="mfa_reset")
+    await send_security_email(to_address=user.email, username=user.username, event_label="Multi-factor authentication was reset")
+    return PasswordResetResponse(message="MFA was reset; sign in again to configure it")
 
 
 async def get_user_profile(user: User) -> User:

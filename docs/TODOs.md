@@ -1053,12 +1053,12 @@ Classification: SHIP LATER
 PHASE 54: MFA
 Classification: SHIP LATER
 
-1. Add MFA settings to users.
-2. Add TOTP enrollment.
-3. Generate QR codes.
-4. Confirm enrollment with a valid code.
-5. Add recovery codes.
-6. Hash recovery codes.
+1. Add MFA settings to users. - (Complete) 
+2. Add TOTP enrollment. - (Complete) 
+3. Generate QR codes. - (Complete) 
+4. Confirm enrollment with a valid code. - (Complete) 
+5. Add recovery codes. - (Complete) 
+6. Hash recovery codes. - (Complete) 
 7. Add MFA login challenges.
 8. Add trusted devices only if implemented securely.
 9. Add MFA reset.

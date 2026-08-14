@@ -62,6 +62,7 @@ class AuthenticationSettings(BaseModel):
     email_verification_token_expire_minutes: int
     password_reset_token_expire_minutes: int
     mfa_token_expire_minutes: int
+    mfa_max_attempts: int
     account_token_resend_cooldown_seconds: int
     password_min_length: int
 
@@ -218,6 +219,7 @@ class Settings(BaseSettings):
     mfa_token_expire_minutes: int = Field(
         default=60, ge=60, le=60, alias="MFA_TOKEN_EXPIRE_MINUTES"
     )
+    mfa_max_attempts: int = Field(default=5, ge=1, le=10, alias="MFA_MAX_ATTEMPTS")
     account_token_resend_cooldown_seconds: int = Field(
         default=300, ge=1, alias="ACCOUNT_TOKEN_RESEND_COOLDOWN_SECONDS"
     )
@@ -421,6 +423,7 @@ class Settings(BaseSettings):
             ),
             password_reset_token_expire_minutes=self.password_reset_token_expire_minutes,
             mfa_token_expire_minutes=self.mfa_token_expire_minutes,
+            mfa_max_attempts=self.mfa_max_attempts,
             account_token_resend_cooldown_seconds=(
                 self.account_token_resend_cooldown_seconds
             ),

@@ -1,5 +1,5 @@
 from flipradar.domain.models.account_token import AccountToken
-from flipradar.domain.models.mfa import MfaChallenge, MfaTokenBlacklist
+from flipradar.domain.models.mfa import MfaChallenge, MfaSecurityQuestion, MfaTokenBlacklist
 from flipradar.domain.models.inventory import (
     ChecklistAdjustment,
     InventoryItem,
@@ -55,6 +55,7 @@ from flipradar.domain.models.watchlist_monitoring_preference import (
 __all__ = [
     "AccountToken",
     "MfaChallenge",
+    "MfaSecurityQuestion",
     "MfaTokenBlacklist",
     "LegoSet",
     "Marketplace",

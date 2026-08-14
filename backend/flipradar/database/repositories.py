@@ -29,6 +29,7 @@ from flipradar.domain.models import (
     Marketplace,
     MarketplaceListing,
     MfaChallenge,
+    MfaSecurityQuestion,
     MfaTokenBlacklist,
     Notification,
     NotificationAuditLog,
@@ -705,11 +706,11 @@ async def is_refresh_token_blacklisted(db: AsyncSession, token_hash: str) -> boo
 
 async def create_mfa_challenge(
     db: AsyncSession, *, user_id: UUID, token_hash: str, token_jti: str,
-    code_hash: str, expires_at: datetime,
+    code_hash: str, security_question_id: str, expires_at: datetime,
 ) -> MfaChallenge:
     challenge = MfaChallenge(
         user_id=user_id, token_hash=token_hash, token_jti=token_jti,
-        code_hash=code_hash, expires_at=expires_at,
+        code_hash=code_hash, security_question_id=security_question_id, expires_at=expires_at,
     )
     db.add(challenge)
     await db.flush()
@@ -747,6 +748,37 @@ async def blacklist_mfa_token(
 async def clear_mfa_token_blacklist(db: AsyncSession) -> int:
     result = await db.execute(delete(MfaTokenBlacklist))
     return int(result.rowcount or 0)
+
+
+async def replace_mfa_security_questions(
+    db: AsyncSession, *, user_id: UUID, questions: dict[str, str]
+) -> None:
+    await db.execute(delete(MfaSecurityQuestion).where(MfaSecurityQuestion.user_id == user_id))
+    db.add_all(
+        MfaSecurityQuestion(user_id=user_id, question_id=question_id, answer_hash=answer_hash)
+        for question_id, answer_hash in questions.items()
+    )
+    await db.flush()
+
+
+async def get_mfa_security_question(
+    db: AsyncSession, *, user_id: UUID, question_id: str
+) -> MfaSecurityQuestion | None:
+    result = await db.execute(select(MfaSecurityQuestion).where(
+        MfaSecurityQuestion.user_id == user_id, MfaSecurityQuestion.question_id == question_id
+    ))
+    return result.scalar_one_or_none()
+
+
+async def increment_mfa_challenge_failures(db: AsyncSession, challenge: MfaChallenge) -> int:
+    challenge.failed_attempt_count += 1
+    await db.flush()
+    return challenge.failed_attempt_count
+
+
+async def delete_mfa_challenges_for_user(db: AsyncSession, user_id: UUID) -> None:
+    await db.execute(delete(MfaChallenge).where(MfaChallenge.user_id == user_id))
+    await db.flush()
 
 
 async def update_user_mfa_enabled(db: AsyncSession, user: User, enabled: bool) -> User:

@@ -11,6 +11,8 @@ from flipradar.api.schemas import (
     EmailVerificationResponse,
     LogoutRequest,
     MfaChallengeResponse,
+    MfaResetConfirmRequest,
+    MfaResetRequest,
     MfaVerifyRequest,
     PasswordResetConfirmRequest,
     PasswordResetRequest,
@@ -73,6 +75,20 @@ async def verify_mfa_login(
     token = await auth_service.verify_mfa_challenge(db, payload)
     logger.info("request finished route=verify_mfa_login")
     return token
+
+
+@router.post("/mfa/reset/request", response_model=PasswordResetResponse)
+async def request_mfa_reset(
+    payload: MfaResetRequest, db: AsyncSession = Depends(get_db_session)
+) -> PasswordResetResponse:
+    return await auth_service.request_mfa_reset(db, payload)
+
+
+@router.post("/mfa/reset/confirm", response_model=PasswordResetResponse)
+async def confirm_mfa_reset(
+    payload: MfaResetConfirmRequest, db: AsyncSession = Depends(get_db_session)
+) -> PasswordResetResponse:
+    return await auth_service.confirm_mfa_reset(db, payload)
 
 
 @router.post(

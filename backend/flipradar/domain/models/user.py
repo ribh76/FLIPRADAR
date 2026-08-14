@@ -122,6 +122,12 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    mfa_security_questions = relationship(
+        "MfaSecurityQuestion",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
     used_mfa_tokens = relationship(
         "MfaTokenBlacklist",
         back_populates="user",

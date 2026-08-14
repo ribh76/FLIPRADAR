@@ -196,6 +196,14 @@ def mfa_access_code_email_template(*, username: str, code: str) -> EmailTemplate
     return EmailTemplate(subject=subject, text_body=text_body, html_body=html_body)
 
 
+def mfa_reset_email_template(*, username: str, reset_url: str) -> EmailTemplate:
+    return EmailTemplate(
+        subject="Reset your FlipRadar MFA",
+        text_body=f"Hi {username},\n\nReset MFA with this link:\n{reset_url}\n\nIf you did not request this, ignore this email and secure your account.",
+        html_body=f"<p>Hi {username},</p><p><a href=\"{reset_url}\">Reset MFA</a></p><p>If you did not request this, ignore this email and secure your account.</p>",
+    )
+
+
 async def _send_template(
     *,
     to_address: str,
@@ -311,5 +319,16 @@ async def send_mfa_access_code_email(
     return await _send_template(
         to_address=to_address,
         template=mfa_access_code_email_template(username=username, code=code),
+        email_service=email_service,
+    )
+
+
+async def send_mfa_reset_email(
+    *, to_address: str, username: str, reset_url: str,
+    email_service: EmailService | None = None,
+) -> EmailSendResult:
+    return await _send_template(
+        to_address=to_address,
+        template=mfa_reset_email_template(username=username, reset_url=reset_url),
         email_service=email_service,
     )

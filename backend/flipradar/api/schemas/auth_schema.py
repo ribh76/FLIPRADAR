@@ -107,20 +107,42 @@ class MfaChallengeResponse(BaseModel):
     mfa_required: bool = True
     challenge_token: str
     expires_at: datetime
+    security_question_id: str
+    security_question: str
 
 
 class MfaVerifyRequest(BaseModel):
     challenge_token: str = Field(..., min_length=1)
     code: str = Field(..., pattern=r"^\d{8}$")
+    security_answer: str = Field(..., min_length=1, max_length=255)
+
+
+class MfaSecurityAnswer(BaseModel):
+    question_id: str = Field(..., min_length=1, max_length=40)
+    answer: str = Field(..., min_length=1, max_length=255)
 
 
 class MfaSettingsUpdate(BaseModel):
     enabled: bool
     current_password: str = Field(..., min_length=1, max_length=128)
+    security_answers: list[MfaSecurityAnswer] | None = None
 
 
 class MfaSettingsResponse(BaseModel):
     enabled: bool
+
+
+class MfaResetRequest(BaseModel):
+    email: EmailStr
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: object) -> str:
+        return normalize_email_address(value)
+
+
+class MfaResetConfirmRequest(BaseModel):
+    token: str = Field(..., min_length=1)
 
 
 class RefreshTokenRequest(BaseModel):
