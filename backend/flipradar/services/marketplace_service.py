@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas.validation import MarketplaceName, normalize_set_number
 from flipradar.core.observability import record_metric
-from flipradar.core.settings import MarketplaceApiSettings, get_settings
+from flipradar.core.settings import (
+    AppEnvironment,
+    MarketplaceApiSettings,
+    Settings,
+    get_settings,
+)
 from flipradar.database import repositories
 from flipradar.database.session import SessionLocal
 from flipradar.domain.models import (
@@ -179,10 +184,7 @@ async def _fetch_marketplace_listings(set_number: str) -> tuple[list[dict], list
             "No marketplace provider is enabled and configured"
         )
     results = await asyncio.gather(
-        *(
-            _fetch_adapter_listings(adapter, set_number)
-            for adapter in adapters
-        ),
+        *(_fetch_adapter_listings(adapter, set_number) for adapter in adapters),
         return_exceptions=True,
     )
     listings: list[dict] = []
@@ -212,6 +214,38 @@ def configured_marketplace_adapters(
         adapter
         for name, adapter in _ADAPTERS_BY_MARKETPLACE.items()
         if enabled[name]
+        and (
+            marketplace.allow_mock_providers
+            or not _is_mock_marketplace_adapter(adapter)
+        )
+    )
+
+
+def validate_marketplace_provider_configuration(settings: Settings) -> None:
+    """Reject mock marketplace adapters during production startup.
+
+    This guards the adapter registry as well as environment configuration, so
+    adding a mock implementation later cannot silently make it into a
+    production process.
+    """
+    if settings.app_env != AppEnvironment.PRODUCTION:
+        return
+    mock_providers = [
+        name
+        for name, adapter in _ADAPTERS_BY_MARKETPLACE.items()
+        if _is_mock_marketplace_adapter(adapter)
+    ]
+    if mock_providers:
+        raise ValueError(
+            "Mock marketplace providers are not permitted in production: "
+            + ", ".join(sorted(mock_providers))
+        )
+
+
+def _is_mock_marketplace_adapter(adapter: MarketplaceAdapter) -> bool:
+    """Recognize explicit mock adapters and legacy mock-client modules."""
+    return bool(getattr(adapter, "is_mock_provider", False)) or any(
+        "mock" in segment.lower() for segment in type(adapter).__module__.split(".")
     )
 
 

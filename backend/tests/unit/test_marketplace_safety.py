@@ -1,0 +1,72 @@
+import pytest
+
+from flipradar.core.settings import MarketplaceApiSettings, ProviderSettings, Settings
+from flipradar.integrations.marketplace_adapter import MarketplaceAdapter
+from flipradar.main import create_app
+from flipradar.services import marketplace_service
+
+
+class MockMarketplaceAdapter(MarketplaceAdapter):
+    marketplace = "ebay"
+    is_mock_provider = True
+
+    def fetch_listings(self, set_number: str) -> list[dict]:
+        del set_number
+        return []
+
+
+def _production_settings(**overrides: object) -> Settings:
+    return Settings(
+        app_env="production",
+        app_debug=False,
+        jwt_secret_key="x" * 48,
+        database_url_override="postgresql+asyncpg://example",
+        database_ssl_mode="require",
+        cors_allowed_origins="https://app.flipradar.example",
+        **overrides,
+    )
+
+
+def test_mock_marketplace_access_defaults_to_local_development_and_test_only():
+    assert Settings(app_env="development").allow_mock_marketplace_providers is True
+    assert Settings(app_env="test").allow_mock_marketplace_providers is True
+    assert Settings(app_env="staging").allow_mock_marketplace_providers is False
+
+
+def test_production_rejects_enabled_mock_marketplace_access():
+    with pytest.raises(
+        ValueError, match="ALLOW_MOCK_MARKETPLACE_PROVIDERS must be false"
+    ):
+        _production_settings(allow_mock_marketplace_providers=True)
+
+
+def test_non_local_provider_selection_filters_mock_adapters(monkeypatch):
+    monkeypatch.setattr(
+        marketplace_service,
+        "_ADAPTERS_BY_MARKETPLACE",
+        {"ebay": MockMarketplaceAdapter()},
+    )
+    marketplace = MarketplaceApiSettings(
+        ebay=ProviderSettings(enabled=True, configured=True, timeout_seconds=1),
+        bricklink=ProviderSettings(enabled=False, configured=False, timeout_seconds=1),
+        allow_mock_providers=False,
+    )
+
+    assert marketplace_service.configured_marketplace_adapters(marketplace) == ()
+
+
+def test_production_startup_rejects_registered_mock_marketplace_adapter(monkeypatch):
+    monkeypatch.setattr(
+        marketplace_service,
+        "_ADAPTERS_BY_MARKETPLACE",
+        {"ebay": MockMarketplaceAdapter()},
+    )
+
+    with pytest.raises(ValueError, match="Mock marketplace providers"):
+        create_app(_production_settings())
+
+
+def test_valid_production_configuration_can_create_the_application():
+    app = create_app(_production_settings())
+
+    assert app.state.settings.app_env == "production"

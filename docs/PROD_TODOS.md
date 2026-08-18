@@ -57,9 +57,9 @@ PHASE 3 — REMOVE MOCK MARKETPLACE DATA FROM PRODUCTION PATHS
 4. Refactor marketplace_service.py so provider selection is configuration-driven rather than hardwired to mock clients.  - 
 5. Replace direct mock-client imports in part_catalog_service.py, set_catalog_service.py, and set_detail_service.py.  - 
 6. Define explicit behavior for unavailable providers: return a controlled unavailable/error state rather than generated substitute data.  - 
-7. Add tests proving production configuration never selects a mock provider. 
-8. Add integration tests covering at least one successful and one failed real-provider request path. 
-9. Remove or clearly isolate remaining mock clients so they are available only to tests/development.
+7. Add tests proving production configuration never selects a mock provider.  - 
+8. Add integration tests covering at least one successful and one failed real-provider request path.  - 
+9. Remove or clearly isolate remaining mock clients so they are available only to tests/development. - 
 
 PHASE 4 — PRODUCTION FAIL-CLOSED SAFETY CONTROLS 
 1. Add an explicit configuration setting controlling whether mock marketplace providers are allowed. 

@@ -33,12 +33,16 @@ from flipradar.core.observability import (
 )
 from flipradar.core.settings import Settings, get_settings
 from flipradar.core.startup import report_startup_configuration
+from flipradar.services.marketplace_service import (
+    validate_marketplace_provider_configuration,
+)
 
 logger = logging.getLogger(__name__)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved_settings = settings or get_settings()
+    validate_marketplace_provider_configuration(resolved_settings)
     logging_settings = resolved_settings.logging
     setup_logging(
         logging_settings.level,

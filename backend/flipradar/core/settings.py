@@ -108,6 +108,7 @@ class ProviderSettings(BaseModel):
 class MarketplaceApiSettings(BaseModel):
     ebay: ProviderSettings
     bricklink: ProviderSettings
+    allow_mock_providers: bool = False
 
 
 class LlmSettings(BaseModel):
@@ -266,6 +267,9 @@ class Settings(BaseSettings):
     bricklink_api_timeout_seconds: int = Field(
         default=10, ge=1, alias="BRICKLINK_API_TIMEOUT_SECONDS"
     )
+    allow_mock_marketplace_providers: bool | None = Field(
+        default=None, alias="ALLOW_MOCK_MARKETPLACE_PROVIDERS"
+    )
 
     pricing_currency: str = Field(
         default="USD", min_length=3, max_length=3, alias="PRICING_CURRENCY"
@@ -354,6 +358,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_environment(self) -> Settings:
+        # Mock providers are useful for local fixtures, but must be opted into
+        # anywhere other than development and test.  Resolve the unset value
+        # here so consumers always receive a boolean policy.
+        if self.allow_mock_marketplace_providers is None:
+            self.allow_mock_marketplace_providers = self.app_env in {
+                AppEnvironment.DEVELOPMENT,
+                AppEnvironment.TEST,
+            }
         if self.app_env == AppEnvironment.PRODUCTION:
             self._validate_production()
         return self
@@ -365,6 +377,10 @@ class Settings(BaseSettings):
         }
         if self.app_debug:
             raise ValueError("APP_DEBUG must be false in production.")
+        if self.allow_mock_marketplace_providers:
+            raise ValueError(
+                "ALLOW_MOCK_MARKETPLACE_PROVIDERS must be false in production."
+            )
         if self.jwt_secret_key in unsafe_secret or len(self.jwt_secret_key) < 48:
             raise ValueError("JWT_SECRET_KEY must be a strong production secret.")
         if not self.database_url_override and self.database_password in {
@@ -447,6 +463,7 @@ class Settings(BaseSettings):
     @property
     def marketplace(self) -> MarketplaceApiSettings:
         return MarketplaceApiSettings(
+            allow_mock_providers=bool(self.allow_mock_marketplace_providers),
             ebay=ProviderSettings(
                 enabled=self.ebay_api_enabled,
                 configured=bool(self.ebay_api_key and self.ebay_api_secret),

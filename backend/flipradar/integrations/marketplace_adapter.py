@@ -10,6 +10,9 @@ class MarketplaceAdapter(ABC):
     """
 
     marketplace: str
+    # Mock adapters must opt in explicitly.  The marketplace registry uses
+    # this marker to keep fixture data out of non-local environments.
+    is_mock_provider: bool = False
 
     @abstractmethod
     def fetch_listings(self, set_number: str) -> list[dict[str, Any]]:
