@@ -19,7 +19,7 @@ PHASE 0 — DEVELOPMENT FREEZE AND RELEASE BASELINE
 3. Archive TODOs.md as historical reference and remove it as the source of development direction. -
 4. Make this production-readiness plan the active execution checklist for the project. -
 5. Record the current Python, Node.js, npm, PostgreSQL, and Redis versions used locally. 
-6. Run and record every currently available backend and frontend quality check before making cleanup changes. 
+6. Run and record every currently available backend and frontend quality check before making cleanup changes. -
 7. Create a short list of known failures, skipped tests, warnings, and environment-specific behavior found during the baseline run. 
 8. Commit the untouched baseline state so cleanup changes can always be compared against it.
 
