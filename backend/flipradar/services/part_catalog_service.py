@@ -16,6 +16,7 @@ from flipradar.integrations import bricklink_client
 from flipradar.services.errors import (
     ServiceNotFoundError,
     ServiceProviderError,
+    ServiceProviderUnavailableError,
     ServiceValidationError,
 )
 from flipradar.services.part_catalog_normalizer import normalize_part_catalog_record
@@ -111,6 +112,10 @@ def _provider(provider: str) -> str:
 
 def _provider_records(provider: str, query: str) -> list[dict]:
     if provider == "bricklink":
+        if not bricklink_client.client.configured:
+            raise ServiceProviderUnavailableError(
+                "BrickLink catalog provider is unavailable: configure its credentials"
+            )
         try:
             records = bricklink_client.client.get_part_catalog_records(query)
         except bricklink_client.BricklinkNotFoundError:

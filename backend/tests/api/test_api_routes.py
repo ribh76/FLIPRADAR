@@ -247,7 +247,7 @@ def test_get_set_endpoint(client: TestClient):
     logger.info(f"API TEST: GET /set/{{set_number}} status={response.status_code}")
     assert response.status_code == 200
     assert response.json()["set_number"] == lego_set["set_number"]
-    assert response.json()["valuation_status"] == "missing_market_data"
+    assert response.json()["valuation_status"] == "provider_unavailable"
 
 
 def test_get_set_endpoint_returns_bricklink_live_detail(client: TestClient, monkeypatch: pytest.MonkeyPatch):
@@ -288,15 +288,23 @@ def test_get_set_endpoint_with_snapshot_does_not_crash(client: TestClient):
     assert body["listing_count"] == snapshot["listing_count"]
 
 
-def test_get_set_endpoint_missing_set_returns_404(client: TestClient):
+def test_get_set_endpoint_missing_set_returns_controlled_unavailable_error(client: TestClient):
     response = client.get("/set/not-a-mock-set")
 
     logger.info(
         f"API TEST: GET /set/{{set_number}} missing status={response.status_code}"
     )
-    assert response.status_code == 404
-    assert response.json()["detail"] == "LEGO set not found"
-    assert response.json()["error"]["code"] == "not_found"
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "service_unavailable"
+    assert "BrickLink set provider is unavailable" in response.json()["detail"]
+
+
+def test_provider_miss_returns_controlled_unavailable_error(client: TestClient):
+    response = client.get("/sets/search", params={"query": "99999"})
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "service_unavailable"
+    assert "BrickLink catalog provider is unavailable" in response.json()["detail"]
 
 
 def test_list_sets_endpoint(client: TestClient):

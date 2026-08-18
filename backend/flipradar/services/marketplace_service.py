@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.schemas.validation import MarketplaceName, normalize_set_number
 from flipradar.core.observability import record_metric
-from flipradar.core.settings import get_settings
+from flipradar.core.settings import MarketplaceApiSettings, get_settings
 from flipradar.database import repositories
 from flipradar.database.session import SessionLocal
 from flipradar.domain.models import (
@@ -30,14 +30,17 @@ from flipradar.services.errors import (
     ServiceConflictError,
     ServiceProviderError,
     ServiceProviderTimeoutError,
+    ServiceProviderUnavailableError,
 )
 
 logger = logging.getLogger(__name__)
 
-MARKETPLACE_ADAPTERS: tuple[MarketplaceAdapter, ...] = (
-    ebay_adapter,
-    bricklink_adapter,
-)
+# Keep registration separate from selection: configuration decides which live
+# providers participate in a refresh.  No disabled provider is contacted.
+_ADAPTERS_BY_MARKETPLACE: dict[str, MarketplaceAdapter] = {
+    "ebay": ebay_adapter,
+    "bricklink": bricklink_adapter,
+}
 PROVIDER_MAX_ATTEMPTS = 3
 PROVIDER_TIMEOUT_SECONDS = 10
 STALE_LISTING_DAYS = 90
@@ -170,17 +173,22 @@ async def _fetch_marketplace_listings(set_number: str) -> tuple[list[dict], list
     A provider timeout should not discard the other marketplace's usable price
     evidence. If every provider fails, retain the existing error contract.
     """
+    adapters = configured_marketplace_adapters()
+    if not adapters:
+        raise ServiceProviderUnavailableError(
+            "No marketplace provider is enabled and configured"
+        )
     results = await asyncio.gather(
         *(
             _fetch_adapter_listings(adapter, set_number)
-            for adapter in MARKETPLACE_ADAPTERS
+            for adapter in adapters
         ),
         return_exceptions=True,
     )
     listings: list[dict] = []
     errors: list[str] = []
     failures: list[Exception] = []
-    for adapter, result in zip(MARKETPLACE_ADAPTERS, results, strict=True):
+    for adapter, result in zip(adapters, results, strict=True):
         if isinstance(result, Exception):
             errors.append(adapter.marketplace)
             failures.append(result)
@@ -189,6 +197,22 @@ async def _fetch_marketplace_listings(set_number: str) -> tuple[list[dict], list
     if not listings and failures:
         raise failures[0]
     return listings, errors
+
+
+def configured_marketplace_adapters(
+    marketplace: MarketplaceApiSettings | None = None,
+) -> tuple[MarketplaceAdapter, ...]:
+    """Return only enabled, fully configured live marketplace adapters."""
+    marketplace = marketplace or get_settings().marketplace
+    enabled = {
+        "ebay": marketplace.ebay.usable,
+        "bricklink": marketplace.bricklink.usable,
+    }
+    return tuple(
+        adapter
+        for name, adapter in _ADAPTERS_BY_MARKETPLACE.items()
+        if enabled[name]
+    )
 
 
 def _match_listings_to_set(listings: list[dict], lego_set: LegoSet) -> list[dict]:

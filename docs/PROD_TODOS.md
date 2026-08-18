@@ -51,9 +51,9 @@ configuration.
 ======================================================================
 
 PHASE 3 — REMOVE MOCK MARKETPLACE DATA FROM PRODUCTION PATHS 
-1. Inventory every import and runtime reference to ebay_mock_client and bricklink_mock_client. 
-2. Map each mock-backed code path to the production feature that currently depends on it. 
-3. Implement or connect real provider adapters for the required eBay and BrickLink marketplace/catalog operations. 
+1. Inventory every import and runtime reference to ebay_mock_client and bricklink_mock_client.  - 
+2. Map each mock-backed code path to the production feature that currently depends on it.  - 
+3. Implement or connect real provider adapters for the required eBay and BrickLink marketplace/catalog operations.  - 
 4. Refactor marketplace_service.py so provider selection is configuration-driven rather than hardwired to mock clients. 
 5. Replace direct mock-client imports in part_catalog_service.py, set_catalog_service.py, and set_detail_service.py. 
 6. Define explicit behavior for unavailable providers: return a controlled unavailable/error state rather than generated substitute data. 

@@ -16,6 +16,7 @@ from flipradar.services.errors import (
     ServiceIncompleteDataError,
     ServiceNotFoundError,
     ServiceProviderError,
+    ServiceProviderUnavailableError,
     ServiceValidationError,
 )
 
@@ -117,6 +118,10 @@ def _missing_catalog_fields(record: dict | LegoSet) -> list[str]:
 def _provider_metadata(set_number: str, provider: str) -> tuple[dict, str]:
     if provider != "bricklink":
         raise ServiceValidationError(f"Unsupported catalog provider: {provider}")
+    if not bricklink_client.client.configured:
+        raise ServiceProviderUnavailableError(
+            "BrickLink catalog provider is unavailable: configure its credentials"
+        )
     try:
         return (
             bricklink_client.client.get_set_metadata(set_number),

@@ -3,11 +3,16 @@ from typing import Any
 
 import pytest
 
+from flipradar.core.settings import MarketplaceApiSettings, ProviderSettings
 from flipradar.integrations.bricklink_client import BricklinkMarketplaceAdapter
 from flipradar.integrations.ebay_client import EbayMarketplaceAdapter
 from flipradar.integrations.marketplace_adapter import MarketplaceAdapter
 from flipradar.services import marketplace_service
-from flipradar.services.errors import ServiceProviderError, ServiceProviderTimeoutError
+from flipradar.services.errors import (
+    ServiceProviderError,
+    ServiceProviderTimeoutError,
+    ServiceProviderUnavailableError,
+)
 
 
 class FixtureMarketplaceAdapter(MarketplaceAdapter):
@@ -49,6 +54,10 @@ class FixtureBricklinkClient:
         return {"currency_code": "USD", "price_detail": [{"unit_price": "99.99"}], "condition": condition}
 
 
+def _provider(*, usable: bool) -> ProviderSettings:
+    return ProviderSettings(enabled=usable, configured=usable, timeout_seconds=10)
+
+
 def test_live_provider_adapters_produce_normalizable_listing_contract():
     ebay_listing = EbayMarketplaceAdapter._listing({
         "itemId": "v1|1|0", "title": "LEGO 42071", "itemWebUrl": "https://www.ebay.com/itm/1",
@@ -60,6 +69,22 @@ def test_live_provider_adapters_produce_normalizable_listing_contract():
     assert ebay_listing["currency"] == "USD"
     assert bricklink_listing["marketplace"] == "bricklink"
     assert bricklink_listing["condition"] == "N"
+
+
+def test_marketplace_adapter_selection_uses_provider_configuration():
+    adapters = marketplace_service.configured_marketplace_adapters(
+        MarketplaceApiSettings(ebay=_provider(usable=True), bricklink=_provider(usable=False))
+    )
+
+    assert [adapter.marketplace for adapter in adapters] == ["ebay"]
+
+
+@pytest.mark.asyncio
+async def test_marketplace_refresh_rejects_when_no_provider_is_available(monkeypatch):
+    monkeypatch.setattr(marketplace_service, "configured_marketplace_adapters", lambda: ())
+
+    with pytest.raises(ServiceProviderUnavailableError):
+        await marketplace_service._fetch_marketplace_listings("42071")
 
 
 @pytest.mark.asyncio

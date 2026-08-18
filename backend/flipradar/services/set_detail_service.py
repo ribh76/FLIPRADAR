@@ -11,6 +11,10 @@ from flipradar.database.repositories import (
 )
 from flipradar.domain.engines import price_estimator
 from flipradar.integrations import bricklink_client
+from flipradar.services.errors import (
+    ServiceProviderError,
+    ServiceProviderUnavailableError,
+)
 
 
 def _money(value: Decimal | None) -> Decimal | None:
@@ -52,6 +56,8 @@ def _bricklink_detail(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="LEGO set not found"
         ) from exc
+    except bricklink_client.BricklinkApiError as exc:
+        raise ServiceProviderError(f"BrickLink set detail lookup failed: {exc}") from exc
 
     return _detail_response(
         metadata,
@@ -84,7 +90,8 @@ def _missing_market_data(metadata: dict) -> dict:
         market_high=None,
         listing_count=0,
         confidence=None,
-        valuation_status="missing_market_data",
+        valuation_status="provider_unavailable",
+        valuation_error="BrickLink market data is unavailable because the provider is not configured.",
     )
 
 
@@ -93,8 +100,8 @@ async def get_set_detail(db: AsyncSession, set_number: str) -> dict:
     lego_set = await get_set_by_number(db, normalized_set_number)
     if lego_set is None:
         if not bricklink_client.client.configured:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="LEGO set not found"
+            raise ServiceProviderUnavailableError(
+                "BrickLink set provider is unavailable: configure its credentials"
             )
         return _bricklink_detail(normalized_set_number)
 

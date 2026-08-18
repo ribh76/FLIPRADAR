@@ -75,12 +75,9 @@ async def search_lego_set_catalog(
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """Search local sets and hydrate an exact provider miss into the catalog cache."""
-    try:
-        return await set_catalog_service.search_lego_sets(
-            db, query, provider=provider, limit=limit
-        )
-    except ServiceError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return await set_catalog_service.search_lego_sets(
+        db, query, provider=provider, limit=limit
+    )
 
 
 @router.get(
@@ -99,19 +96,16 @@ async def search_part_catalog(
     year: int | None = Query(default=None, ge=1949, le=2100),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
-    try:
-        return await part_catalog_service.search_parts(
-            db,
-            query,
-            provider=provider,
-            limit=limit,
-            offset=offset,
-            color=color,
-            category=category,
-            year=year,
-        )
-    except ServiceError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return await part_catalog_service.search_parts(
+        db,
+        query,
+        provider=provider,
+        limit=limit,
+        offset=offset,
+        color=color,
+        category=category,
+        year=year,
+    )
 
 
 @router.post(
@@ -125,17 +119,14 @@ async def synchronize_part_catalog(
     provider: str = Query(default="bricklink", min_length=1, max_length=40),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
-    try:
-        results = await part_catalog_service.synchronize_parts(
-            db, query, provider=provider
-        )
-        return {
-            "provider": provider.strip().lower(),
-            "synchronized": len(results),
-            "results": results,
-        }
-    except ServiceError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    results = await part_catalog_service.synchronize_parts(
+        db, query, provider=provider
+    )
+    return {
+        "provider": provider.strip().lower(),
+        "synchronized": len(results),
+        "results": results,
+    }
 
 
 # Fetches one LEGO set. It accepts a set number in the path and returns matching metadata.

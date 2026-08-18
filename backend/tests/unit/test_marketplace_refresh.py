@@ -76,6 +76,14 @@ async def test_provider_timeout_keeps_successful_marketplace_results(monkeypatch
         return [{"marketplace": adapter.marketplace}]
 
     monkeypatch.setattr(marketplace_service, "_fetch_adapter_listings", fetch)
+    monkeypatch.setattr(
+        marketplace_service,
+        "configured_marketplace_adapters",
+        lambda: (
+            _FixtureAdapter("ebay"),
+            _FixtureAdapter("bricklink"),
+        ),
+    )
 
     listings, errors = await marketplace_service._fetch_marketplace_listings("75192")
 
@@ -85,3 +93,8 @@ async def test_provider_timeout_keeps_successful_marketplace_results(monkeypatch
 
 async def _async(value):
     return value
+
+
+class _FixtureAdapter:
+    def __init__(self, marketplace: str) -> None:
+        self.marketplace = marketplace

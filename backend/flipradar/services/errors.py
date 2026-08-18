@@ -35,6 +35,13 @@ class ServiceProviderError(ServiceError):
         super().__init__(message=message, status_code=502)
 
 
+class ServiceProviderUnavailableError(ServiceError):
+    """The requested provider is disabled or has no usable credentials."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message=message, status_code=503)
+
+
 class ServiceProviderTimeoutError(ServiceError):
     def __init__(self, message: str) -> None:
         super().__init__(message=message, status_code=504)
