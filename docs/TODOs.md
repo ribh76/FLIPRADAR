@@ -1,5 +1,11 @@
 FLIPRADAR MASTER DEVELOPMENT PLAN
 
+==================================================
+UPDATE AS OF 8/17/2026: 
+This document wil no longer be in use. 
+All future developments will occur in 
+==================================================
+
 ROADMAP CLASSIFICATION
 - MUST SHIP: Required before the first public release.
 - SHIP LATER: Planned V2 and post-launch functionality.
@@ -1059,15 +1065,15 @@ Classification: SHIP LATER
 4. Confirm enrollment with a valid code. - (Complete) 
 5. Add recovery codes. - (Complete) 
 6. Hash recovery codes. - (Complete) 
-7. Add MFA login challenges.
-8. Add trusted devices only if implemented securely.
-9. Add MFA reset.
-10. Add security notifications.
-11. Add recovery-code regeneration.
-12. Enforce MFA for administrators.
-13. Rate-limit MFA attempts.
-14. Add recovery tests.
-15. Document supported authenticator apps.
+7. Add MFA login challenges. - (Complete) 
+8. Add trusted devices only if implemented securely. - (Complete) 
+9. Add MFA reset. - (Complete) 
+10. Add security notifications. - (Complete) 
+11. Add recovery-code regeneration. - (Complete) 
+12. Enforce MFA for administrators. - (Complete) 
+13. Rate-limit MFA attempts. - (Complete) 
+14. Add recovery tests. - (Complete) 
+15. Document supported authenticator apps. - (Complete) 
 
 
 
