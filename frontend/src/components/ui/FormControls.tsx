@@ -19,7 +19,10 @@ export function ValidationMessage({ children }: { children?: ReactNode }) {
     return null;
   }
   return (
-    <p className="text-sm font-semibold text-[var(--color-warning)]" role="alert">
+    <p
+      className="text-sm font-semibold text-[var(--color-warning)]"
+      role="alert"
+    >
       {children}
     </p>
   );
@@ -49,7 +52,10 @@ export function FieldShell({
           <ValidationMessage>{error}</ValidationMessage>
         </span>
       ) : helpText ? (
-        <p className="text-xs font-medium text-[var(--color-text-muted)]" id={helpId}>
+        <p
+          className="text-xs font-medium text-[var(--color-text-muted)]"
+          id={helpId}
+        >
           {helpText}
         </p>
       ) : null}

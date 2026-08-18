@@ -1,5 +1,4 @@
 from flipradar.domain.models.account_token import AccountToken
-from flipradar.domain.models.mfa import MfaChallenge, MfaSecurityQuestion, MfaTokenBlacklist
 from flipradar.domain.models.inventory import (
     ChecklistAdjustment,
     InventoryItem,
@@ -10,6 +9,11 @@ from flipradar.domain.models.lego_set import LegoSet
 from flipradar.domain.models.listing import MarketplaceListing
 from flipradar.domain.models.listing_evaluation import ListingEvaluation
 from flipradar.domain.models.marketplace import Marketplace
+from flipradar.domain.models.mfa import (
+    MfaChallenge,
+    MfaSecurityQuestion,
+    MfaTokenBlacklist,
+)
 from flipradar.domain.models.notification import (
     DealScoreNotification,
     EndedListingNotification,

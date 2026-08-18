@@ -19,8 +19,7 @@ from flipradar.domain.models import (
     PortfolioValuationSnapshot,
     User,
 )
-from flipradar.services import portfolio_service
-from flipradar.services import portfolio_dashboard_cache
+from flipradar.services import portfolio_dashboard_cache, portfolio_service
 from flipradar.services.portfolio_valuation_retention import (
     aggregate_and_prune_portfolio_valuations,
 )
@@ -282,7 +281,10 @@ async def test_dashboard_cache_coalesces_concurrent_reads():
         return {"calls": calls}
 
     results = await asyncio.gather(
-        *(portfolio_dashboard_cache.get_or_load(("concurrent-user",), load) for _ in range(12))
+        *(
+            portfolio_dashboard_cache.get_or_load(("concurrent-user",), load)
+            for _ in range(12)
+        )
     )
 
     assert calls == 1

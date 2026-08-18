@@ -23,14 +23,16 @@ export function getRecentSetSearches(): string[] {
 export function saveRecentSetSearch(query: string): void {
   const value = query.trim();
   if (!value || !canUseStorage()) return;
-  const next = [value, ...getRecentSetSearches().filter((item) => item !== value)]
-    .slice(0, MAX_RECENT_SEARCHES);
+  const next = [
+    value,
+    ...getRecentSetSearches().filter((item) => item !== value),
+  ].slice(0, MAX_RECENT_SEARCHES);
   window.sessionStorage.setItem(RECENT_SET_SEARCHES_KEY, JSON.stringify(next));
 }
 
 export function getSavedDealFilters(): string {
   return canUseStorage()
-    ? window.sessionStorage.getItem(DEAL_FILTERS_KEY) ?? ""
+    ? (window.sessionStorage.getItem(DEAL_FILTERS_KEY) ?? "")
     : "";
 }
 

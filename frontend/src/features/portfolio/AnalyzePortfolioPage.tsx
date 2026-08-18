@@ -156,17 +156,22 @@ export function AnalyzePortfolioPage() {
   const historyQuery = useServerQuery(
     ["portfolio-analysis-history", selectedPortfolioId, historyOffset],
     useCallback(
-      () => apiClient.portfolio.analyses({ limit: 10, offset: historyOffset, ...(selectedPortfolioId ? { portfolio_id: selectedPortfolioId } : {}) }),
+      () =>
+        apiClient.portfolio.analyses({
+          limit: 10,
+          offset: historyOffset,
+          ...(selectedPortfolioId ? { portfolio_id: selectedPortfolioId } : {}),
+        }),
       [historyOffset, selectedPortfolioId],
     ),
   );
   const analyzeMutation = useServerMutation(
     () => apiClient.portfolio.analyze(selectedPortfolioId || undefined),
     {
-    onSuccess: async (result) => {
-      setAnalysis(result);
-      await historyQuery.refetch();
-    },
+      onSuccess: async (result) => {
+        setAnalysis(result);
+        await historyQuery.refetch();
+      },
     },
   );
   const compareMutation = useServerMutation(
@@ -294,7 +299,9 @@ export function AnalyzePortfolioPage() {
         >
           <option value="">All portfolios (cross-portfolio analysis)</option>
           {(portfoliosQuery.data ?? []).map((portfolio: Portfolio) => (
-            <option key={portfolio.id} value={portfolio.id}>{portfolio.name}</option>
+            <option key={portfolio.id} value={portfolio.id}>
+              {portfolio.name}
+            </option>
           ))}
         </SelectField>
       </Card>
@@ -322,8 +329,13 @@ export function AnalyzePortfolioPage() {
           {analysis ? (
             <button
               className="secondary-button"
-              onClick={() => void apiClient.portfolio.exportAnalysis(analysis.id)
-                .then((blob) => downloadCsv(blob, `portfolio-analysis-${analysis.id}.csv`))}
+              onClick={() =>
+                void apiClient.portfolio
+                  .exportAnalysis(analysis.id)
+                  .then((blob) =>
+                    downloadCsv(blob, `portfolio-analysis-${analysis.id}.csv`),
+                  )
+              }
               type="button"
             >
               Export analysis CSV

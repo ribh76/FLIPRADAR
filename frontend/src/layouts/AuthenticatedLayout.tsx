@@ -6,9 +6,14 @@ export function AuthenticatedLayout() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const redirectUnauthorized = () => navigate("/unauthorized", { replace: true });
+    const redirectUnauthorized = () =>
+      navigate("/unauthorized", { replace: true });
     window.addEventListener("flipradar:unauthorized", redirectUnauthorized);
-    return () => window.removeEventListener("flipradar:unauthorized", redirectUnauthorized);
+    return () =>
+      window.removeEventListener(
+        "flipradar:unauthorized",
+        redirectUnauthorized,
+      );
   }, [navigate]);
 
   return (

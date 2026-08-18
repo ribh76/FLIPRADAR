@@ -73,7 +73,13 @@ describe("primary user journey", () => {
           listing_id: "listing-1",
           set_number: "75192",
           set_name: "Millennium Falcon",
-          marketplace: { display_name: "eBay", name: "ebay", seller_name: null, seller_rating: null, base_url: null },
+          marketplace: {
+            display_name: "eBay",
+            name: "ebay",
+            seller_name: null,
+            seller_rating: null,
+            base_url: null,
+          },
           title: "LEGO 75192 sealed",
           url: "https://www.ebay.com/itm/123",
           condition: "new",
@@ -96,7 +102,13 @@ describe("primary user journey", () => {
         },
       ],
       pagination: { count: 1, has_more: false, limit: 25, offset: 0 },
-      refresh: { requested: false, cached: false, throttled: false, retry_after_seconds: null, provider_errors: [] },
+      refresh: {
+        requested: false,
+        cached: false,
+        throttled: false,
+        retry_after_seconds: null,
+        provider_errors: [],
+      },
     });
     mocks.savedSearches.mockResolvedValue([]);
     mocks.evaluate.mockResolvedValue({

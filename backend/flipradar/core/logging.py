@@ -7,9 +7,7 @@ from typing import Any
 
 from flipradar.core.observability import sanitize_telemetry
 
-request_id_context: ContextVar[str | None] = ContextVar(
-    "request_id", default=None
-)
+request_id_context: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 
 class JsonFormatter(logging.Formatter):

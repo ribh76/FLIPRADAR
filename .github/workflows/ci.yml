@@ -104,8 +104,19 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Build backend image
-        run: docker build --file backend/Dockerfile --tag flipradar-backend:ci .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          tags: flipradar-backend:ci
+          load: true
+          push: false
+          cache-from: type=gha,scope=backend-image
+          cache-to: type=gha,mode=max,scope=backend-image
 
   build-frontend-image:
     name: Build frontend production image
@@ -115,5 +126,17 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build frontend production image
-        run: docker build --file frontend/Dockerfile --target production --tag flipradar-frontend:ci .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          target: production
+          tags: flipradar-frontend:ci
+          load: true
+          push: false
+          cache-from: type=gha,scope=frontend-image
+          cache-to: type=gha,mode=max,scope=frontend-image

@@ -17,9 +17,17 @@ _SENSITIVE_KEY_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _SENSITIVE_VALUE_PATTERNS = (
-    (re.compile(r"(?i)(password|passwd|secret|token|api[_-]?key)\s*([:=])\s*[^\s,;]+"), r"\1\2[REDACTED]"),
+    (
+        re.compile(
+            r"(?i)(password|passwd|secret|token|api[_-]?key)\s*([:=])\s*[^\s,;]+"
+        ),
+        r"\1\2[REDACTED]",
+    ),
     (re.compile(r"(?i)bearer\s+[^\s,;]+"), "Bearer [REDACTED]"),
-    (re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.IGNORECASE), "[REDACTED_EMAIL]"),
+    (
+        re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.IGNORECASE),
+        "[REDACTED_EMAIL]",
+    ),
     (re.compile(r"(?i)demo(?:pass\d*!|@flipradar\.com)"), "[REDACTED_DEMO_CREDENTIAL]"),
 )
 
@@ -29,7 +37,10 @@ def sanitize_telemetry(value: Any, *, key: str | None = None) -> Any:
     if key and _SENSITIVE_KEY_PATTERN.search(key):
         return "[REDACTED]"
     if isinstance(value, dict):
-        return {str(item_key): sanitize_telemetry(item, key=str(item_key)) for item_key, item in value.items()}
+        return {
+            str(item_key): sanitize_telemetry(item, key=str(item_key))
+            for item_key, item in value.items()
+        }
     if isinstance(value, list | tuple):
         return [sanitize_telemetry(item) for item in value]
     if not isinstance(value, str):
@@ -49,7 +60,10 @@ def record_metric(
 ) -> None:
     """Emit a structured metric event that can be aggregated by log monitoring."""
     logger.info(
-        "metric recorded name=%s value=%s unit=%s", name, value, unit,
+        "metric recorded name=%s value=%s unit=%s",
+        name,
+        value,
+        unit,
         extra={
             "metric": {
                 "name": name,
@@ -84,7 +98,8 @@ def record_http_outcome(status_code: int) -> None:
     error_count = sum(is_error for _, is_error in _error_events)
     error_rate_percent = 100 * error_count / request_count if request_count else 0
     record_metric(
-        "http.request", tags={"outcome": "server_error" if status_code >= 500 else "success"}
+        "http.request",
+        tags={"outcome": "server_error" if status_code >= 500 else "success"},
     )
     if (
         request_count >= _error_rate_minimum_requests
@@ -127,8 +142,10 @@ def configure_exception_monitoring(
         return
 
     try:
-        import sentry_sdk
-        from sentry_sdk.integrations.celery import CeleryIntegration
+        import sentry_sdk  # pyright: ignore[reportMissingImports]
+        from sentry_sdk.integrations.celery import (  # pyright: ignore[reportMissingImports]
+            CeleryIntegration,
+        )
     except ImportError:
         logger.warning("exception monitoring disabled reason=sdk_not_installed")
         return
@@ -157,7 +174,7 @@ def capture_exception(
         return
 
     try:
-        import sentry_sdk
+        import sentry_sdk  # pyright: ignore[reportMissingImports]
     except ImportError:
         return
 

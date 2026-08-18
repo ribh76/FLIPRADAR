@@ -39,7 +39,11 @@ class PortfolioAnalyticsSnapshot(Base):
             "user_id",
             "generated_at",
         ),
-        Index("ix_portfolio_analytics_snapshots_portfolio_generated_at", "portfolio_id", "generated_at"),
+        Index(
+            "ix_portfolio_analytics_snapshots_portfolio_generated_at",
+            "portfolio_id",
+            "generated_at",
+        ),
     )
 
     id: Mapped[PyUUID] = mapped_column(

@@ -67,7 +67,9 @@ class AnthropicLlmProvider(LlmProvider):
             try:
                 response_payload = response.json()
             except ValueError as exc:
-                raise LlmProviderError("Anthropic returned an invalid response") from exc
+                raise LlmProviderError(
+                    "Anthropic returned an invalid response"
+                ) from exc
             completion = _parse_completion(response_payload)
         except LlmProviderError as exc:
             _record_llm_metrics(

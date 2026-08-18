@@ -40,7 +40,9 @@ function ValueHistoryChart({
       })
       .join(" ");
   }, [points]);
-  const values = points.map((point) => Number(point.value)).filter(Number.isFinite);
+  const values = points
+    .map((point) => Number(point.value))
+    .filter(Number.isFinite);
 
   if (points.length < 2) {
     return (
@@ -52,30 +54,31 @@ function ValueHistoryChart({
   return (
     <figure>
       <svg
-      aria-label="Marketplace value history"
-      className="h-52 w-full"
-      role="img"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-    >
-      <line
-        x1="0"
-        x2="100"
-        y1="92"
-        y2="92"
-        stroke="var(--color-border-soft)"
-        strokeWidth="1"
-      />
-      <path
-        d={path}
-        fill="none"
-        stroke="var(--color-accent)"
-        strokeWidth="2.5"
-        vectorEffect="non-scaling-stroke"
-      />
+        aria-label="Marketplace value history"
+        className="h-52 w-full"
+        role="img"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+      >
+        <line
+          x1="0"
+          x2="100"
+          y1="92"
+          y2="92"
+          stroke="var(--color-border-soft)"
+          strokeWidth="1"
+        />
+        <path
+          d={path}
+          fill="none"
+          stroke="var(--color-accent)"
+          strokeWidth="2.5"
+          vectorEffect="non-scaling-stroke"
+        />
       </svg>
       <figcaption className="mt-2 text-xs text-[var(--color-text-muted)]">
-        {points.length} marketplace snapshots. Value ranges from {currency(Math.min(...values))} to {currency(Math.max(...values))}.
+        {points.length} marketplace snapshots. Value ranges from{" "}
+        {currency(Math.min(...values))} to {currency(Math.max(...values))}.
       </figcaption>
     </figure>
   );
@@ -174,7 +177,9 @@ export function HoldingDetailPage() {
           <button
             className="secondary-button"
             onClick={() =>
-              navigate(`/deals?set_number=${encodeURIComponent(holding.set_number)}`)
+              navigate(
+                `/deals?set_number=${encodeURIComponent(holding.set_number)}`,
+              )
             }
             type="button"
           >

@@ -20,8 +20,12 @@ export function UnauthorizedPage() {
           Return to your dashboard or sign in with an account that has access.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link className="primary-button" to="/dashboard">Dashboard</Link>
-          <Link className="secondary-button" to="/login">Sign in</Link>
+          <Link className="primary-button" to="/dashboard">
+            Dashboard
+          </Link>
+          <Link className="secondary-button" to="/login">
+            Sign in
+          </Link>
         </div>
       </section>
     </main>

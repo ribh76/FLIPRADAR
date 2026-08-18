@@ -98,7 +98,11 @@ export function PortfolioInsights({
       <Card className="mb-5">
         <CardHeader
           action={
-            <div aria-label="History range" className="flex flex-wrap gap-1" role="group">
+            <div
+              aria-label="History range"
+              className="flex flex-wrap gap-1"
+              role="group"
+            >
               {ranges.map((option) => (
                 <button
                   className={
@@ -134,47 +138,54 @@ export function PortfolioInsights({
               title="No valuation history yet"
             />
           ) : (
-            <figure className="h-full" aria-label="Portfolio value history chart">
+            <figure
+              className="h-full"
+              aria-label="Portfolio value history chart"
+            >
               <ResponsiveContainer height="100%" width="100%">
                 <AreaChart data={points}>
-                <CartesianGrid
-                  stroke="var(--color-border-soft)"
-                  strokeDasharray="3 3"
-                />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fill: "var(--color-text-muted)", fontSize: 12 }}
-                />
-                <YAxis
-                  tickFormatter={(value: number | string) => `$${value}`}
-                  tick={{ fill: "var(--color-text-muted)", fontSize: 12 }}
-                  width={62}
-                />
-                <Tooltip
-                  formatter={(value) =>
-                    currency(
-                      Number(Array.isArray(value) ? value[0] : (value ?? 0)),
-                    )
-                  }
-                />
-                <Area
-                  dataKey="costBasis"
-                  fill="rgba(235,136,30,0.12)"
-                  name="Cost basis"
-                  stroke="var(--color-accent-warm)"
-                  type="monotone"
-                />
-                <Area
-                  dataKey="marketValue"
-                  fill="rgba(73,252,226,0.12)"
-                  name="Market value"
-                  stroke="var(--color-accent)"
-                  type="monotone"
-                />
+                  <CartesianGrid
+                    stroke="var(--color-border-soft)"
+                    strokeDasharray="3 3"
+                  />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fill: "var(--color-text-muted)", fontSize: 12 }}
+                  />
+                  <YAxis
+                    tickFormatter={(value: number | string) => `$${value}`}
+                    tick={{ fill: "var(--color-text-muted)", fontSize: 12 }}
+                    width={62}
+                  />
+                  <Tooltip
+                    formatter={(value) =>
+                      currency(
+                        Number(Array.isArray(value) ? value[0] : (value ?? 0)),
+                      )
+                    }
+                  />
+                  <Area
+                    dataKey="costBasis"
+                    fill="rgba(235,136,30,0.12)"
+                    name="Cost basis"
+                    stroke="var(--color-accent-warm)"
+                    type="monotone"
+                  />
+                  <Area
+                    dataKey="marketValue"
+                    fill="rgba(73,252,226,0.12)"
+                    name="Market value"
+                    stroke="var(--color-accent)"
+                    type="monotone"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
               <figcaption className="sr-only">
-                {points.length} valuation snapshots. Market value changed from {currency(firstPoint.marketValue)} to {currency(latestPoint?.marketValue ?? firstPoint.marketValue)}; cost basis changed from {currency(firstPoint.costBasis)} to {currency(latestPoint?.costBasis ?? firstPoint.costBasis)}.
+                {points.length} valuation snapshots. Market value changed from{" "}
+                {currency(firstPoint.marketValue)} to{" "}
+                {currency(latestPoint?.marketValue ?? firstPoint.marketValue)};
+                cost basis changed from {currency(firstPoint.costBasis)} to{" "}
+                {currency(latestPoint?.costBasis ?? firstPoint.costBasis)}.
               </figcaption>
             </figure>
           )}

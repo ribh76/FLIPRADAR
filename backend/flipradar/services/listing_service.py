@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from flipradar.api.schemas import ListingCreate, ListingEvaluationRequest
+from flipradar.api.schemas import ListingCreate
 from flipradar.database import repositories
 from flipradar.database.repositories import Pagination
 from flipradar.domain.models import Marketplace, MarketplaceListing
@@ -9,7 +9,6 @@ from flipradar.services.errors import (
     ServiceNotFoundError,
     ServiceValidationError,
 )
-from flipradar.services.listing_evaluation_service import evaluate_listing_url
 
 
 async def get_or_create_marketplace(

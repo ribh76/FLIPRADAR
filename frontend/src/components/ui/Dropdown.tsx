@@ -25,7 +25,9 @@ export function Dropdown({
         ?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []),
     ];
     if (!items.length) return;
-    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+    const currentIndex = items.indexOf(
+      document.activeElement as HTMLButtonElement,
+    );
     if (direction === "first") return items[0].focus();
     if (direction === "last") return items[items.length - 1].focus();
     const offset = direction === "next" ? 1 : -1;

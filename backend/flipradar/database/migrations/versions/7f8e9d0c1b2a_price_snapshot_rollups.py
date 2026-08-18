@@ -52,7 +52,9 @@ def upgrade() -> None:
         sa.CheckConstraint("low_value >= 0", name="low_value_non_negative"),
         sa.CheckConstraint("high_value >= low_value", name="value_range_ordered"),
         sa.ForeignKeyConstraint(["lego_set_id"], ["lego_sets.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["marketplace_id"], ["marketplaces.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(
+            ["marketplace_id"], ["marketplaces.id"], ondelete="RESTRICT"
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "lego_set_id",

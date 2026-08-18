@@ -27,9 +27,9 @@ PHASE 1 — CI PIPELINE
 1. Create .github/workflows/ci.yml with triggers for pull requests and pushes to main. - 
 2. Add a backend CI job that installs dependencies in a clean environment. - 
 3. Run Ruff, Black check, Pyright, and the complete backend pytest suite. 
-4. Start a clean PostgreSQL service in CI and run Alembic migrations from an empty database through head. 
-5. Add a frontend CI job using npm ci followed by ESLint, Prettier check, TypeScript checking, Vitest, and the production build. 
-6. Add Docker build jobs for the production backend and frontend images. 
+4. Start a clean PostgreSQL service in CI and run Alembic migrations from an empty database through head. -
+5. Add a frontend CI job using npm ci followed by ESLint, Prettier check, TypeScript checking, Vitest, and the production build. -
+6. Add Docker build jobs for the production backend and frontend images. -
 7. Ensure every CI job fails immediately when its corresponding quality gate fails. 
 8. Add caching only after the clean pipeline is stable and reproducible. 
 9. Make the full pipeline green from a completely clean GitHub runner before continuing.

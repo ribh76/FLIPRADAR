@@ -351,7 +351,9 @@ export const apiClient = {
         }),
       );
     },
-    analyses(options: { limit?: number; offset?: number; portfolio_id?: string } = {}) {
+    analyses(
+      options: { limit?: number; offset?: number; portfolio_id?: string } = {},
+    ) {
       return requestData(
         api.get<CollectionResponse<PortfolioAnalysisHistoryEntry>>(
           "/portfolio/analyses",
@@ -385,7 +387,9 @@ export const apiClient = {
     },
     exportAnalysis(analysisId: string) {
       return requestData(
-        api.get<Blob>(`/portfolio/analyses/${analysisId}/export`, { responseType: "blob" }),
+        api.get<Blob>(`/portfolio/analyses/${analysisId}/export`, {
+          responseType: "blob",
+        }),
       );
     },
     detail(itemId: string) {
@@ -470,7 +474,9 @@ export const apiClient = {
   },
   watchlist: {
     export() {
-      return requestData(api.get<Blob>("/watchlist/export", { responseType: "blob" }));
+      return requestData(
+        api.get<Blob>("/watchlist/export", { responseType: "blob" }),
+      );
     },
     list() {
       return requestData(api.get<WatchlistItem[]>("/watchlist"));

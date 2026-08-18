@@ -130,9 +130,12 @@ export function WatchlistPage() {
         </button>
         <button
           className="secondary-button"
-          onClick={() => void apiClient.watchlist.export()
-            .then((blob) => downloadCsv(blob, "flipradar-watchlist.csv"))
-            .catch((error) => setMessage(getApiError(error)))}
+          onClick={() =>
+            void apiClient.watchlist
+              .export()
+              .then((blob) => downloadCsv(blob, "flipradar-watchlist.csv"))
+              .catch((error) => setMessage(getApiError(error)))
+          }
           type="button"
         >
           Export CSV
@@ -334,7 +337,8 @@ function PriceHistoryChart({ points }: { points: WatchlistHistoryPoint[] }) {
         />
       </svg>
       <p className="text-xs text-[var(--color-text-muted)]">
-        {points.length} observations. Prices range from {currency(low)} to {currency(high)}.
+        {points.length} observations. Prices range from {currency(low)} to{" "}
+        {currency(high)}.
       </p>
     </div>
   );

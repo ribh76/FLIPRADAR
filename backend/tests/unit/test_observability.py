@@ -42,9 +42,7 @@ def test_request_id_is_preserved_and_returned_by_the_api():
     app = create_app(Settings(app_release="2026.08.11"))
 
     with TestClient(app) as client:
-        response = client.get(
-            "/health/live", headers={"X-Request-ID": "request-123"}
-        )
+        response = client.get("/health/live", headers={"X-Request-ID": "request-123"})
 
     assert response.status_code == 200
     assert response.headers["X-Request-ID"] == "request-123"

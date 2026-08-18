@@ -76,7 +76,9 @@ describe("routing authentication", () => {
   it("renders dedicated recovery pages for unauthorized and missing routes", async () => {
     renderRoute("/unauthorized");
     expect(
-      await screen.findByRole("heading", { name: "You don’t have access to this page" }),
+      await screen.findByRole("heading", {
+        name: "You don’t have access to this page",
+      }),
     ).toBeInTheDocument();
 
     renderRoute("/no-such-page");

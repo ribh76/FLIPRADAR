@@ -17,16 +17,45 @@ depends_on = None
 def upgrade() -> None:
     op.add_column("portfolios", sa.Column("archived_at", sa.DateTime(timezone=True)))
     op.add_column("portfolio_analytics_snapshots", sa.Column("portfolio_id", sa.Uuid()))
-    op.create_foreign_key("fk_portfolio_analytics_snapshots_portfolio_id_portfolios", "portfolio_analytics_snapshots", "portfolios", ["portfolio_id"], ["id"], ondelete="SET NULL")
-    op.create_index("ix_portfolio_analytics_snapshots_portfolio_generated_at", "portfolio_analytics_snapshots", ["portfolio_id", "generated_at"])
+    op.create_foreign_key(
+        "fk_portfolio_analytics_snapshots_portfolio_id_portfolios",
+        "portfolio_analytics_snapshots",
+        "portfolios",
+        ["portfolio_id"],
+        ["id"],
+        ondelete="SET NULL",
+    )
+    op.create_index(
+        "ix_portfolio_analytics_snapshots_portfolio_generated_at",
+        "portfolio_analytics_snapshots",
+        ["portfolio_id", "generated_at"],
+    )
     op.add_column("portfolio_analyses", sa.Column("portfolio_id", sa.Uuid()))
-    op.create_foreign_key("fk_portfolio_analyses_portfolio_id_portfolios", "portfolio_analyses", "portfolios", ["portfolio_id"], ["id"], ondelete="SET NULL")
+    op.create_foreign_key(
+        "fk_portfolio_analyses_portfolio_id_portfolios",
+        "portfolio_analyses",
+        "portfolios",
+        ["portfolio_id"],
+        ["id"],
+        ondelete="SET NULL",
+    )
 
 
 def downgrade() -> None:
-    op.drop_constraint("fk_portfolio_analyses_portfolio_id_portfolios", "portfolio_analyses", type_="foreignkey")
+    op.drop_constraint(
+        "fk_portfolio_analyses_portfolio_id_portfolios",
+        "portfolio_analyses",
+        type_="foreignkey",
+    )
     op.drop_column("portfolio_analyses", "portfolio_id")
-    op.drop_index("ix_portfolio_analytics_snapshots_portfolio_generated_at", table_name="portfolio_analytics_snapshots")
-    op.drop_constraint("fk_portfolio_analytics_snapshots_portfolio_id_portfolios", "portfolio_analytics_snapshots", type_="foreignkey")
+    op.drop_index(
+        "ix_portfolio_analytics_snapshots_portfolio_generated_at",
+        table_name="portfolio_analytics_snapshots",
+    )
+    op.drop_constraint(
+        "fk_portfolio_analytics_snapshots_portfolio_id_portfolios",
+        "portfolio_analytics_snapshots",
+        type_="foreignkey",
+    )
     op.drop_column("portfolio_analytics_snapshots", "portfolio_id")
     op.drop_column("portfolios", "archived_at")

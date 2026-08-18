@@ -55,8 +55,10 @@ async def update_marketplace_data(
                     session, normalized_set_number, force=False
                 )
                 if snapshot is None:
-                    snapshot = await repositories.get_latest_price_snapshot_by_set_number(
-                        session, normalized_set_number
+                    snapshot = (
+                        await repositories.get_latest_price_snapshot_by_set_number(
+                            session, normalized_set_number
+                        )
                     )
                 if snapshot is None:
                     raise LookupError("No marketplace snapshot found")
@@ -169,7 +171,10 @@ async def _fetch_marketplace_listings(set_number: str) -> tuple[list[dict], list
     evidence. If every provider fails, retain the existing error contract.
     """
     results = await asyncio.gather(
-        *(_fetch_adapter_listings(adapter, set_number) for adapter in MARKETPLACE_ADAPTERS),
+        *(
+            _fetch_adapter_listings(adapter, set_number)
+            for adapter in MARKETPLACE_ADAPTERS
+        ),
         return_exceptions=True,
     )
     listings: list[dict] = []

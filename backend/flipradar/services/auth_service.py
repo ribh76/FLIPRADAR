@@ -178,9 +178,7 @@ def _mfa_token_jti(payload: dict) -> str:
     return token_jti
 
 
-async def _issue_mfa_challenge(
-    db: AsyncSession, user: User
-) -> MfaChallengeResponse:
+async def _issue_mfa_challenge(db: AsyncSession, user: User) -> MfaChallengeResponse:
     code = f"{secrets.randbelow(100_000_000):08d}"
     question_id = secrets.choice(tuple(MFA_SECURITY_QUESTIONS))
     token = create_mfa_token(str(user.id))
@@ -435,18 +433,29 @@ async def verify_mfa_challenge(
     ):
         failures = await increment_mfa_challenge_failures(db, challenge)
         if failures >= get_settings().auth.mfa_max_attempts:
-            await blacklist_mfa_token(db, user_id=user_id, token_hash=token_hash, token_jti=token_jti)
+            await blacklist_mfa_token(
+                db, user_id=user_id, token_hash=token_hash, token_jti=token_jti
+            )
             user = await get_user_by_id(db, user_id)
             if user is not None:
-                await send_security_email(to_address=user.email, username=user.username, event_label="MFA sign-in challenge was rate limited")
+                await send_security_email(
+                    to_address=user.email,
+                    username=user.username,
+                    event_label="MFA sign-in challenge was rate limited",
+                )
             await db.commit()
-            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many MFA attempts; request a new sign-in code")
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many MFA attempts; request a new sign-in code",
+            )
         await db.commit()
         raise _invalid_mfa_challenge()
     question = await get_mfa_security_question(
         db, user_id=user_id, question_id=challenge.security_question_id
     )
-    if question is None or not hmac.compare_digest(question.answer_hash, _mfa_answer_hash(payload.security_answer)):
+    if question is None or not hmac.compare_digest(
+        question.answer_hash, _mfa_answer_hash(payload.security_answer)
+    ):
         failures = await increment_mfa_challenge_failures(db, challenge)
         if failures >= get_settings().auth.mfa_max_attempts:
             await blacklist_mfa_token(
@@ -460,7 +469,10 @@ async def verify_mfa_challenge(
                     event_label="MFA sign-in challenge was rate limited",
                 )
             await db.commit()
-            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many MFA attempts; request a new sign-in code")
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many MFA attempts; request a new sign-in code",
+            )
         await db.commit()
         raise _invalid_mfa_challenge()
     user = await get_user_by_id(db, user_id)
@@ -488,12 +500,19 @@ async def update_mfa_settings(
     if payload.enabled:
         answers = payload.security_answers or []
         question_ids = {item.question_id for item in answers}
-        if question_ids != set(MFA_SECURITY_QUESTIONS) or len(answers) != len(MFA_SECURITY_QUESTIONS):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Provide answers for each supported MFA security question")
+        if question_ids != set(MFA_SECURITY_QUESTIONS) or len(answers) != len(
+            MFA_SECURITY_QUESTIONS
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Provide answers for each supported MFA security question",
+            )
         await replace_mfa_security_questions(
             db,
             user_id=current_user.id,
-            questions={item.question_id: _mfa_answer_hash(item.answer) for item in answers},
+            questions={
+                item.question_id: _mfa_answer_hash(item.answer) for item in answers
+            },
         )
     user = await update_user_mfa_enabled(db, current_user, payload.enabled)
     await send_security_email(
@@ -508,18 +527,36 @@ async def update_mfa_settings(
     return MfaSettingsResponse(enabled=user.mfa_enabled)
 
 
-async def request_mfa_reset(db: AsyncSession, payload: MfaResetRequest) -> PasswordResetResponse:
+async def request_mfa_reset(
+    db: AsyncSession, payload: MfaResetRequest
+) -> PasswordResetResponse:
     user = await get_user_by_email(db, normalize_email_address(payload.email))
     if user is not None and user.mfa_enabled:
-        token = await _issue_account_token(db, user=user, purpose=MFA_RESET_PURPOSE, mark_sent=True)
-        await send_mfa_reset_email(to_address=user.email, username=user.username, reset_url=_mfa_reset_url(token))
-        await send_security_email(to_address=user.email, username=user.username, event_label="An MFA reset was requested")
-    return PasswordResetResponse(message="If an account with MFA exists, a reset link has been sent")
+        token = await _issue_account_token(
+            db, user=user, purpose=MFA_RESET_PURPOSE, mark_sent=True
+        )
+        await send_mfa_reset_email(
+            to_address=user.email,
+            username=user.username,
+            reset_url=_mfa_reset_url(token),
+        )
+        await send_security_email(
+            to_address=user.email,
+            username=user.username,
+            event_label="An MFA reset was requested",
+        )
+    return PasswordResetResponse(
+        message="If an account with MFA exists, a reset link has been sent"
+    )
 
 
-async def confirm_mfa_reset(db: AsyncSession, payload: MfaResetConfirmRequest) -> PasswordResetResponse:
+async def confirm_mfa_reset(
+    db: AsyncSession, payload: MfaResetConfirmRequest
+) -> PasswordResetResponse:
     try:
-        token_payload = decode_account_token(payload.token, expected_purpose=MFA_RESET_PURPOSE)
+        token_payload = decode_account_token(
+            payload.token, expected_purpose=MFA_RESET_PURPOSE
+        )
     except HTTPException as exc:
         raise _invalid_mfa_challenge() from exc
     user_id = _account_token_subject(token_payload)
@@ -527,7 +564,13 @@ async def confirm_mfa_reset(db: AsyncSession, payload: MfaResetConfirmRequest) -
         db, hash_account_token(payload.token), MFA_RESET_PURPOSE
     )
     now = datetime.now(UTC)
-    if token is None or token.user_id != user_id or token.used_at is not None or token.revoked_at is not None or _aware_utc(token.expires_at) <= now:
+    if (
+        token is None
+        or token.user_id != user_id
+        or token.used_at is not None
+        or token.revoked_at is not None
+        or _aware_utc(token.expires_at) <= now
+    ):
         raise _invalid_mfa_challenge()
     user = await get_user_by_id(db, user_id)
     if user is None:
@@ -535,8 +578,14 @@ async def confirm_mfa_reset(db: AsyncSession, payload: MfaResetConfirmRequest) -
     await mark_account_token_used(db, token, now)
     await delete_mfa_challenges_for_user(db, user.id)
     await update_user_mfa_enabled(db, user, False)
-    await revoke_active_refresh_token_sessions_for_user(db, user_id=user.id, revoked_at=now, reason="mfa_reset")
-    await send_security_email(to_address=user.email, username=user.username, event_label="Multi-factor authentication was reset")
+    await revoke_active_refresh_token_sessions_for_user(
+        db, user_id=user.id, revoked_at=now, reason="mfa_reset"
+    )
+    await send_security_email(
+        to_address=user.email,
+        username=user.username,
+        event_label="Multi-factor authentication was reset",
+    )
     return PasswordResetResponse(message="MFA was reset; sign in again to configure it")
 
 

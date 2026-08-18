@@ -15,7 +15,10 @@ from flipradar.services.product_matching_engine import (
 
 
 def test_normalizes_titles_and_extracts_product_keywords():
-    assert normalize_title(" LEGO® Star-Wars™: The Falcon! ") == "lego star wars the falcon"
+    assert (
+        normalize_title(" LEGO® Star-Wars™: The Falcon! ")
+        == "lego star wars the falcon"
+    )
     assert title_keywords("LEGO Star Wars The Falcon - New Sealed") == (
         "star",
         "wars",
@@ -150,7 +153,7 @@ def test_catalog_matching_does_not_choose_an_ambiguous_name_match():
     assert find_catalog_match("LEGO Millennium Falcon sealed", catalog) is None
     match = find_catalog_match("LEGO 75257 sealed", catalog)
     assert match is not None
-    #assert match[0].set_number == "75257" 
+    # assert match[0].set_number == "75257"
 
 
 def test_automated_pricing_uses_only_listings_at_or_above_match_threshold():
@@ -164,7 +167,9 @@ def test_automated_pricing_uses_only_listings_at_or_above_match_threshold():
 
 
 def test_labeled_product_matching_dataset_covers_expected_decisions():
-    fixture_path = Path(__file__).parents[1] / "fixtures" / "product_matching_cases.json"
+    fixture_path = (
+        Path(__file__).parents[1] / "fixtures" / "product_matching_cases.json"
+    )
     cases = json.loads(fixture_path.read_text())
 
     assert len(cases) >= 10
@@ -177,7 +182,9 @@ def test_labeled_product_matching_dataset_covers_expected_decisions():
         assert result.is_match is case["expected_match"], case["id"]
         assert result.confidence == case["expected_confidence"], case["id"]
         for reason in case["expected_reasons"]:
-            assert reason in result.match_reasons or reason in result.exclusion_reasons, case["id"]
+            assert (
+                reason in result.match_reasons or reason in result.exclusion_reasons
+            ), case["id"]
 
 
 def test_explanation_identifies_rejection_and_flags_for_developer_debugging():

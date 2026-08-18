@@ -209,9 +209,7 @@ export type Portfolio = {
 };
 
 export type PortfolioImportDuplicateHandling =
-  | "keep_separate"
-  | "merge"
-  | "reject";
+  "keep_separate" | "merge" | "reject";
 
 export type PortfolioImportPreviewRow = {
   row_number: number;

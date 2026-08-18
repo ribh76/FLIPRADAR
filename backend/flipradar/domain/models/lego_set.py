@@ -115,4 +115,9 @@ class LegoSet(Base):
     watchlist_items = relationship(
         "WatchlistItem", back_populates="lego_set", passive_deletes=True
     )
-    part_requirements = relationship("SetPartRequirement", back_populates="lego_set", cascade="all, delete-orphan", passive_deletes=True)
+    part_requirements = relationship(
+        "SetPartRequirement",
+        back_populates="lego_set",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

@@ -2131,10 +2131,13 @@ def test_email_mfa_login_issues_one_time_eight_digit_code(
     )
     assert registration.status_code == 201
     access_token = registration.json()["access_token"]
-    assert client.post(
-        "/auth/verify-email",
-        json={"token": verification_token_from_url(verification_urls[0])},
-    ).status_code == 200
+    assert (
+        client.post(
+            "/auth/verify-email",
+            json={"token": verification_token_from_url(verification_urls[0])},
+        ).status_code
+        == 200
+    )
     enabled = client.put(
         "/users/me/mfa",
         headers=bearer_headers(access_token),
@@ -2164,7 +2167,9 @@ def test_email_mfa_login_issues_one_time_eight_digit_code(
         json={
             "challenge_token": challenge.json()["challenge_token"],
             "code": mfa_codes[0],
-            "security_answer": security_answers[challenge.json()["security_question_id"]],
+            "security_answer": security_answers[
+                challenge.json()["security_question_id"]
+            ],
         },
     )
     assert verified.status_code == 200, verified.text
@@ -2174,7 +2179,9 @@ def test_email_mfa_login_issues_one_time_eight_digit_code(
         json={
             "challenge_token": challenge.json()["challenge_token"],
             "code": mfa_codes[0],
-            "security_answer": security_answers[challenge.json()["security_question_id"]],
+            "security_answer": security_answers[
+                challenge.json()["security_question_id"]
+            ],
         },
     )
     assert reused.status_code == 400
@@ -2194,17 +2201,22 @@ def test_email_mfa_login_issues_one_time_eight_digit_code(
         )
         assert limited.status_code == (429 if attempt == 4 else 400)
 
-    reset_requested = client.post("/auth/mfa/reset/request", json={"email": "mfalogin@example.com"})
+    reset_requested = client.post(
+        "/auth/mfa/reset/request", json={"email": "mfalogin@example.com"}
+    )
     assert reset_requested.status_code == 200
     reset_confirmed = client.post(
         "/auth/mfa/reset/confirm",
         json={"token": reset_token_from_url(reset_urls[0])},
     )
     assert reset_confirmed.status_code == 200, reset_confirmed.text
-    assert client.post(
-        "/auth/mfa/reset/confirm",
-        json={"token": reset_token_from_url(reset_urls[0])},
-    ).status_code == 400
+    assert (
+        client.post(
+            "/auth/mfa/reset/confirm",
+            json={"token": reset_token_from_url(reset_urls[0])},
+        ).status_code
+        == 400
+    )
     assert client.post(
         "/auth/login",
         json={"username_or_email": "mfalogin", "password": VALID_PASSWORD},

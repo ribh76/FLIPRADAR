@@ -162,12 +162,12 @@ async def find_deals(
             set_quality_score=70 if listing.lego_set.data_quality_flag else 100,
             valuation_confidence_score=_valuation_confidence(sample_size),
             product_match_confidence_score=listing.match_confidence or 0,
-            seller_trust_score=listing.seller_rating
-            if listing.seller_rating is not None
-            else 50,
-            marketplace_trust_score=95
-            if listing.marketplace.name == "bricklink"
-            else 85,
+            seller_trust_score=(
+                listing.seller_rating if listing.seller_rating is not None else 50
+            ),
+            marketplace_trust_score=(
+                95 if listing.marketplace.name == "bricklink" else 85
+            ),
             condition_score=_condition_score(listing.condition),
             is_complete=listing.is_complete,
             is_unclear=listing.condition == "unknown",

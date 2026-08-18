@@ -25,7 +25,11 @@ def test_multi_portfolio_migration_creates_defaults_and_backfills_holdings():
         connection.execute(users.insert(), [{"id": first_user}, {"id": second_user}])
         connection.execute(
             items.insert(),
-            [{"id": uuid4(), "user_id": first_user}, {"id": uuid4(), "user_id": first_user}, {"id": uuid4(), "user_id": second_user}],
+            [
+                {"id": uuid4(), "user_id": first_user},
+                {"id": uuid4(), "user_id": first_user},
+                {"id": uuid4(), "user_id": second_user},
+            ],
         )
         context = MigrationContext.configure(connection)
         migration = import_module(
@@ -38,12 +42,20 @@ def test_multi_portfolio_migration_creates_defaults_and_backfills_holdings():
         finally:
             migration.op = original_op
 
-        portfolios = connection.execute(
-            sa.text("SELECT user_id, name, is_default FROM portfolios ORDER BY user_id")
-        ).mappings().all()
-        holding_portfolios = connection.execute(
-            sa.text("SELECT portfolio_id FROM portfolio_items")
-        ).scalars().all()
+        portfolios = (
+            connection.execute(
+                sa.text(
+                    "SELECT user_id, name, is_default FROM portfolios ORDER BY user_id"
+                )
+            )
+            .mappings()
+            .all()
+        )
+        holding_portfolios = (
+            connection.execute(sa.text("SELECT portfolio_id FROM portfolio_items"))
+            .scalars()
+            .all()
+        )
 
     assert len(portfolios) == 2
     assert {row["name"] for row in portfolios} == {"Default Portfolio"}

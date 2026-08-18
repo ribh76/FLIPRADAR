@@ -79,7 +79,9 @@ async def report_client_error(report: FrontendErrorReport) -> dict[str, str]:
         context={"url": report.url, "stack": report.stack or ""},
     )
     record_metric("frontend.error", tags={"error_type": report.name})
-    logger.warning("frontend error reported error_type=%s url=%s", report.name, report.url)
+    logger.warning(
+        "frontend error reported error_type=%s url=%s", report.name, report.url
+    )
     return {"status": "accepted"}
 
 

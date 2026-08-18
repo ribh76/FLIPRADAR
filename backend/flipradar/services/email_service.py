@@ -60,7 +60,7 @@ class SmtpEmailService:
                 smtp.starttls()
                 smtp.login(self.settings.smtp_username, self.settings.password or "")
                 smtp.send_message(message)
-        except (OSError, smtplib.SMTPException):
+        except OSError, smtplib.SMTPException:
             logger.exception("email send failed to=%s", to_address)
             return EmailSendResult(attempted=True, sent=False, reason="send_failed")
 
@@ -200,7 +200,7 @@ def mfa_reset_email_template(*, username: str, reset_url: str) -> EmailTemplate:
     return EmailTemplate(
         subject="Reset your FlipRadar MFA",
         text_body=f"Hi {username},\n\nReset MFA with this link:\n{reset_url}\n\nIf you did not request this, ignore this email and secure your account.",
-        html_body=f"<p>Hi {username},</p><p><a href=\"{reset_url}\">Reset MFA</a></p><p>If you did not request this, ignore this email and secure your account.</p>",
+        html_body=f'<p>Hi {username},</p><p><a href="{reset_url}">Reset MFA</a></p><p>If you did not request this, ignore this email and secure your account.</p>',
     )
 
 
@@ -313,7 +313,10 @@ async def send_security_email(
 
 
 async def send_mfa_access_code_email(
-    *, to_address: str, username: str, code: str,
+    *,
+    to_address: str,
+    username: str,
+    code: str,
     email_service: EmailService | None = None,
 ) -> EmailSendResult:
     return await _send_template(
@@ -324,7 +327,10 @@ async def send_mfa_access_code_email(
 
 
 async def send_mfa_reset_email(
-    *, to_address: str, username: str, reset_url: str,
+    *,
+    to_address: str,
+    username: str,
+    reset_url: str,
     email_service: EmailService | None = None,
 ) -> EmailSendResult:
     return await _send_template(

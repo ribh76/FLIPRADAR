@@ -14,7 +14,10 @@ import { useServerQuery } from "../../hooks/serverState";
 import { apiClient, getApiError } from "../../services/apiClient";
 import type { DealFilters, DealsResponse, SavedSearch } from "../../types";
 import { DealCard } from "./DealCard";
-import { getSavedDealFilters, saveDealFilters } from "../../utils/navigationState";
+import {
+  getSavedDealFilters,
+  saveDealFilters,
+} from "../../utils/navigationState";
 
 const numberFilters = new Set([
   "min_budget",

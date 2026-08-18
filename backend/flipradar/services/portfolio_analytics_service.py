@@ -229,7 +229,9 @@ async def refresh_portfolio_analytics(
     if portfolio_id is not None:
         portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
         if portfolio is None or portfolio.archived_at is not None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+            )
     now = _as_utc(analysis_at) if analysis_at is not None else _current_time()
     items = await get_all_portfolio_items_for_user(db, user_id, portfolio_id)
     value_map = await _current_unit_value_map(db, items)
@@ -288,7 +290,9 @@ async def get_latest_portfolio_analytics(
     if portfolio_id is not None:
         portfolio = await get_portfolio_by_id_for_user(db, portfolio_id, user_id)
         if portfolio is None or portfolio.archived_at is not None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found"
+            )
     snapshot = await get_latest_portfolio_analytics_snapshot(db, user_id, portfolio_id)
     if snapshot is None:
         raise HTTPException(

@@ -232,12 +232,22 @@ export function PortfolioPage() {
     onSuccess: refreshPortfolio,
   });
   const previewImportMutation = useServerMutation(
-    ({ content, handling }: { content: string; handling: PortfolioImportDuplicateHandling }) =>
-      apiClient.portfolio.previewImport(content, handling),
+    ({
+      content,
+      handling,
+    }: {
+      content: string;
+      handling: PortfolioImportDuplicateHandling;
+    }) => apiClient.portfolio.previewImport(content, handling),
   );
   const importMutation = useServerMutation(
-    ({ content, handling }: { content: string; handling: PortfolioImportDuplicateHandling }) =>
-      apiClient.portfolio.importCsv(content, handling),
+    ({
+      content,
+      handling,
+    }: {
+      content: string;
+      handling: PortfolioImportDuplicateHandling;
+    }) => apiClient.portfolio.importCsv(content, handling),
     {
       onSuccess: async (result) => {
         invalidateServerState(["portfolios"]);
@@ -257,7 +267,8 @@ export function PortfolioPage() {
     addMutation.error ||
     updateMutation.error ||
     deleteMutation.error;
-  const importError = previewImportMutation.error || importMutation.error || transferError;
+  const importError =
+    previewImportMutation.error || importMutation.error || transferError;
   const filterValues = useMemo(
     () => ({
       ...filters,
@@ -407,21 +418,31 @@ export function PortfolioPage() {
           <CardTitle>Import and export</CardTitle>
         </CardHeader>
         <p className="mb-4 text-sm text-[var(--color-text-muted)]">
-          Export includes this portfolio’s holdings and purchase data. Imports create a new portfolio after you review every proposed change.
+          Export includes this portfolio’s holdings and purchase data. Imports
+          create a new portfolio after you review every proposed change.
         </p>
         <div className="flex flex-wrap gap-3">
           <button
             className="secondary-button"
             onClick={() =>
-              void apiClient.portfolio.importTemplate()
-                .then((blob) => downloadCsv(blob, "flipradar-portfolio-import-template.csv"))
-                .catch(() => setTransferError("Could not download the import template."))
+              void apiClient.portfolio
+                .importTemplate()
+                .then((blob) =>
+                  downloadCsv(blob, "flipradar-portfolio-import-template.csv"),
+                )
+                .catch(() =>
+                  setTransferError("Could not download the import template."),
+                )
             }
             type="button"
           >
             Download import template
           </button>
-          <button className="primary-button" onClick={() => setIsImportOpen(true)} type="button">
+          <button
+            className="primary-button"
+            onClick={() => setIsImportOpen(true)}
+            type="button"
+          >
             Import CSV portfolio
           </button>
           <button
@@ -429,16 +450,25 @@ export function PortfolioPage() {
             disabled={!selectedPortfolioId}
             onClick={() => {
               if (!selectedPortfolioId) return;
-              void apiClient.portfolio.export(selectedPortfolioId)
-                .then((blob) => downloadCsv(blob, `portfolio-${selectedPortfolioId}.csv`))
-                .catch(() => setTransferError("Could not export this portfolio."));
+              void apiClient.portfolio
+                .export(selectedPortfolioId)
+                .then((blob) =>
+                  downloadCsv(blob, `portfolio-${selectedPortfolioId}.csv`),
+                )
+                .catch(() =>
+                  setTransferError("Could not export this portfolio."),
+                );
             }}
             type="button"
           >
             Export selected portfolio
           </button>
         </div>
-        {!selectedPortfolioId ? <p className="mt-3 text-sm text-[var(--color-text-muted)]">Choose one portfolio above to export it.</p> : null}
+        {!selectedPortfolioId ? (
+          <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+            Choose one portfolio above to export it.
+          </p>
+        ) : null}
       </Card>
       <div
         className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5"
@@ -493,9 +523,14 @@ export function PortfolioPage() {
           isBusy={addMutation.isPending}
           key={prefilledSetNumber}
           onSubmit={(payload) =>
-            void addMutation.mutate({ ...payload, portfolio_id: selectedPortfolioId || undefined }).then(() => {
-              if (prefilledSetNumber) setSearchParams({});
-            })
+            void addMutation
+              .mutate({
+                ...payload,
+                portfolio_id: selectedPortfolioId || undefined,
+              })
+              .then(() => {
+                if (prefilledSetNumber) setSearchParams({});
+              })
           }
         />
       </Card>
@@ -671,9 +706,14 @@ export function PortfolioPage() {
         onClose={() => setIsImportOpen(false)}
         title="Import portfolio CSV"
       >
-        {importError ? <div className="mb-4"><FormAlert>{importError}</FormAlert></div> : null}
+        {importError ? (
+          <div className="mb-4">
+            <FormAlert>{importError}</FormAlert>
+          </div>
+        ) : null}
         <p className="mb-4 text-sm text-[var(--color-text-muted)]">
-          Upload the template format. Validation stops at the first invalid or unknown row; no data is saved until you confirm the preview.
+          Upload the template format. Validation stops at the first invalid or
+          unknown row; no data is saved until you confirm the preview.
         </p>
         <label className="block text-sm font-semibold text-[var(--color-text)]">
           CSV file
@@ -692,9 +732,22 @@ export function PortfolioPage() {
             type="file"
           />
         </label>
-        {selectedFileName ? <p className="mt-2 text-sm text-[var(--color-text-muted)]">Selected: {selectedFileName}</p> : null}
+        {selectedFileName ? (
+          <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+            Selected: {selectedFileName}
+          </p>
+        ) : null}
         <div className="mt-4">
-          <SelectField label="Duplicate purchase rows" onChange={(event) => { setDuplicateHandling(event.target.value as PortfolioImportDuplicateHandling); setImportPreview(null); }} value={duplicateHandling}>
+          <SelectField
+            label="Duplicate purchase rows"
+            onChange={(event) => {
+              setDuplicateHandling(
+                event.target.value as PortfolioImportDuplicateHandling,
+              );
+              setImportPreview(null);
+            }}
+            value={duplicateHandling}
+          >
             <option value="keep_separate">Keep as separate purchases</option>
             <option value="merge">Merge identical purchase data</option>
             <option value="reject">Reject duplicate rows</option>
@@ -704,24 +757,58 @@ export function PortfolioPage() {
           <button
             className="primary-button"
             disabled={!csvContent || previewImportMutation.isPending}
-            onClick={() => void previewImportMutation.mutate({ content: csvContent, handling: duplicateHandling }).then((preview) => preview && setImportPreview(preview))}
+            onClick={() =>
+              void previewImportMutation
+                .mutate({ content: csvContent, handling: duplicateHandling })
+                .then((preview) => preview && setImportPreview(preview))
+            }
             type="button"
           >
-            {previewImportMutation.isPending ? "Validating..." : "Validate and preview"}
+            {previewImportMutation.isPending
+              ? "Validating..."
+              : "Validate and preview"}
           </button>
         </div>
         {importPreview ? (
           <div className="mt-5 border-t border-[var(--color-border-soft)] pt-4">
-            <h3 className="font-bold text-[var(--color-text)]">Ready to create “{importPreview.portfolio_name}”</h3>
+            <h3 className="font-bold text-[var(--color-text)]">
+              Ready to create “{importPreview.portfolio_name}”
+            </h3>
             <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-              {importPreview.source_rows} CSV rows → {importPreview.items_to_create} holdings{importPreview.merged_rows ? ` (${importPreview.merged_rows} merged)` : ""}.
+              {importPreview.source_rows} CSV rows →{" "}
+              {importPreview.items_to_create} holdings
+              {importPreview.merged_rows
+                ? ` (${importPreview.merged_rows} merged)`
+                : ""}
+              .
             </p>
             <ul className="mt-3 max-h-40 space-y-1 overflow-y-auto text-sm text-[var(--color-text-muted)]">
-              {importPreview.changes.map((row) => <li key={row.row_number}>Row {row.row_number}: {row.set_number} — {row.set_name}, qty {row.quantity}, {currency(row.purchase_price, row.currency)}</li>)}
+              {importPreview.changes.map((row) => (
+                <li key={row.row_number}>
+                  Row {row.row_number}: {row.set_number} — {row.set_name}, qty{" "}
+                  {row.quantity}, {currency(row.purchase_price, row.currency)}
+                </li>
+              ))}
             </ul>
             <div className="mt-4 flex justify-end gap-3">
-              <button className="secondary-button" onClick={() => setImportPreview(null)} type="button">Change file</button>
-              <button className="primary-button" disabled={importMutation.isPending} onClick={() => void importMutation.mutate({ content: csvContent, handling: duplicateHandling })} type="button">
+              <button
+                className="secondary-button"
+                onClick={() => setImportPreview(null)}
+                type="button"
+              >
+                Change file
+              </button>
+              <button
+                className="primary-button"
+                disabled={importMutation.isPending}
+                onClick={() =>
+                  void importMutation.mutate({
+                    content: csvContent,
+                    handling: duplicateHandling,
+                  })
+                }
+                type="button"
+              >
                 {importMutation.isPending ? "Importing..." : "Create portfolio"}
               </button>
             </div>

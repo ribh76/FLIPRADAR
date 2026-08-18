@@ -110,9 +110,7 @@ def upgrade() -> None:
         condition = (
             "new"
             if row["condition"] == "new"
-            else "used_complete"
-            if row["condition"] == "used"
-            else "incomplete"
+            else "used_complete" if row["condition"] == "used" else "incomplete"
         )
         retrieval_time = row["snapshot_at"] or row["created_at"] or datetime.utcnow()
         for metric_type, legacy_column in _METRICS.items():

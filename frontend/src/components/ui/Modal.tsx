@@ -61,7 +61,10 @@ export function Modal({
     >
       <section className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-[var(--radius-card)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-lifted)]">
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-lg font-bold text-[var(--color-text)]" id={titleId}>
+          <h2
+            className="text-lg font-bold text-[var(--color-text)]"
+            id={titleId}
+          >
             {title}
           </h2>
           <button
