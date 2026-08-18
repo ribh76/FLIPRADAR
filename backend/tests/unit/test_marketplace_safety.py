@@ -16,21 +16,48 @@ class MockMarketplaceAdapter(MarketplaceAdapter):
 
 
 def _production_settings(**overrides: object) -> Settings:
-    return Settings(
-        app_env="production",
-        app_debug=False,
-        jwt_secret_key="x" * 48,
-        database_url_override="postgresql+asyncpg://example",
-        database_ssl_mode="require",
-        cors_allowed_origins="https://app.flipradar.example",
-        **overrides,
+    values: dict[str, object] = {
+        "app_env": "production",
+        "app_debug": False,
+        "jwt_secret_key": "x" * 48,
+        "database_url_override": "postgresql+asyncpg://db.flipradar.example/flipradar",
+        "database_password": "strong-production-password",
+        "database_ssl_mode": "require",
+        "cors_allowed_origins": "https://app.flipradar.example",
+        "frontend_url": "https://app.flipradar.example",
+        "redis_url": "rediss://redis.flipradar.example/0",
+        "ebay_api_enabled": False,
+        "bricklink_api_enabled": False,
+    }
+    values.update(overrides)
+    return Settings(**values)
+
+
+def test_mock_marketplace_access_defaults_to_local_development_and_test_only(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # Explicit None exercises the automatic default while shielding this test
+    # from a CI-level ALLOW_MOCK_MARKETPLACE_PROVIDERS environment variable.
+    monkeypatch.delenv("ALLOW_MOCK_MARKETPLACE_PROVIDERS", raising=False)
+
+    assert (
+        Settings(
+            app_env="development", allow_mock_marketplace_providers=None
+        ).allow_mock_marketplace_providers
+        is True
     )
-
-
-def test_mock_marketplace_access_defaults_to_local_development_and_test_only():
-    assert Settings(app_env="development").allow_mock_marketplace_providers is True
-    assert Settings(app_env="test").allow_mock_marketplace_providers is True
-    assert Settings(app_env="staging").allow_mock_marketplace_providers is False
+    assert (
+        Settings(
+            app_env="test", allow_mock_marketplace_providers=None
+        ).allow_mock_marketplace_providers
+        is True
+    )
+    assert (
+        Settings(
+            app_env="staging", allow_mock_marketplace_providers=None
+        ).allow_mock_marketplace_providers
+        is False
+    )
 
 
 def test_production_rejects_enabled_mock_marketplace_access():
@@ -38,6 +65,11 @@ def test_production_rejects_enabled_mock_marketplace_access():
         ValueError, match="ALLOW_MOCK_MARKETPLACE_PROVIDERS must be false"
     ):
         _production_settings(allow_mock_marketplace_providers=True)
+
+
+def test_production_settings_helper_allows_default_overrides():
+    with pytest.raises(ValueError, match="APP_DEBUG must be false"):
+        _production_settings(app_debug=True)
 
 
 def test_non_local_provider_selection_filters_mock_adapters(monkeypatch):

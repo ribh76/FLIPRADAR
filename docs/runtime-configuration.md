@@ -11,7 +11,9 @@ FlipRadar runtime configuration is centralized in `flipradar.core.settings.Setti
 - `staging`
 - `production`
 
-Safe defaults are intended only for `development` and `test`. `production` validates that debug mode is disabled, JWT and database secrets are not local placeholders, SSL is required for the database, and CORS origins are explicit.
+Safe defaults are intended only for `development` and `test`. In `production`,
+startup rejects debug mode, placeholder secrets, localhost endpoints, insecure
+database SSL settings, and wildcard, HTTP, or localhost CORS origins.
 
 ## Settings Groups
 
@@ -33,11 +35,14 @@ Production must provide:
 - `APP_ENV=production`
 - `APP_DEBUG=false`
 - A strong `JWT_SECRET_KEY`
-- A real `DATABASE_PASSWORD` or `DATABASE_URL`
+- A non-local PostgreSQL `DATABASE_URL` (or non-local database host) with a real `DATABASE_PASSWORD`
 - `DATABASE_SSL_MODE=require`, `verify-ca`, or `verify-full`
-- Explicit `CORS_ALLOWED_ORIGINS`
+- HTTPS `FRONTEND_URL` and explicit HTTPS `CORS_ALLOWED_ORIGINS`
+- A non-local `REDIS_URL` (and non-local Celery URLs when explicitly configured)
 
-Optional integrations such as email, eBay, BrickLink, and LLM providers remain disabled unless both enabled and configured. Startup logs report disabled optional integrations clearly.
+Optional integrations such as email, eBay, BrickLink, and LLM providers may be
+disabled in production. If one is enabled, all of its credentials must be
+present and must not be development placeholders; otherwise startup fails.
 
 ## Anthropic
 

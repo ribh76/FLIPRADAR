@@ -2,7 +2,7 @@ from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote_plus
+from urllib.parse import parse_qs, quote_plus, unquote, urlsplit
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -156,6 +156,48 @@ def _split_csv(value: str | list[str]) -> list[str]:
     if isinstance(value, list):
         return value
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
+_UNSAFE_SECRETS = {
+    "local-development-secret-change-before-production",
+    "replace-with-at-least-32-random-characters",
+    "replace-with-a-secure-password",
+    "change-me",
+    "changeme",
+    "placeholder",
+}
+
+
+def _is_localhost(hostname: str | None) -> bool:
+    normalized = (hostname or "").strip().lower().rstrip(".")
+    return normalized in _LOCAL_HOSTS or normalized.endswith(".localhost")
+
+
+def _require_nonlocal_url(name: str, value: str, *, schemes: set[str]) -> None:
+    parsed = urlsplit(value)
+    if parsed.scheme not in schemes or not parsed.hostname:
+        allowed = ", ".join(sorted(schemes))
+        raise ValueError(f"{name} must be a valid {allowed} URL in production.")
+    if _is_localhost(parsed.hostname):
+        raise ValueError(f"{name} must not use a localhost URL in production.")
+
+
+def _has_unsafe_secret(value: str | None) -> bool:
+    normalized = value.strip().lower() if value else ""
+    return (
+        not normalized
+        or normalized in _UNSAFE_SECRETS
+        or any(
+            marker in normalized
+            for marker in (
+                "local-development",
+                "replace-with",
+                "change-me",
+                "placeholder",
+            )
+        )
+    )
 
 
 class Settings(BaseSettings):
@@ -371,28 +413,115 @@ class Settings(BaseSettings):
         return self
 
     def _validate_production(self) -> None:
-        unsafe_secret = {
-            "local-development-secret-change-before-production",
-            "replace-with-at-least-32-random-characters",
-        }
         if self.app_debug:
             raise ValueError("APP_DEBUG must be false in production.")
         if self.allow_mock_marketplace_providers:
             raise ValueError(
                 "ALLOW_MOCK_MARKETPLACE_PROVIDERS must be false in production."
             )
-        if self.jwt_secret_key in unsafe_secret or len(self.jwt_secret_key) < 48:
+        if _has_unsafe_secret(self.jwt_secret_key) or len(self.jwt_secret_key) < 48:
             raise ValueError("JWT_SECRET_KEY must be a strong production secret.")
-        if not self.database_url_override and self.database_password in {
-            "flipradar_dev_password",
-            "replace-with-a-secure-password",
-        }:
+        if (
+            _has_unsafe_secret(self.database_password)
+            or self.database_password == "flipradar_dev_password"
+        ):
             raise ValueError("DATABASE_PASSWORD must be a production secret.")
         if self.database_ssl_mode not in {"require", "verify-ca", "verify-full"}:
             raise ValueError("DATABASE_SSL_MODE must require SSL in production.")
         allowed_origins = _split_csv(self.cors_allowed_origins)
-        if "*" in allowed_origins or not allowed_origins:
+        if not allowed_origins or any("*" in origin for origin in allowed_origins):
             raise ValueError("CORS_ALLOWED_ORIGINS must be explicit in production.")
+        for origin in allowed_origins:
+            _require_nonlocal_url("CORS_ALLOWED_ORIGINS", origin, schemes={"https"})
+        _require_nonlocal_url("FRONTEND_URL", self.frontend_url, schemes={"https"})
+        self._validate_production_database_urls()
+        self._validate_production_service_urls()
+        self._validate_production_providers()
+
+    def _validate_production_database_urls(self) -> None:
+        database_url = self.database.url
+        _require_nonlocal_url(
+            "DATABASE_URL", database_url, schemes={"postgresql", "postgresql+asyncpg"}
+        )
+        self._validate_production_database_url_security("DATABASE_URL", database_url)
+        if self.alembic_database_url:
+            _require_nonlocal_url(
+                "ALEMBIC_DATABASE_URL",
+                self.alembic_database_url,
+                schemes={"postgresql", "postgresql+asyncpg"},
+            )
+            self._validate_production_database_url_security(
+                "ALEMBIC_DATABASE_URL", self.alembic_database_url
+            )
+
+    @staticmethod
+    def _validate_production_database_url_security(name: str, value: str) -> None:
+        parsed = urlsplit(value)
+        if parsed.password and _has_unsafe_secret(unquote(parsed.password)):
+            raise ValueError(f"{name} must not contain a development password.")
+        ssl_values = {
+            item.lower()
+            for key, values in parse_qs(parsed.query).items()
+            if key.lower() in {"ssl", "sslmode"}
+            for item in values
+        }
+        if ssl_values & {"disable", "false", "0"}:
+            raise ValueError(f"{name} must require SSL in production.")
+
+    def _validate_production_service_urls(self) -> None:
+        _require_nonlocal_url("REDIS_URL", self.redis_url, schemes={"redis", "rediss"})
+        if self.celery_broker_url:
+            _require_nonlocal_url(
+                "CELERY_BROKER_URL", self.celery_broker_url, schemes={"redis", "rediss"}
+            )
+        if self.celery_result_backend:
+            _require_nonlocal_url(
+                "CELERY_RESULT_BACKEND",
+                self.celery_result_backend,
+                schemes={"redis", "rediss"},
+            )
+
+    def _validate_production_providers(self) -> None:
+        marketplace = self.marketplace
+        if marketplace.ebay.enabled and not marketplace.ebay.configured:
+            raise ValueError(
+                "eBay is enabled but its production credentials are missing."
+            )
+        if marketplace.ebay.enabled and any(
+            _has_unsafe_secret(value)
+            for value in (self.ebay_api_key, self.ebay_api_secret)
+        ):
+            raise ValueError("eBay must not use development credentials in production.")
+        if marketplace.bricklink.enabled and not marketplace.bricklink.configured:
+            raise ValueError(
+                "BrickLink is enabled but its production credentials are missing."
+            )
+        if marketplace.bricklink.enabled and any(
+            _has_unsafe_secret(value)
+            for value in (
+                self.bricklink_consumer_key,
+                self.bricklink_consumer_secret,
+                self.bricklink_token_value,
+                self.bricklink_token_secret,
+            )
+        ):
+            raise ValueError(
+                "BrickLink must not use development credentials in production."
+            )
+        if self.email_enabled and not self.email.configured:
+            raise ValueError(
+                "Email is enabled but its production credentials are missing."
+            )
+        if self.email_enabled and _has_unsafe_secret(self.email.password):
+            raise ValueError(
+                "Email must not use development credentials in production."
+            )
+        if self.llm_enabled and not self.llm.configured:
+            raise ValueError(
+                "LLM is enabled but its production credentials are missing."
+            )
+        if self.llm_enabled and _has_unsafe_secret(self.anthropic_api_key):
+            raise ValueError("LLM must not use development credentials in production.")
 
     @property
     def application(self) -> ApplicationSettings:

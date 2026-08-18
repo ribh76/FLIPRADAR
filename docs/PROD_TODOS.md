@@ -62,13 +62,13 @@ PHASE 3 — REMOVE MOCK MARKETPLACE DATA FROM PRODUCTION PATHS
 9. Remove or clearly isolate remaining mock clients so they are available only to tests/development. - 
 
 PHASE 4 — PRODUCTION FAIL-CLOSED SAFETY CONTROLS 
-1. Add an explicit configuration setting controlling whether mock marketplace providers are allowed. 
-2. Default mock-provider access to disabled outside local development/test environments. 
-3. Make application startup fail when APP_ENV=production and a mock provider is selected or enabled. 
-4. Audit production startup validation for debug mode, JWT secrets, database SSL, CORS, provider credentials, and unsafe defaults. 
-5. Ensure production cannot silently substitute development credentials or localhost URLs. 
-6. Add automated tests for every production startup rejection condition. 
-7. Add one positive test proving a valid production configuration can boot successfully.
+1. Add an explicit configuration setting controlling whether mock marketplace providers are allowed.  - 
+2. Default mock-provider access to disabled outside local development/test environments.  - 
+3. Make application startup fail when APP_ENV=production and a mock provider is selected or enabled.  - 
+4. Audit production startup validation for debug mode, JWT secrets, database SSL, CORS, provider credentials, and unsafe defaults. -
+5. Ensure production cannot silently substitute development credentials or localhost URLs. -
+6. Add automated tests for every production startup rejection condition.  - 
+7. Add one positive test proving a valid production configuration can boot successfully. - 
 
 PHASE 5 — INTERNAL AND DEVELOPMENT ENDPOINT LOCKDOWN 
 1. Inventory routes marked internal, development, debug, administrative, refresh, seed, or maintenance. 

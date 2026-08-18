@@ -33,7 +33,9 @@ class EbaySession:
 
     def post(self, *_args, **_kwargs) -> ProviderResponse:
         self.token_calls += 1
-        return ProviderResponse({"access_token": "application-token", "expires_in": 3600})
+        return ProviderResponse(
+            {"access_token": "application-token", "expires_in": 3600}
+        )
 
     def get(self, *_args, **_kwargs) -> ProviderResponse:
         self.search_calls += 1
@@ -59,8 +61,11 @@ def test_production_configuration_selects_only_registered_live_adapters():
         app_debug=False,
         jwt_secret_key="x" * 48,
         database_url_override="postgresql+asyncpg://example",
+        database_password="strong-production-password",
         database_ssl_mode="require",
         cors_allowed_origins="https://app.flipradar.example",
+        frontend_url="https://app.flipradar.example",
+        redis_url="rediss://redis.flipradar.example/0",
         ebay_api_enabled=True,
         ebay_api_key="client-id",
         ebay_api_secret="client-secret",
@@ -93,7 +98,9 @@ def test_ebay_adapter_successfully_executes_oauth_and_live_search(monkeypatch):
     monkeypatch.setattr(
         ebay_client,
         "get_settings",
-        lambda: SimpleNamespace(marketplace=SimpleNamespace(ebay=_provider_settings().ebay)),
+        lambda: SimpleNamespace(
+            marketplace=SimpleNamespace(ebay=_provider_settings().ebay)
+        ),
     )
 
     listings = EbayMarketplaceAdapter(session=session).fetch_listings("75192")
@@ -107,12 +114,16 @@ def test_ebay_adapter_successfully_executes_oauth_and_live_search(monkeypatch):
 
 def test_ebay_adapter_surfaces_a_failed_live_search(monkeypatch):
     session = EbaySession(
-        search_response=ProviderResponse({}, error=requests.HTTPError("upstream unavailable"))
+        search_response=ProviderResponse(
+            {}, error=requests.HTTPError("upstream unavailable")
+        )
     )
     monkeypatch.setattr(
         ebay_client,
         "get_settings",
-        lambda: SimpleNamespace(marketplace=SimpleNamespace(ebay=_provider_settings().ebay)),
+        lambda: SimpleNamespace(
+            marketplace=SimpleNamespace(ebay=_provider_settings().ebay)
+        ),
     )
 
     with pytest.raises(EbayApiError, match="search listings"):
