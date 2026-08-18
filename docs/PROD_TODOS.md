@@ -20,12 +20,12 @@ PHASE 0 — DEVELOPMENT FREEZE AND RELEASE BASELINE
 4. Make this production-readiness plan the active execution checklist for the project. -
 5. Record the current Python, Node.js, npm, PostgreSQL, and Redis versions used locally. 
 6. Run and record every currently available backend and frontend quality check before making cleanup changes. -
-7. Create a short list of known failures, skipped tests, warnings, and environment-specific behavior found during the baseline run. 
-8. Commit the untouched baseline state so cleanup changes can always be compared against it.
+7. Create a short list of known failures, skipped tests, warnings, and environment-specific behavior found during the baseline run. - 
+8. Commit the untouched baseline state so cleanup changes can always be compared against it. -
 
 PHASE 1 — CI PIPELINE 
-1. Create .github/workflows/ci.yml with triggers for pull requests and pushes to main. 
-2. Add a backend CI job that installs dependencies in a clean environment. 
+1. Create .github/workflows/ci.yml with triggers for pull requests and pushes to main. - 
+2. Add a backend CI job that installs dependencies in a clean environment. - 
 3. Run Ruff, Black check, Pyright, and the complete backend pytest suite. 
 4. Start a clean PostgreSQL service in CI and run Alembic migrations from an empty database through head. 
 5. Add a frontend CI job using npm ci followed by ESLint, Prettier check, TypeScript checking, Vitest, and the production build. 
