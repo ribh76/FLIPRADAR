@@ -30,6 +30,23 @@ make quality
 
 That command runs backend formatting checks, Ruff, Pyright, pytest, frontend ESLint, TypeScript checks, Vitest coverage, and the production frontend build.
 
+## Merge Requirements
+
+The `main` branch protection policy requires changes to be delivered through a
+pull request; direct pushes and force pushes are not permitted.
+
+Before GitHub allows a pull request to merge, its branch must be up to date
+with `main`, free of merge conflicts, and have all of these checks passing:
+
+- `Backend CI`
+- `Frontend CI`
+- `Database migrations`
+- `Build backend production image`
+- `Build frontend production image`
+
+If GitHub marks a required check as stale after `main` advances, update the
+pull-request branch and wait for the checks to run again before merging.
+
 ## Local Development
 
 Start the API:
