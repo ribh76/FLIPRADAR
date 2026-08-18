@@ -239,7 +239,7 @@ class Settings(BaseSettings):
     )
     email_timeout_seconds: int = Field(default=10, ge=1, alias="EMAIL_TIMEOUT_SECONDS")
 
-    ebay_api_enabled: bool = Field(default=False, alias="EBAY_API_ENABLED")
+    ebay_api_enabled: bool = Field(default=True, alias="EBAY_API_ENABLED")
     ebay_api_configured: bool = Field(default=False, alias="EBAY_API_CONFIGURED")
     ebay_api_key: str | None = Field(default=None, alias="EBAY_API_KEY")
     ebay_api_secret: str | None = Field(default=None, alias="EBAY_API_SECRET")
@@ -247,7 +247,7 @@ class Settings(BaseSettings):
         default=10, ge=1, alias="EBAY_API_TIMEOUT_SECONDS"
     )
 
-    bricklink_api_enabled: bool = Field(default=False, alias="BRICKLINK_API_ENABLED")
+    bricklink_api_enabled: bool = Field(default=True, alias="BRICKLINK_API_ENABLED")
     bricklink_api_configured: bool = Field(
         default=False, alias="BRICKLINK_API_CONFIGURED"
     )
@@ -449,14 +449,19 @@ class Settings(BaseSettings):
         return MarketplaceApiSettings(
             ebay=ProviderSettings(
                 enabled=self.ebay_api_enabled,
-                configured=self.ebay_api_configured,
+                configured=bool(self.ebay_api_key and self.ebay_api_secret),
                 timeout_seconds=self.ebay_api_timeout_seconds,
                 api_key=self.ebay_api_key,
                 api_secret=self.ebay_api_secret,
             ),
             bricklink=ProviderSettings(
                 enabled=self.bricklink_api_enabled,
-                configured=self.bricklink_api_configured,
+                configured=bool(
+                    self.bricklink_consumer_key
+                    and self.bricklink_consumer_secret
+                    and self.bricklink_token_value
+                    and self.bricklink_token_secret
+                ),
                 timeout_seconds=self.bricklink_api_timeout_seconds,
                 consumer_key=self.bricklink_consumer_key,
                 consumer_secret=self.bricklink_consumer_secret,

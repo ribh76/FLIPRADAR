@@ -20,7 +20,7 @@ from flipradar.core.settings import get_settings
 from flipradar.database import Base, get_db_session, repositories
 from flipradar.domain.engines import price_estimator
 from flipradar.domain.models import User
-from flipradar.integrations import bricklink_mock_client
+from flipradar.integrations import bricklink_client
 from flipradar.integrations.listing_provider_client import (
     ProviderListing,
     ProviderRetrievalError,
@@ -250,17 +250,20 @@ def test_get_set_endpoint(client: TestClient):
     assert response.json()["valuation_status"] == "missing_market_data"
 
 
-def test_get_set_endpoint_returns_bricklink_mock_detail(client: TestClient):
+def test_get_set_endpoint_returns_bricklink_live_detail(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(type(bricklink_client.client), "configured", property(lambda _self: True))
+    monkeypatch.setattr(bricklink_client.client, "get_set_metadata", lambda _set_number: {"set_number": "75192", "name": "Millennium Falcon", "theme": "Star Wars", "subtheme": None, "release_year": 2017, "retirement_year": None, "piece_count": 7541, "minifig_count": 8})
+    monkeypatch.setattr(bricklink_client.client, "get_set_price_snapshot", lambda _set_number: {"currency": "USD", "fair_market_value": Decimal("725.00"), "low_price": Decimal("610.00"), "high_price": Decimal("880.00"), "listing_count": 18, "snapshot_at": datetime.now(UTC), "created_at": datetime.now(UTC)})
     response = client.get("/set/75192")
 
     logger.info(
-        f"API TEST: GET /set/{{set_number}} BrickLink mock status={response.status_code}"
+        f"API TEST: GET /set/{{set_number}} BrickLink live status={response.status_code}"
     )
     assert response.status_code == 200
     body = response.json()
     assert body["metadata"]["set_number"] == "75192"
     assert body["metadata"]["name"] == "Millennium Falcon"
-    assert body["latest_snapshot"]["listing_count"] == 18
+    assert body["latest_snapshot"]["sample_size"] == 18
     assert body["fair_value"] == "725.00"
     assert body["market_low"] == "610.00"
     assert body["market_high"] == "880.00"
@@ -373,8 +376,9 @@ def test_marketplace_update_returns_provider_timeout_response(
 
 
 def test_set_search_supports_partial_local_lookup_and_provider_hydration(
-    client: TestClient,
+    client: TestClient, monkeypatch: pytest.MonkeyPatch,
 ):
+    monkeypatch.setattr(bricklink_client.client, "get_set_metadata", lambda _set_number: {"set_number": "75192", "name": "Millennium Falcon", "theme": "Star Wars", "subtheme": None, "release_year": 2017, "retirement_year": None, "piece_count": 7541, "minifig_count": 8})
     create_lego_set(client, "42071")
 
     local_response = client.get("/sets/search", params={"query": "420"})
@@ -406,8 +410,8 @@ def test_set_search_returns_not_found_and_incomplete_provider_errors(
     assert "not found" in not_found.json()["error"]["message"].lower()
 
     monkeypatch.setattr(
-        bricklink_mock_client,
-        "fetch_set_metadata",
+        bricklink_client.client,
+        "get_set_metadata",
         lambda set_number: {"set_number": set_number, "name": "Incomplete"},
     )
     incomplete = client.get("/sets/search", params={"query": "99999"})
@@ -415,7 +419,8 @@ def test_set_search_returns_not_found_and_incomplete_provider_errors(
     assert "incomplete" in incomplete.json()["error"]["message"].lower()
 
 
-def test_part_search_hydrates_catalog_and_uses_local_results(client: TestClient):
+def test_part_search_hydrates_catalog_and_uses_local_results(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(bricklink_client.client, "get_part_catalog_records", lambda _query: [{"source": {"name": "BrickLink catalog", "url": "https://www.bricklink.com/catalogTree.asp"}, "category": {"id": "26", "name": "Bricks"}, "color": {"id": "5", "name": "Red"}, "part": {"part_num": "3001", "name": "Brick 2 x 4", "aliases": ["2x4 Brick"], "image_urls": [], "first_known_year": 1958, "market_price": "0.18", "market_price_currency": "USD"}, "element": {"element_id": "300121", "name": "Brick 2 x 4 Red", "first_known_year": 1958}}])
     provider_response = client.get("/parts/search", params={"query": "3001"})
 
     assert provider_response.status_code == 200

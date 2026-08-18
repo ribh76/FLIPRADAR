@@ -12,8 +12,12 @@ from flipradar.database.repositories import (
     PartCatalogSearchPage,
 )
 from flipradar.domain.models import Part
-from flipradar.integrations import bricklink_mock_client
-from flipradar.services.errors import ServiceNotFoundError, ServiceValidationError
+from flipradar.integrations import bricklink_client
+from flipradar.services.errors import (
+    ServiceNotFoundError,
+    ServiceProviderError,
+    ServiceValidationError,
+)
 from flipradar.services.part_catalog_normalizer import normalize_part_catalog_record
 
 RepositoryFactory = Callable[[AsyncSession], PartCatalogRepository]
@@ -107,7 +111,12 @@ def _provider(provider: str) -> str:
 
 def _provider_records(provider: str, query: str) -> list[dict]:
     if provider == "bricklink":
-        records = bricklink_mock_client.fetch_part_catalog_records(query)
+        try:
+            records = bricklink_client.client.get_part_catalog_records(query)
+        except bricklink_client.BricklinkNotFoundError:
+            records = []
+        except bricklink_client.BricklinkApiError as exc:
+            raise ServiceProviderError(f"BrickLink part lookup failed: {exc}") from exc
         if records:
             return records
     raise ServiceNotFoundError(

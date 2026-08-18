@@ -36,12 +36,12 @@ PHASE 1 — CI PIPELINE
 
 PHASE 2 — BRANCH PROTECTION AND RELEASE GATES 
 1. Protect the main branch from direct pushes. 
-2. Require pull requests for all production-readiness changes. 
-3. Require successful backend CI checks before merge. 
-4. Require successful frontend CI checks before merge. 
-5. Require successful migration and Docker image build checks before merge.
-6. Prevent merging when the branch is behind main if GitHub reports conflicting or stale checks. 
-7. Document the minimum merge requirements in the repository README or contributor documentation.
+2. Require pull requests for all production-readiness changes.  - 
+3. Require successful backend CI checks before merge.  - 
+4. Require successful frontend CI checks before merge.  - 
+5. Require successful migration and Docker image build checks before merge. - 
+6. Prevent merging when the branch is behind main if GitHub reports conflicting or stale checks.  - 
+7. Document the minimum merge requirements in the repository README or contributor documentation. - 
 
 ======================================================================
 MILESTONE 1 — REMOVE PRODUCTION LANDMINES Priority: CRITICAL Goal: Make
@@ -61,41 +61,33 @@ PHASE 3 — REMOVE MOCK MARKETPLACE DATA FROM PRODUCTION PATHS
 8. Add integration tests covering at least one successful and one failed real-provider request path. 
 9. Remove or clearly isolate remaining mock clients so they are available only to tests/development.
 
-PHASE 4 — PRODUCTION FAIL-CLOSED SAFETY CONTROLS 1. Add an explicit
-configuration setting controlling whether mock marketplace providers are
-allowed. 2. Default mock-provider access to disabled outside local
-development/test environments. 3. Make application startup fail when
-APP_ENV=production and a mock provider is selected or enabled. 4. Audit
-production startup validation for debug mode, JWT secrets, database SSL,
-CORS, provider credentials, and unsafe defaults. 5. Ensure production
-cannot silently substitute development credentials or localhost URLs. 6.
-Add automated tests for every production startup rejection condition. 7.
-Add one positive test proving a valid production configuration can boot
-successfully.
+PHASE 4 — PRODUCTION FAIL-CLOSED SAFETY CONTROLS 
+1. Add an explicit configuration setting controlling whether mock marketplace providers are allowed. 
+2. Default mock-provider access to disabled outside local development/test environments. 
+3. Make application startup fail when APP_ENV=production and a mock provider is selected or enabled. 
+4. Audit production startup validation for debug mode, JWT secrets, database SSL, CORS, provider credentials, and unsafe defaults. 
+5. Ensure production cannot silently substitute development credentials or localhost URLs. 
+6. Add automated tests for every production startup rejection condition. 
+7. Add one positive test proving a valid production configuration can boot successfully.
 
-PHASE 5 — INTERNAL AND DEVELOPMENT ENDPOINT LOCKDOWN 1. Inventory routes
-marked internal, development, debug, administrative, refresh, seed, or
-maintenance. 2. Remove /marketplace/update/{set_number} from public
-production access or require privileged service/admin authorization. 3.
-Verify no seed, reset, debug, mock-data, or test routes are exposed in
-production. 4. Add environment guards around routes that should exist
-only during development. 5. Add authorization tests for every privileged
-production endpoint that remains. 6. Verify unauthorized requests cannot
-trigger provider calls, background work, or database writes. 7. Document
-the remaining administrative endpoints and their intended authentication
-model.
+PHASE 5 — INTERNAL AND DEVELOPMENT ENDPOINT LOCKDOWN 
+1. Inventory routes marked internal, development, debug, administrative, refresh, seed, or maintenance. 
+2. Remove /marketplace/update/{set_number} from public production access or require privileged service/admin authorization. 
+3. Verify no seed, reset, debug, mock-data, or test routes are exposed in production. 
+4. Add environment guards around routes that should exist only during development. 
+5. Add authorization tests for every privileged production endpoint that remains. 
+6. Verify unauthorized requests cannot trigger provider calls, background work, or database writes. 
+7. Document the remaining administrative endpoints and their intended authentication model.
 
-PHASE 6 — REPRODUCIBLE DEPENDENCIES AND RUNTIME VERSIONS 1. Choose one
-supported Python runtime version for local development, CI, and Docker.
-2. Align Docker, Black, Ruff, Pyright, documentation, and CI with that
-Python version. 3. Pin or lock all backend production dependencies to
-reproducible versions. 4. Verify frontend builds exclusively from
-package-lock.json using npm ci. 5. Rebuild backend and frontend from
-clean dependency caches. 6. Run the full test suite against the locked
-dependency set. 7. Build both production Docker images twice from clean
-environments and verify reproducible successful builds. 8. Add
-dependency update procedures so version upgrades happen intentionally
-rather than during deployments.
+PHASE 6 — REPRODUCIBLE DEPENDENCIES AND RUNTIME VERSIONS 
+1. Choose one supported Python runtime version for local development, CI, and Docker.
+2. Align Docker, Black, Ruff, Pyright, documentation, and CI with that Python version. 
+3. Pin or lock all backend production dependencies to reproducible versions. 
+4. Verify frontend builds exclusively from package-lock.json using npm ci. 
+5. Rebuild backend and frontend from clean dependency caches. 
+6. Run the full test suite against the locked dependency set. 
+7. Build both production Docker images twice from clean environments and verify reproducible successful builds. 
+8. Add dependency update procedures so version upgrades happen intentionally rather than during deployments.
 
 ======================================================================
 MILESTONE 2 — PROTECT USERS AND DATA Priority: HIGH Goal: Harden

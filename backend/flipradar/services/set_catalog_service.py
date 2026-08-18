@@ -10,11 +10,12 @@ from flipradar.api.schemas.validation import normalize_set_number
 from flipradar.database import repositories
 from flipradar.database.repositories import Pagination
 from flipradar.domain.models import LegoSet
-from flipradar.integrations import bricklink_mock_client
+from flipradar.integrations import bricklink_client
 from flipradar.services.errors import (
     ServiceConflictError,
     ServiceIncompleteDataError,
     ServiceNotFoundError,
+    ServiceProviderError,
     ServiceValidationError,
 )
 
@@ -118,14 +119,16 @@ def _provider_metadata(set_number: str, provider: str) -> tuple[dict, str]:
         raise ServiceValidationError(f"Unsupported catalog provider: {provider}")
     try:
         return (
-            bricklink_mock_client.fetch_set_metadata(set_number),
+            bricklink_client.client.get_set_metadata(set_number),
             "https://www.bricklink.com/v2/catalog/catalogitem.page?S="
             f"{set_number}#T=S",
         )
-    except bricklink_mock_client.MockBricklinkSetNotFoundError as exc:
+    except bricklink_client.BricklinkNotFoundError as exc:
         raise ServiceNotFoundError(
             f"LEGO set '{set_number}' was not found in the local catalog or {provider}"
         ) from exc
+    except bricklink_client.BricklinkApiError as exc:
+        raise ServiceProviderError(f"BrickLink catalog lookup failed: {exc}") from exc
 
 
 def _normalize_provider_set(

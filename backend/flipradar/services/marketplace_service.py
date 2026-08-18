@@ -17,8 +17,8 @@ from flipradar.domain.models import (
     MarketplaceListing,
     PriceSnapshot,
 )
-from flipradar.integrations.bricklink_mock_client import adapter as bricklink_adapter
-from flipradar.integrations.ebay_mock_client import adapter as ebay_adapter
+from flipradar.integrations.bricklink_client import adapter as bricklink_adapter
+from flipradar.integrations.ebay_client import adapter as ebay_adapter
 from flipradar.integrations.marketplace_adapter import MarketplaceAdapter
 from flipradar.services import (
     listing_normalizer,

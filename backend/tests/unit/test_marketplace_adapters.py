@@ -3,8 +3,8 @@ from typing import Any
 
 import pytest
 
-from flipradar.integrations.bricklink_mock_client import adapter as bricklink_adapter
-from flipradar.integrations.ebay_mock_client import adapter as ebay_adapter
+from flipradar.integrations.bricklink_client import BricklinkMarketplaceAdapter
+from flipradar.integrations.ebay_client import EbayMarketplaceAdapter
 from flipradar.integrations.marketplace_adapter import MarketplaceAdapter
 from flipradar.services import marketplace_service
 from flipradar.services.errors import ServiceProviderError, ServiceProviderTimeoutError
@@ -41,28 +41,25 @@ class SlowMarketplaceAdapter(MarketplaceAdapter):
         return []
 
 
-@pytest.fixture(params=[ebay_adapter, bricklink_adapter])
-def mocked_provider_adapter(request: pytest.FixtureRequest) -> MarketplaceAdapter:
-    return request.param
+class FixtureBricklinkClient:
+    def _set_id(self, set_number: str) -> str:
+        return f"{set_number}-1"
+
+    def get_price_guide(self, _item_type: str, _number: str, condition: str) -> dict:
+        return {"currency_code": "USD", "price_detail": [{"unit_price": "99.99"}], "condition": condition}
 
 
-def test_mocked_provider_adapters_satisfy_listing_contract(
-    mocked_provider_adapter: MarketplaceAdapter,
-):
-    listings = mocked_provider_adapter.fetch_listings("42071")
+def test_live_provider_adapters_produce_normalizable_listing_contract():
+    ebay_listing = EbayMarketplaceAdapter._listing({
+        "itemId": "v1|1|0", "title": "LEGO 42071", "itemWebUrl": "https://www.ebay.com/itm/1",
+        "condition": "New", "price": {"value": "42.00", "currency": "USD"}, "shippingOptions": [],
+    })
+    bricklink_listing = BricklinkMarketplaceAdapter(FixtureBricklinkClient()).fetch_listings("42071")[0]
 
-    assert listings
-    assert all(
-        listing["marketplace"] == mocked_provider_adapter.marketplace
-        for listing in listings
-    )
-    assert all("condition" in listing for listing in listings)
-    assert all(
-        "currency" in listing or "currency_code" in listing for listing in listings
-    )
-    assert all(
-        "shipping" in listing or "shipping_price" in listing for listing in listings
-    )
+    assert ebay_listing["external_listing_id"] == "v1|1|0"
+    assert ebay_listing["currency"] == "USD"
+    assert bricklink_listing["marketplace"] == "bricklink"
+    assert bricklink_listing["condition"] == "N"
 
 
 @pytest.mark.asyncio

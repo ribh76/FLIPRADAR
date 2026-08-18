@@ -10,7 +10,7 @@ from flipradar.database.repositories import (
     get_set_by_number,
 )
 from flipradar.domain.engines import price_estimator
-from flipradar.integrations import bricklink_mock_client
+from flipradar.integrations import bricklink_client
 
 
 def _money(value: Decimal | None) -> Decimal | None:
@@ -40,15 +40,15 @@ def _detail_response(metadata: dict, **valuation_fields) -> dict:
     }
 
 
-def _mock_bricklink_detail(
+def _bricklink_detail(
     set_number: str, metadata_override: dict | None = None
 ) -> dict:
     try:
-        metadata = metadata_override or bricklink_mock_client.fetch_set_metadata(
+        metadata = metadata_override or bricklink_client.client.get_set_metadata(
             set_number
         )
-        latest_snapshot = bricklink_mock_client.fetch_set_price_snapshot(set_number)
-    except bricklink_mock_client.MockBricklinkSetNotFoundError as exc:
+        latest_snapshot = bricklink_client.client.get_set_price_snapshot(set_number)
+    except bricklink_client.BricklinkNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="LEGO set not found"
         ) from exc
@@ -56,13 +56,13 @@ def _mock_bricklink_detail(
     return _detail_response(
         metadata,
         latest_snapshot={
-            "id": uuid5(NAMESPACE_URL, f"flipradar:mock-price:{set_number}"),
+            "id": uuid5(NAMESPACE_URL, f"flipradar:bricklink-price:{set_number}"),
             "condition": "new",
             "currency": latest_snapshot["currency"],
             "metric_type": "fair_market_value",
             "value": _money(latest_snapshot["fair_market_value"]),
             "sample_size": latest_snapshot["listing_count"],
-            "source_payload": {"source": "bricklink_mock"},
+            "source_payload": {"source": "bricklink_price_guide"},
             "retrieval_time": latest_snapshot["snapshot_at"],
             "created_at": latest_snapshot["created_at"],
         },
@@ -75,31 +75,41 @@ def _mock_bricklink_detail(
     )
 
 
+def _missing_market_data(metadata: dict) -> dict:
+    return _detail_response(
+        metadata,
+        latest_snapshot=None,
+        fair_value=None,
+        market_low=None,
+        market_high=None,
+        listing_count=0,
+        confidence=None,
+        valuation_status="missing_market_data",
+    )
+
+
 async def get_set_detail(db: AsyncSession, set_number: str) -> dict:
     normalized_set_number = normalize_set_number(set_number)
     lego_set = await get_set_by_number(db, normalized_set_number)
     if lego_set is None:
-        return _mock_bricklink_detail(normalized_set_number)
+        if not bricklink_client.client.configured:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="LEGO set not found"
+            )
+        return _bricklink_detail(normalized_set_number)
 
     metadata = _metadata_from_lego_set(lego_set)
     snapshots = await get_latest_snapshots_by_set_number(db, normalized_set_number)
     latest_snapshot = snapshots[0] if snapshots else None
     if not snapshots:
+        if not bricklink_client.client.configured:
+            return _missing_market_data(metadata)
         try:
-            return _mock_bricklink_detail(
+            return _bricklink_detail(
                 normalized_set_number, metadata_override=metadata
             )
         except HTTPException:
-            return _detail_response(
-                metadata,
-                latest_snapshot=None,
-                fair_value=None,
-                market_low=None,
-                market_high=None,
-                listing_count=0,
-                confidence=None,
-                valuation_status="missing_market_data",
-            )
+            return _missing_market_data(metadata)
 
     estimate = price_estimator.estimate_fair_value(snapshots)
     if estimate["error"] is not None:
