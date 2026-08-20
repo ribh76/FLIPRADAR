@@ -1,10 +1,12 @@
 """Route visibility classifications and production access policy."""
 
 from enum import StrEnum
+from secrets import compare_digest
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.routing import APIRoute
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from flipradar.core.settings import AppEnvironment
 
@@ -26,17 +28,20 @@ _CLASSIFICATION_KEY = "x-route-classification"
 _PRODUCTION_EXCLUDED = frozenset(RouteClassification) - {
     RouteClassification.PUBLIC,
 }
+_operational_credentials = HTTPBasic(auto_error=False)
 
 
 def route_metadata(
     classification: RouteClassification, description: str
 ) -> dict[str, Any]:
     """Return FastAPI decorator options with a visible, machine-readable label."""
-    return {
+    metadata: dict[str, Any] = {
         "description": f"[{classification.value.upper()}] {description}",
         "openapi_extra": {_CLASSIFICATION_KEY: classification.value},
-        "dependencies": [Depends(enforce_route_visibility)],
     }
+    if classification in _PRODUCTION_EXCLUDED:
+        metadata["dependencies"] = [Depends(enforce_route_visibility)]
+    return metadata
 
 
 def get_route_classification(route: APIRoute) -> RouteClassification:
@@ -45,18 +50,44 @@ def get_route_classification(route: APIRoute) -> RouteClassification:
     return RouteClassification(value) if value else RouteClassification.PUBLIC
 
 
-def enforce_route_visibility(request: Request) -> None:
-    """Make operational routes indistinguishable from absent routes in production."""
+def enforce_route_visibility(
+    request: Request,
+    credentials: HTTPBasicCredentials | None = Depends(_operational_credentials),
+) -> None:
+    """Block production operational routes and protect them elsewhere."""
     route = request.scope.get("route")
-    if (
-        request.app.state.settings.application.environment
-        is AppEnvironment.PRODUCTION
-        and isinstance(route, APIRoute)
-        and get_route_classification(route) in _PRODUCTION_EXCLUDED
-    ):
+    if not isinstance(route, APIRoute):
+        return
+
+    classification = get_route_classification(route)
+    if classification not in _PRODUCTION_EXCLUDED:
+        return
+
+    settings = request.app.state.settings
+    environment = settings.application.environment
+    if environment is AppEnvironment.PRODUCTION:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not found",
+        )
+
+    # Tests need direct fixture setup, but engineering and maintenance routes
+    # must never be open in a developer or staging deployment.
+    if environment is AppEnvironment.TEST:
+        return
+
+    expected = settings.operational_routes
+    if (
+        not expected.username
+        or not expected.password
+        or credentials is None
+        or not compare_digest(credentials.username, expected.username)
+        or not compare_digest(credentials.password, expected.password)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Operational route credentials are required",
+            headers={"WWW-Authenticate": "Basic"},
         )
 
 

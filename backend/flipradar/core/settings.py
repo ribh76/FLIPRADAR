@@ -152,6 +152,13 @@ class CorsSettings(BaseModel):
     allow_headers: list[str]
 
 
+class OperationalRouteSettings(BaseModel):
+    """Credentials for engineering-only HTTP endpoints outside production."""
+
+    username: str | None
+    password: str | None
+
+
 def _split_csv(value: str | list[str]) -> list[str]:
     if isinstance(value, list):
         return value
@@ -267,6 +274,13 @@ class Settings(BaseSettings):
         default=300, ge=1, alias="ACCOUNT_TOKEN_RESEND_COOLDOWN_SECONDS"
     )
     password_min_length: int = Field(default=8, ge=8, alias="PASSWORD_MIN_LENGTH")
+
+    operational_route_username: str | None = Field(
+        default=None, alias="OPERATIONAL_ROUTE_USERNAME"
+    )
+    operational_route_password: str | None = Field(
+        default=None, alias="OPERATIONAL_ROUTE_PASSWORD"
+    )
 
     email_enabled: bool = Field(default=False, alias="EMAIL_ENABLED")
     email_provider: str = Field(default="smtp", alias="EMAIL_PROVIDER")
@@ -390,6 +404,8 @@ class Settings(BaseSettings):
         "bricklink_token_secret",
         "anthropic_api_key",
         "sentry_dsn",
+        "operational_route_username",
+        "operational_route_password",
         mode="before",
     )
     @classmethod
@@ -573,6 +589,13 @@ class Settings(BaseSettings):
                 self.account_token_resend_cooldown_seconds
             ),
             password_min_length=self.password_min_length,
+        )
+
+    @property
+    def operational_routes(self) -> OperationalRouteSettings:
+        return OperationalRouteSettings(
+            username=self.operational_route_username,
+            password=self.operational_route_password,
         )
 
     @property

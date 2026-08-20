@@ -96,7 +96,10 @@ async def list_price_snapshots(
     "/snapshots/{set_number}/analytics",
     response_model=PriceAnalyticsResponse,
     summary="Get advanced price analytics",
-    description="Calculate descriptive price analytics from stored raw and compacted history.",
+    **route_metadata(
+        RouteClassification.INTERNAL,
+        "Calculate descriptive price analytics from stored raw and compacted history.",
+    ),
 )
 async def get_price_analytics(
     set_number: str,

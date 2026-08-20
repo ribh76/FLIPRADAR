@@ -71,13 +71,13 @@ PHASE 4 — PRODUCTION FAIL-CLOSED SAFETY CONTROLS
 7. Add one positive test proving a valid production configuration can boot successfully. - 
 
 PHASE 5 — INTERNAL AND DEVELOPMENT ENDPOINT LOCKDOWN 
-1. Inventory routes marked internal, development, debug, administrative, refresh, seed, or maintenance. 
-2. Remove /marketplace/update/{set_number} from public production access or require privileged service/admin authorization. 
-3. Verify no seed, reset, debug, mock-data, or test routes are exposed in production. 
-4. Add environment guards around routes that should exist only during development. 
-5. Add authorization tests for every privileged production endpoint that remains. 
-6. Verify unauthorized requests cannot trigger provider calls, background work, or database writes. 
-7. Document the remaining administrative endpoints and their intended authentication model.
+1. Inventory routes marked internal, development, debug, administrative, refresh, seed, or maintenance. - 
+2. Remove /marketplace/update/{set_number} from public production access or require privileged service/admin authorization. - 
+3. Verify no seed, reset, debug, mock-data, or test routes are exposed in production. - 
+4. Add environment guards around routes that should exist only during development. - 
+5. Add authorization tests for every privileged production endpoint that remains. - 
+6. Verify unauthorized requests cannot trigger provider calls, background work, or database writes. -
+7. Document the remaining administrative endpoints and their intended authentication model.-
 
 PHASE 6 — REPRODUCIBLE DEPENDENCIES AND RUNTIME VERSIONS 
 1. Choose one supported Python runtime version for local development, CI, and Docker.

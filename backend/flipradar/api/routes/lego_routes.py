@@ -116,7 +116,10 @@ async def search_part_catalog(
     "/parts/sync",
     response_model=PartCatalogSyncResponse,
     summary="Synchronize part catalog records",
-    description="Retrieves and idempotently persists matching part records from a provider.",
+    **route_metadata(
+        RouteClassification.MAINTENANCE,
+        "Retrieve and idempotently persist matching part records from a provider.",
+    ),
 )
 async def synchronize_part_catalog(
     query: str = Query(..., min_length=1, max_length=160),
