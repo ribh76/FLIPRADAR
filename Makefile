@@ -1,4 +1,10 @@
-.PHONY: dev start stop inspect reset setup migrate-seed reset-db reset-demo-data refresh-prices prune-prices snapshot-portfolios quality format format-check backend-quality frontend-quality
+PYTHON ?= ./venv/bin/python
+PYTHON_VERSION := 3.14.2
+
+.PHONY: dev start stop inspect reset setup migrate-seed reset-db reset-demo-data refresh-prices prune-prices snapshot-portfolios quality format format-check backend-quality frontend-quality check-python
+
+check-python:
+	@test "$$($(PYTHON) -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')" = "$(PYTHON_VERSION)" || { echo "Python $(PYTHON_VERSION) is required; run make setup or set PYTHON to that interpreter." >&2; exit 1; }
 
 dev:
 	./scripts/run_local_app.sh
@@ -27,33 +33,33 @@ reset-db:
 reset-demo-data:
 	./scripts/reset_database.sh
 
-refresh-prices:
-	./venv/bin/python scripts/refresh_price_snapshots.py $(SETS)
+refresh-prices: check-python
+	$(PYTHON) scripts/refresh_price_snapshots.py $(SETS)
 
-prune-prices:
-	./venv/bin/python scripts/prune_price_snapshots.py
+prune-prices: check-python
+	$(PYTHON) scripts/prune_price_snapshots.py
 
-snapshot-portfolios:
-	./venv/bin/python scripts/snapshot_portfolio_valuations.py
+snapshot-portfolios: check-python
+	$(PYTHON) scripts/snapshot_portfolio_valuations.py
 
-quality:
+quality: check-python
 	./scripts/check_quality.sh
 
-format:
-	./venv/bin/python -m black backend scripts
-	./venv/bin/python -m ruff check --fix backend scripts
+format: check-python
+	$(PYTHON) -m black backend scripts
+	$(PYTHON) -m ruff check --fix backend scripts
 	npm run format --prefix frontend
 
-format-check:
-	./venv/bin/python -m black --check backend scripts
-	./venv/bin/python -m ruff check backend scripts
+format-check: check-python
+	$(PYTHON) -m black --check backend scripts
+	$(PYTHON) -m ruff check backend scripts
 	npm run format:check --prefix frontend
 
-backend-quality:
-	./venv/bin/python -m ruff check backend scripts
-	./venv/bin/python -m black --check backend scripts
-	./venv/bin/python -m pyright
-	./venv/bin/python -m pytest backend/tests
+backend-quality: check-python
+	$(PYTHON) -m ruff check backend scripts
+	$(PYTHON) -m black --check backend scripts
+	$(PYTHON) -m pyright
+	$(PYTHON) -m pytest backend/tests
 
 frontend-quality:
 	npm run lint --prefix frontend

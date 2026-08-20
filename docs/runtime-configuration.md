@@ -69,5 +69,6 @@ Pytest configures `APP_ENV=test`, a test JWT secret, SQLite `DATABASE_URL`, and 
 The FastAPI app is built by `flipradar.main:create_app`. Uvicorn should use factory mode:
 
 ```bash
-python3 -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload
+cd backend
+../venv/bin/python -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload
 ```

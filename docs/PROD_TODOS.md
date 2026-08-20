@@ -142,53 +142,45 @@ staging, observability, production-equivalent containers, and a
 controlled deployment path.
 ======================================================================
 
-PHASE 11 — PRODUCTION CONTAINER CERTIFICATION 1. Build the backend using
-the actual production Dockerfile target rather than development Compose
-behavior. 2. Build the frontend using the actual production nginx/static
-build target. 3. Run both production images locally or in CI without
-source-code bind mounts. 4. Boot the backend with production-like
-environment validation enabled. 5. Verify /health/live and /health/ready
-correctly distinguish process health from dependency readiness. 6.
-Verify frontend routing, static assets, and /api proxy behavior using
-the production container. 7. Verify graceful startup and shutdown
-behavior for the API container. 8. Record final container ports,
-required environment variables, volumes, and service dependencies.
+PHASE 11 — PRODUCTION CONTAINER CERTIFICATION 
+1. Build the backend using the actual production Dockerfile target rather than development Compose behavior. 
+2. Build the frontend using the actual production nginx/static build target. 
+3. Run both production images locally or in CI without source-code bind mounts. 
+4. Boot the backend with production-like environment validation enabled. 
+5. Verify /health/live and /health/ready correctly distinguish process health from dependency readiness. 
+6. Verify frontend routing, static assets, and /api proxy behavior using the production container. 
+7. Verify graceful startup and shutdown behavior for the API container. 
+8. Record final container ports, required environment variables, volumes, and service dependencies.
 
-PHASE 12 — STAGING ENVIRONMENT 1. Provision a staging frontend, API
-service, PostgreSQL database, and Redis instance. 2. Configure staging
-with separate credentials, secrets, databases, and provider
-configuration from production. 3. Deploy the exact production Docker
-images to staging. 4. Run Alembic migrations as an explicit staging
-release step. 5. Configure staging frontend/API URLs, CORS, HTTPS, and
-proxy behavior. 6. Connect staging to safe but realistic
-marketplace/provider services or credentials. 7. Perform account
-creation, authentication, catalog lookup, marketplace lookup, and
-portfolio operations in staging. 8. Keep staging configuration
-structurally equivalent to production so deployment differences are
-minimal.
+PHASE 12 — STAGING ENVIRONMENT 
+1. Provision a staging frontend, API service, PostgreSQL database, and Redis instance. 
+2. Configure staging with separate credentials, secrets, databases, and provider configuration from production. 
+3. Deploy the exact production Docker images to staging. 
+4. Run Alembic migrations as an explicit staging release step. 
+5. Configure staging frontend/API URLs, CORS, HTTPS, and proxy behavior. 
+6. Connect staging to safe but realistic marketplace/provider services or credentials. 
+7. Perform account creation, authentication, catalog lookup, marketplace lookup, and portfolio operations in staging. 
+8. Keep staging configuration structurally equivalent to production so deployment differences are minimal.
 
-PHASE 13 — OBSERVABILITY AND FAILURE VISIBILITY 1. Configure backend
-Sentry/error reporting for staging. 2. Configure frontend error
-reporting for staging. 3. Set APP_RELEASE and equivalent frontend
-release identifiers during builds/deployments. 4. Trigger a controlled
-backend exception and verify it reaches the error-reporting system. 5.
-Trigger a controlled frontend exception and verify it reaches the
-error-reporting system. 6. Verify logs contain useful request/release
-context without leaking passwords, tokens, or secrets. 7. Add basic
-alerting for repeated server errors and service-health failures. 8.
-Repeat the configuration for production only after staging verification
-succeeds.
+PHASE 13 — OBSERVABILITY AND FAILURE VISIBILITY 
+1. Configure backend Sentry/error reporting for staging. 
+2. Configure frontend error reporting for staging. 
+3. Set APP_RELEASE and equivalent frontend release identifiers during builds/deployments. 
+4. Trigger a controlled backend exception and verify it reaches the error-reporting system. 
+5. Trigger a controlled frontend exception and verify it reaches the error-reporting system. 
+6. Verify logs contain useful request/release context without leaking passwords, tokens, or secrets. 
+7. Add basic alerting for repeated server errors and service-health failures. 
+8. Repeat the configuration for production only after staging verification succeeds.
 
-PHASE 14 — SECURITY HEADERS AND EDGE CONFIGURATION 1. Ensure all staging
-and production traffic is HTTPS-only. 2. Add X-Content-Type-Options and
-appropriate frame-embedding protection. 3. Add an appropriate
-Referrer-Policy. 4. Define and test a Content-Security-Policy compatible
-with the frontend and required external services. 5. Enable HSTS only
-after HTTPS and domain configuration are confirmed correct. 6. Configure
-sensible API request/body-size and proxy timeout limits. 7. Configure
-caching/compression for versioned frontend static assets. 8. Run a final
-browser/network inspection to verify headers are actually present on
-deployed responses.
+PHASE 14 — SECURITY HEADERS AND EDGE CONFIGURATION 
+1. Ensure all staging and production traffic is HTTPS-only. 
+2. Add X-Content-Type-Options and appropriate frame-embedding protection. 
+3. Add an appropriate Referrer-Policy. 
+4. Define and test a Content-Security-Policy compatible with the frontend and required external services. 
+5. Enable HSTS only after HTTPS and domain configuration are confirmed correct. 
+6. Configure sensible API request/body-size and proxy timeout limits. 
+7. Configure caching/compression for versioned frontend static assets. 
+8. Run a final browser/network inspection to verify headers are actually present on deployed responses.
 
 PHASE 15 — POST-DEPLOYMENT SMOKE TESTS 
 1. Create an automated check for the deployed frontend root page. 

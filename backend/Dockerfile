@@ -1,4 +1,6 @@
-FROM python:3.13-slim AS runtime
+FROM python:3.14.2-slim AS runtime
+
+ARG PIP_VERSION=25.3
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -10,9 +12,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/requirements.txt ./requirements.txt
-RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+COPY backend/requirements.lock ./requirements.lock
+RUN pip install --upgrade "pip==${PIP_VERSION}" \
+    && pip install -r requirements.lock
 
 COPY backend/ /app/backend/
 COPY scripts/ /app/scripts/

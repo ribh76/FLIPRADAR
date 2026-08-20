@@ -52,13 +52,15 @@ pull-request branch and wait for the checks to run again before merging.
 Start the API:
 
 ```bash
+python3.14 -m venv venv
+./venv/bin/python -m pip install -r backend/requirements-dev.txt
+cp backend/.env.example backend/.env
 cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-python3 -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload
+../venv/bin/python -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload
 ```
+
+The backend runtime is Python 3.14.2. `.python-version` records it for local
+version managers; Docker, CI, and Make targets use the same pin.
 
 Start the complete Docker stack:
 

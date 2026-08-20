@@ -1,0 +1,10 @@
+# Local development, quality, and test dependencies. Production images install
+# requirements.lock only.
+-r requirements.lock
+
+pytest==9.1.1
+pytest-asyncio==1.4.0
+black==26.5.1
+ruff==0.15.19
+pyright==1.1.411
+pre-commit==4.6.1

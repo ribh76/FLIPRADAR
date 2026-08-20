@@ -6,13 +6,18 @@ For the complete Docker stack, see [local development](/Users/rbbla1/Documents/d
 
 ## Setup
 
+From the repository root:
+
 ```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
+python3.14 -m venv venv
+./venv/bin/python -m pip install -r backend/requirements-dev.txt
+cp backend/.env.example backend/.env
 ```
+
+FlipRadar uses Python 3.14.2, recorded in the repository-root `.python-version`.
+`requirements.txt` records pinned direct production dependencies and
+`requirements.lock` pins their complete resolved graph. Use
+`requirements-dev.txt` for local development, tests, and quality tooling.
 
 Required environment variables are documented in `.env.example`. For local development, set at least:
 
@@ -27,15 +32,14 @@ Runtime settings are grouped in `flipradar.core.settings.Settings`. See [docs/ru
 
 ```bash
 cd backend
-source venv/bin/activate
-python3 -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload
+../venv/bin/python -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload
 ```
 
 Shortcut:
 
 ```bash
 cd backend
-python3 run.py
+../venv/bin/python run.py
 ```
 
 Swagger UI is available at `http://127.0.0.1:8000/docs`.
@@ -45,7 +49,7 @@ Swagger UI is available at `http://127.0.0.1:8000/docs`.
 The backend image is defined in `backend/Dockerfile`. In Docker Compose, the backend waits for PostgreSQL, runs Alembic migrations, seeds demo data, and starts:
 
 ```bash
-python3 -m uvicorn flipradar.main:create_app --factory --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn flipradar.main:create_app --factory --host 0.0.0.0 --port 8000 --reload
 ```
 
 The backend health check uses `GET /db-health`.
@@ -56,23 +60,22 @@ Alembic is configured by `backend/alembic.ini`, with migration files in `backend
 
 ```bash
 cd backend
-source venv/bin/activate
-python3 -m alembic upgrade head
+../venv/bin/python -m alembic upgrade head
 ```
 
 Create a new migration:
 
 ```bash
 cd backend
-python3 -m alembic revision --autogenerate -m "describe change"
+../venv/bin/python -m alembic revision --autogenerate -m "describe change"
 ```
 
 Test migrations against a temporary SQLite database:
 
 ```bash
 cd backend
-ALEMBIC_DATABASE_URL=sqlite:////private/tmp/flipradar_alembic_test.db python3 -m alembic upgrade head
-ALEMBIC_DATABASE_URL=sqlite:////private/tmp/flipradar_alembic_test.db python3 -m alembic check
+ALEMBIC_DATABASE_URL=sqlite:////private/tmp/flipradar_alembic_test.db ../venv/bin/python -m alembic upgrade head
+ALEMBIC_DATABASE_URL=sqlite:////private/tmp/flipradar_alembic_test.db ../venv/bin/python -m alembic check
 ```
 
 ## Seed And Utility Scripts
@@ -80,8 +83,8 @@ ALEMBIC_DATABASE_URL=sqlite:////private/tmp/flipradar_alembic_test.db python3 -m
 Root scripts add `backend/` to `sys.path`, so run them from the project root:
 
 ```bash
-python3 scripts/create_database_tables.py
-python3 scripts/seed_database.py
+./venv/bin/python scripts/create_database_tables.py
+./venv/bin/python scripts/seed_database.py
 ```
 
 The idempotent seed covers catalog sets, multi-date price snapshots, listings,
@@ -93,16 +96,13 @@ seeded demo credentials out of logs, telemetry, and issue reports.
 ## Tests
 
 ```bash
-cd backend
-source venv/bin/activate
-python3 -m pytest
+./venv/bin/python -m pytest backend/tests
 ```
 
 Run a single test file:
 
 ```bash
-cd backend
-python3 -m pytest tests/api/test_api_routes.py
+./venv/bin/python -m pytest backend/tests/api/test_api_routes.py
 ```
 
 Tests are organized by intent:

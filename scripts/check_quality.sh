@@ -3,8 +3,14 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN="${BACKEND_PYTHON:-$ROOT_DIR/venv/bin/python}"
+REQUIRED_PYTHON_VERSION="3.14.2"
 
 cd "$ROOT_DIR"
+
+if [[ "$("$PYTHON_BIN" -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')" != "$REQUIRED_PYTHON_VERSION" ]]; then
+  echo "Python $REQUIRED_PYTHON_VERSION is required (set BACKEND_PYTHON to its executable)." >&2
+  exit 1
+fi
 
 echo "==> Backend Ruff"
 "$PYTHON_BIN" -m ruff check backend scripts

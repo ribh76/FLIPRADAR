@@ -6,7 +6,8 @@ FlipRadar can run as a complete local stack through Docker Compose. A clean clon
 
 - Docker Engine 24 or newer
 - Docker Compose v2
-- Python 3.13 or newer for optional local backend development
+- Python 3.14.2 for optional local backend development (the exact version is
+  recorded in `.python-version`)
 - Node.js 22 or newer for optional local frontend development
 - npm 10 or newer
 
@@ -60,7 +61,8 @@ Docker does not require local Python or Node dependencies. For editor tooling an
 ./scripts/setup_dev_environment.sh
 ```
 
-This creates `backend/venv`, installs backend requirements, and runs `npm install` in `frontend`.
+This creates the repository-root `venv`, installs the pinned backend development
+requirements, and runs `npm install` in `frontend`.
 
 ## Migrations And Seed Data
 
