@@ -80,9 +80,9 @@ PHASE 5 — INTERNAL AND DEVELOPMENT ENDPOINT LOCKDOWN
 7. Document the remaining administrative endpoints and their intended authentication model.-
 
 PHASE 6 — REPRODUCIBLE DEPENDENCIES AND RUNTIME VERSIONS 
-1. Choose one supported Python runtime version for local development, CI, and Docker.
-2. Align Docker, Black, Ruff, Pyright, documentation, and CI with that Python version. 
-3. Pin or lock all backend production dependencies to reproducible versions. 
+1. Choose one supported Python runtime version for local development, CI, and Docker. -
+2. Align Docker, Black, Ruff, Pyright, documentation, and CI with that Python version.  -
+3. Pin or lock all backend production dependencies to reproducible versions.  -
 4. Verify frontend builds exclusively from package-lock.json using npm ci. 
 5. Rebuild backend and frontend from clean dependency caches. 
 6. Run the full test suite against the locked dependency set. 
