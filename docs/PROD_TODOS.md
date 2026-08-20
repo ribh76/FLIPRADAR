@@ -95,59 +95,46 @@ authentication, database behavior, secrets, and external-service
 handling before real users touch the system.
 ======================================================================
 
-PHASE 7 — AUTHENTICATION AND ABUSE PROTECTION 1. Inventory
-authentication, registration, password-reset, MFA, provider, evaluation,
-and other expensive public endpoints. 2. Replace or supplement the
-per-process in-memory limiter with Redis-backed rate limiting for
-security-sensitive endpoints. 3. Apply strict endpoint-specific limits
-to login, registration, password reset, verification, and MFA flows. 4.
-Add reasonable protection to expensive marketplace/provider and
-LLM-backed operations. 5. Configure trusted proxy handling so client IP
-detection cannot be trivially spoofed with X-Forwarded-For. 6. Add tests
-for rate-limit enforcement, expiration, and behavior across shared Redis
-state. 7. Verify normal user activity does not trigger the new abuse
-limits.
+PHASE 7 — AUTHENTICATION AND ABUSE PROTECTION 
+1. Inventory authentication, registration, password-reset, MFA, provider, evaluation, and other expensive public endpoints. 
+2. Replace or supplement the per-process in-memory limiter with Redis-backed rate limiting for security-sensitive endpoints. 
+3. Apply strict endpoint-specific limits to login, registration, password reset, verification, and MFA flows. 
+4. Add reasonable protection to expensive marketplace/provider and LLM-backed operations. 
+5. Configure trusted proxy handling so client IP detection cannot be trivially spoofed with X-Forwarded-For. 
+6. Add tests for rate-limit enforcement, expiration, and behavior across shared Redis state. 
+7. Verify normal user activity does not trigger the new abuse limits.
 
-PHASE 8 — EMAIL AND ACCOUNT LIFECYCLE 1. Select and configure the
-production transactional email provider. 2. Store email credentials only
-in deployment/environment secret storage. 3. Test registration and
-email-verification delivery end-to-end. 4. Decide and enforce whether
-unverified accounts may authenticate or access protected application
-functionality. 5. Test password-reset requests and reset completion
-against the deployed frontend URL. 6. Test MFA, email-change,
-account-deletion, and security-notification email flows that are
-currently implemented. 7. Ensure email failures produce controlled
-user-facing behavior and useful server logs. 8. Verify production emails
-do not contain localhost, staging, or development links.
+PHASE 8 — EMAIL AND ACCOUNT LIFECYCLE 
+1. Select and configure the production transactional email provider. 
+2. Store email credentials only in deployment/environment secret storage. 
+3. Test registration and email-verification delivery end-to-end. 
+4. Decide and enforce whether unverified accounts may authenticate or access protected application functionality. 
+5. Test password-reset requests and reset completion against the deployed frontend URL. 
+6. Test MFA, email-change, account-deletion, and security-notification email flows that are currently implemented. 
+7. Ensure email failures produce controlled user-facing behavior and useful server logs. 
+8. Verify production emails do not contain localhost, staging, or development links.
 
-PHASE 9 — DATABASE INTEGRITY AND MIGRATION CERTIFICATION 1. Create a
-completely empty PostgreSQL database using the production PostgreSQL
-major version. 2. Run alembic upgrade head from zero and verify every
-migration completes successfully. 3. Boot the API against the newly
-migrated database. 4. Seed or create representative users, sets,
-listings, portfolio positions, snapshots, and watchlist data. 5. Verify
-foreign-key delete and cascade behavior for user-owned and marketplace
-data. 6. Audit monetary values, prices, quantities, and calculations for
-appropriate Decimal/numeric storage instead of unsafe floating-point
-persistence. 7. Verify required indexes exist for common search, lookup,
-portfolio, marketplace, and snapshot queries. 8. Test forward migration
-using a copy of representative populated data. 9. Document
-backup/restore expectations and the handling of migrations that
-intentionally cannot be downgraded.
+PHASE 9 — DATABASE INTEGRITY AND MIGRATION CERTIFICATION 
+1. Create a completely empty PostgreSQL database using the production PostgreSQL major version. 
+2. Run alembic upgrade head from zero and verify every migration completes successfully. 
+3. Boot the API against the newly migrated database. 
+4. Seed or create representative users, sets, listings, portfolio positions, snapshots, and watchlist data. 
+5. Verify foreign-key delete and cascade behavior for user-owned and marketplace data. 
+6. Audit monetary values, prices, quantities, and calculations for appropriate Decimal/numeric storage instead of unsafe floating-point persistence. 
+7. Verify required indexes exist for common search, lookup, portfolio, marketplace, and snapshot queries. 
+8. Test forward migration using a copy of representative populated data. 
+9. Document backup/restore expectations and the handling of migrations that intentionally cannot be downgraded.
 
-PHASE 10 — SECRETS AND PRODUCTION CONFIGURATION 1. Define the complete
-production environment-variable contract in one documented location. 2.
-Generate a strong production JWT secret and ensure no
-development/default secret is accepted. 3. Configure the production
-PostgreSQL connection with required SSL. 4. Configure production Redis
-and external-provider credentials. 5. Set explicit production frontend
-URL and CORS origins with no wildcard origins. 6. Configure
-release/version identifiers used by logs and error reporting. 7. Store
-all production secrets in the deployment platform or GitHub Environment
-secret store. 8. Scan the repository and Git history for accidentally
-committed secrets or credentials and rotate anything exposed. 9.
-Validate the complete production configuration in CI or staging without
-exposing secret values.
+PHASE 10 — SECRETS AND PRODUCTION CONFIGURATION 
+1. Define the complete production environment-variable contract in one documented location. 
+2. Generate a strong production JWT secret and ensure no development/default secret is accepted. 
+3. Configure the production PostgreSQL connection with required SSL. 
+4. Configure production Redis and external-provider credentials. 
+5. Set explicit production frontend URL and CORS origins with no wildcard origins. 
+6. Configure release/version identifiers used by logs and error reporting. 
+7. Store all production secrets in the deployment platform or GitHub Environment secret store. 
+8. Scan the repository and Git history for accidentally committed secrets or credentials and rotate anything exposed. 
+9. Validate the complete production configuration in CI or staging without exposing secret values.
 
 ======================================================================
 MILESTONE 3 — BUILD THE RELEASE MACHINE Priority: HIGH Goal: Establish
@@ -203,28 +190,28 @@ caching/compression for versioned frontend static assets. 8. Run a final
 browser/network inspection to verify headers are actually present on
 deployed responses.
 
-PHASE 15 — POST-DEPLOYMENT SMOKE TESTS 1. Create an automated check for
-the deployed frontend root page. 2. Check backend /health/live. 3. Check
-backend /health/ready and database connectivity. 4. Authenticate using a
-dedicated staging smoke-test account. 5. Call /users/me or another
-simple protected endpoint. 6. Perform one representative catalog/set
-lookup. 7. Perform one protected portfolio read/write operation. 8.
-Exercise one real marketplace/provider request without mock fallback. 9.
-Make the smoke suite return a non-zero exit status when any critical
-check fails.
+PHASE 15 — POST-DEPLOYMENT SMOKE TESTS 
+1. Create an automated check for the deployed frontend root page. 
+2. Check backend /health/live. 
+3. Check backend /health/ready and database connectivity. 
+4. Authenticate using a dedicated staging smoke-test account. 
+5. Call /users/me or another simple protected endpoint. 
+6. Perform one representative catalog/set lookup. 
+7. Perform one protected portfolio read/write operation. 
+8. Exercise one real marketplace/provider request without mock fallback. 
+9. Make the smoke suite return a non-zero exit status when any critical check fails.
 
-PHASE 16 — CONTINUOUS DEPLOYMENT WORKFLOW 1. Create a deployment
-workflow separate from CI. 2. Require the complete CI workflow to
-succeed before deployment is eligible. 3. Build/tag immutable release
-images using commit SHA or another unique release identifier. 4. Deploy
-the release to staging first. 5. Run database migrations as an explicit
-controlled release step. 6. Run the automated staging smoke suite after
-deployment. 7. Require manual approval through a protected production
-GitHub Environment before production promotion. 8. Promote the same
-tested release/image artifact to production rather than rebuilding it.
-9. Run production health checks and a safe production smoke suite
-immediately after promotion. 10. Document the rollback procedure for a
-failed application release.
+PHASE 16 — CONTINUOUS DEPLOYMENT WORKFLOW 
+1. Create a deployment workflow separate from CI. 
+2. Require the complete CI workflow to succeed before deployment is eligible. 
+3. Build/tag immutable release images using commit SHA or another unique release identifier. 
+4. Deploy the release to staging first. 
+5. Run database migrations as an explicit controlled release step. 
+6. Run the automated staging smoke suite after deployment. 
+7. Require manual approval through a protected production GitHub Environment before production promotion. 
+8. Promote the same tested release/image artifact to production rather than rebuilding it.
+9. Run production health checks and a safe production smoke suite immediately after promotion. 
+10. Document the rollback procedure for a failed application release.
 
 ======================================================================
 MILESTONE 4 — PRODUCTION LAUNCH Priority: RELEASE GATE Goal: Deploy the

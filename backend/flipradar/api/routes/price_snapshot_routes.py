@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
+from flipradar.api.route_classification import RouteClassification, route_metadata
 from flipradar.api.schemas import (
     PriceAnalyticsResponse,
     PriceSnapshotCollectionResponse,
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
     response_model=PriceSnapshotResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create price snapshot",
-    description="Internal/development helper for storing a price snapshot.",
+    **route_metadata(RouteClassification.INTERNAL, "Store a price snapshot."),
 )
 async def create_price_snapshot(
     payload: PriceSnapshotCreate, db: AsyncSession = Depends(get_db_session)
@@ -59,7 +60,7 @@ async def create_price_snapshot(
     "/snapshots/{set_number}",
     response_model=PriceSnapshotCollectionResponse,
     summary="List price snapshots",
-    description="Internal/development helper for listing stored snapshot history.",
+    **route_metadata(RouteClassification.INTERNAL, "List stored snapshot history."),
 )
 async def list_price_snapshots(
     set_number: str,
@@ -121,7 +122,7 @@ async def get_price_analytics(
     "/snapshots/{set_number}/latest",
     response_model=PriceSnapshotResponse,
     summary="Get latest price snapshot",
-    description="Internal/development helper for fetching the latest stored snapshot.",
+    **route_metadata(RouteClassification.INTERNAL, "Fetch the latest stored snapshot."),
 )
 async def get_latest_price_snapshot(
     set_number: str, db: AsyncSession = Depends(get_db_session)

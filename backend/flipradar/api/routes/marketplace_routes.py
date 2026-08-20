@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
+from flipradar.api.route_classification import RouteClassification, route_metadata
 from flipradar.api.schemas import PriceSnapshotResponse
 from flipradar.services import marketplace_service
 
@@ -15,7 +16,10 @@ logger = logging.getLogger(__name__)
     "/update/{set_number}",
     response_model=PriceSnapshotResponse,
     summary="Refresh marketplace data",
-    description="Development/internal route that refreshes listings and builds a stored snapshot.",
+    **route_metadata(
+        RouteClassification.REFRESH,
+        "Refresh listings and build a stored snapshot. Excluded from production public access.",
+    ),
 )
 async def update_marketplace_data(
     set_number: str, db: AsyncSession = Depends(get_db_session)

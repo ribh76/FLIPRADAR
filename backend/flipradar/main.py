@@ -10,6 +10,7 @@ from flipradar.api.middleware import (
     RequestContextMiddleware,
     RollingWindowRateLimitMiddleware,
 )
+from flipradar.api.route_classification import apply_production_route_policy
 from flipradar.api.routes import (
     auth_routes,
     deal_routes,
@@ -147,6 +148,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(portfolio_routes.router)
     app.include_router(user_routes.router)
     app.include_router(marketplace_routes.router)
+
+    apply_production_route_policy(app, resolved_settings.application.environment)
 
     register_exception_handlers(app)
 

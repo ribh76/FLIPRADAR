@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
+from flipradar.api.route_classification import RouteClassification, route_metadata
 from flipradar.api.schemas import (
     ListingAnalysisResponse,
     ListingCollectionResponse,
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
     response_model=ListingResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create marketplace listing",
-    description="Internal/development helper for storing a marketplace listing.",
+    **route_metadata(RouteClassification.INTERNAL, "Store a marketplace listing."),
 )
 async def create_marketplace_listing(
     payload: ListingCreate, db: AsyncSession = Depends(get_db_session)
@@ -188,7 +189,7 @@ async def list_marketplace_listings_by_set_path(
     "/listings/{set_number}/latest",
     response_model=ListingResponse,
     summary="Get latest listing",
-    description="Internal/development helper for fetching the newest stored listing.",
+    **route_metadata(RouteClassification.INTERNAL, "Fetch the newest stored listing."),
 )
 async def get_latest_marketplace_listing(
     set_number: str, db: AsyncSession = Depends(get_db_session)

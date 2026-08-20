@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flipradar.api.dependencies.database import get_db_session
+from flipradar.api.route_classification import RouteClassification, route_metadata
 from flipradar.api.schemas import (
     CatalogSearchResponse,
     LegoSetCollectionResponse,
@@ -36,7 +37,10 @@ logger = logging.getLogger(__name__)
     response_model=LegoSetResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create set metadata",
-    description="Create a LEGO set metadata record for local development and test data.",
+    **route_metadata(
+        RouteClassification.SEED,
+        "Create LEGO set metadata for local development and test data.",
+    ),
 )
 async def create_lego_set(
     payload: LegoSetCreate, db: AsyncSession = Depends(get_db_session)

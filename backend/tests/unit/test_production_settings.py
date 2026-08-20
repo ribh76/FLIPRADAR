@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from flipradar.api.route_classification import RouteClassification
 from flipradar.core.settings import Settings
 from flipradar.main import create_app
 
@@ -149,3 +150,49 @@ def test_valid_production_configuration_boots_successfully():
 
     with TestClient(create_app(settings)):
         pass
+
+
+def test_production_excludes_internal_development_refresh_and_seed_routes():
+    app = create_app(production_settings())
+
+    schema = app.openapi()
+    assert "/marketplace/update/{set_number}" not in schema["paths"]
+    assert "post" not in schema["paths"]["/sets"]
+    assert schema["paths"]["/inventory"]["get"]["x-route-classification"] == (
+        RouteClassification.PUBLIC.value
+    )
+    operation_classifications = {
+        operation.get("x-route-classification")
+        for operations in schema["paths"].values()
+        for operation in operations.values()
+        if isinstance(operation, dict)
+    }
+    assert not (
+        operation_classifications
+        & {
+            RouteClassification.INTERNAL.value,
+            RouteClassification.DEVELOPMENT.value,
+            RouteClassification.DEBUG.value,
+            RouteClassification.ADMINISTRATIVE.value,
+            RouteClassification.REFRESH.value,
+            RouteClassification.SEED.value,
+            RouteClassification.MAINTENANCE.value,
+        }
+    )
+
+    with TestClient(app) as client:
+        response = client.post("/marketplace/update/75192")
+
+    assert response.status_code == 404
+
+
+def test_non_production_keeps_operational_routes_for_local_development():
+    app = create_app(Settings(app_env="development"))
+    schema = app.openapi()
+
+    assert schema["paths"]["/marketplace/update/{set_number}"]["post"][
+        "x-route-classification"
+    ] == RouteClassification.REFRESH.value
+    assert schema["paths"]["/sets"]["post"]["x-route-classification"] == (
+        RouteClassification.SEED.value
+    )
