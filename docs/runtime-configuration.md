@@ -2,6 +2,10 @@
 
 FlipRadar runtime configuration is centralized in `flipradar.core.settings.Settings`.
 
+The complete, authoritative production environment-variable contract is in
+[`production-configuration.md`](production-configuration.md). This document
+describes runtime behavior; do not use it as a partial deployment checklist.
+
 ## Environments
 
 `APP_ENV` must be one of:

@@ -11,15 +11,23 @@ def production_settings(**overrides: object) -> Settings:
     values: dict[str, object] = {
         "app_env": "production",
         "app_debug": False,
-        "jwt_secret_key": "a" * 48,
+        "app_release": "test-release-20260821",
+        "allow_mock_marketplace_providers": False,
+        "operational_route_username": None,
+        "operational_route_password": None,
+        "jwt_secret_key": "b5J9sN2vK7pR4xQ8mT1wY6dH3fL0cA9eG2iO5uI8rP1zX4qV7nC0kS3yB6jD9EeF",
         "database_url_override": (
             "postgresql+asyncpg://app:strong-production-password@db.flipradar.example/flipradar"
         ),
         "database_password": "strong-production-password",
         "database_ssl_mode": "require",
         "cors_allowed_origins": "https://app.flipradar.example",
+        "cors_allow_methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "cors_allow_headers": "Authorization,Content-Type,X-Request-ID",
         "frontend_url": "https://app.flipradar.example",
-        "redis_url": "rediss://redis.flipradar.example/0",
+        "redis_url": "rediss://default:redis-production-password@redis.flipradar.example/0",
+        "celery_broker_url": None,
+        "celery_result_backend": None,
         "ebay_api_enabled": False,
         "bricklink_api_enabled": False,
     }
@@ -31,11 +39,18 @@ def production_settings(**overrides: object) -> Settings:
     ("overrides", "message"),
     [
         ({"app_debug": True}, "APP_DEBUG must be false"),
+        ({"app_release": "unknown"}, "APP_RELEASE"),
+        ({"operational_route_password": "should-not-exist"}, "Operational route"),
         ({"jwt_secret_key": "change-me-" * 6}, "JWT_SECRET_KEY"),
+        ({"jwt_secret_key": "a" * 64}, "JWT_SECRET_KEY"),
         ({"database_ssl_mode": "prefer"}, "DATABASE_SSL_MODE"),
         (
             {"database_url_override": "postgresql+asyncpg://app:secret@localhost/db"},
             "localhost",
+        ),
+        (
+            {"database_url_override": "postgresql+asyncpg://db.example/flipradar"},
+            "DATABASE_URL must include external-provider credentials",
         ),
         (
             {
@@ -49,12 +64,20 @@ def production_settings(**overrides: object) -> Settings:
         ({"database_url_override": "sqlite+aiosqlite:///:memory:"}, "DATABASE_URL"),
         (
             {
-                "database_url_override": "postgresql://app:secret@db.example/db?sslmode=disable"
+                "database_url_override": "postgresql://app:strong-password-value@db.example/db?sslmode=disable"
+            },
+            "DATABASE_URL must require SSL",
+        ),
+        (
+            {
+                "database_url_override": "postgresql://app:strong-password-value@db.example/db?sslmode=prefer"
             },
             "DATABASE_URL must require SSL",
         ),
         ({"cors_allowed_origins": "*"}, "CORS_ALLOWED_ORIGINS"),
         ({"cors_allowed_origins": ""}, "CORS_ALLOWED_ORIGINS"),
+        ({"cors_allow_methods": "*"}, "CORS_ALLOW_METHODS"),
+        ({"cors_allow_headers": "*"}, "CORS_ALLOW_HEADERS"),
         (
             {"cors_allowed_origins": "http://app.flipradar.example"},
             "CORS_ALLOWED_ORIGINS",
@@ -64,6 +87,7 @@ def production_settings(**overrides: object) -> Settings:
         ({"frontend_url": "https://staging.flipradar.example"}, "staging"),
         ({"frontend_url": "https://app.dev.flipradar.example"}, "development"),
         ({"redis_url": "redis://localhost:6379/0"}, "REDIS_URL"),
+        ({"redis_url": "rediss://redis.flipradar.example/0"}, "REDIS_URL must include"),
         (
             {"alembic_database_url": "postgresql://app:secret@localhost/db"},
             "ALEMBIC_DATABASE_URL",
@@ -71,7 +95,7 @@ def production_settings(**overrides: object) -> Settings:
         (
             {
                 "alembic_database_url": (
-                    "postgresql://app:secret@db.example/db?sslmode=disable"
+                    "postgresql://app:strong-password-value@db.example/db?sslmode=disable"
                 )
             },
             "ALEMBIC_DATABASE_URL must require SSL",
@@ -177,12 +201,15 @@ def test_production_transactional_email_urls_use_only_the_production_frontend(
 
 
 def test_non_production_keeps_operational_routes_for_local_development():
-    app = create_app(Settings(app_env="development"))
+    app = create_app(Settings(APP_ENV="development"))
     schema = app.openapi()
 
-    assert schema["paths"]["/marketplace/update/{set_number}"]["post"][
-        "x-route-classification"
-    ] == RouteClassification.REFRESH.value
+    assert (
+        schema["paths"]["/marketplace/update/{set_number}"]["post"][
+            "x-route-classification"
+        ]
+        == RouteClassification.REFRESH.value
+    )
     assert schema["paths"]["/sets"]["post"]["x-route-classification"] == (
         RouteClassification.SEED.value
     )

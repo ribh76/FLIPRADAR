@@ -39,6 +39,18 @@ def _configure_url() -> str:
     return url
 
 
+def _migration_connect_args(url: str) -> dict:
+    """Apply the runtime TLS policy to Alembic's online connection."""
+    database = get_settings().database
+    if url.startswith(("postgresql+asyncpg://", "postgresql+psycopg://")):
+        if database.ssl_mode == "disable":
+            return {"ssl": False}
+        return {"ssl": True}
+    if url.startswith("postgresql://"):
+        return {"sslmode": database.ssl_mode}
+    return {}
+
+
 def _include_object(
     object_,
     name: str | None,
@@ -85,11 +97,12 @@ def do_run_migrations(connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    _configure_url()
+    url = _configure_url()
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=_migration_connect_args(url),
     )
 
     async with connectable.connect() as connection:
@@ -105,6 +118,7 @@ def run_sync_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=_migration_connect_args(url),
     )
 
     with connectable.connect() as connection:

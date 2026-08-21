@@ -174,6 +174,9 @@ _UNSAFE_SECRETS = {
     "change-me",
     "changeme",
     "placeholder",
+    "secret",
+    "password",
+    "jwt-secret",
 }
 
 
@@ -222,6 +225,17 @@ def _has_unsafe_secret(value: str | None) -> bool:
                 "placeholder",
             )
         )
+    )
+
+
+def _has_sufficient_secret_complexity(value: str) -> bool:
+    """Reject obviously non-random values while allowing secret-manager formats."""
+    # A secret manager may use URL-safe base64, hex, or punctuation.  Do not
+    # prescribe one encoding, but reject repetition and low-diversity strings
+    # that meet a length check without providing meaningful entropy.
+    return (
+        len(set(value)) >= 16
+        and max(value.count(char) for char in set(value)) < len(value) // 2
     )
 
 
@@ -462,12 +476,21 @@ class Settings(BaseSettings):
     def _validate_production(self) -> None:
         if self.app_debug:
             raise ValueError("APP_DEBUG must be false in production.")
+        if self.app_release.strip().lower() in {"", "unknown", "local", "development"}:
+            raise ValueError("APP_RELEASE must identify the production release.")
         if self.allow_mock_marketplace_providers:
             raise ValueError(
                 "ALLOW_MOCK_MARKETPLACE_PROVIDERS must be false in production."
             )
-        if _has_unsafe_secret(self.jwt_secret_key) or len(self.jwt_secret_key) < 48:
-            raise ValueError("JWT_SECRET_KEY must be a strong production secret.")
+        if (
+            _has_unsafe_secret(self.jwt_secret_key)
+            or len(self.jwt_secret_key) < 64
+            or not _has_sufficient_secret_complexity(self.jwt_secret_key)
+        ):
+            raise ValueError(
+                "JWT_SECRET_KEY must be a unique, randomly generated production secret "
+                "of at least 64 characters."
+            )
         if (
             _has_unsafe_secret(self.database_password)
             or self.database_password == "flipradar_dev_password"
@@ -475,9 +498,19 @@ class Settings(BaseSettings):
             raise ValueError("DATABASE_PASSWORD must be a production secret.")
         if self.database_ssl_mode not in {"require", "verify-ca", "verify-full"}:
             raise ValueError("DATABASE_SSL_MODE must require SSL in production.")
+        if self.operational_route_username or self.operational_route_password:
+            raise ValueError(
+                "Operational route credentials must not be set in production."
+            )
         allowed_origins = _split_csv(self.cors_allowed_origins)
         if not allowed_origins or any("*" in origin for origin in allowed_origins):
             raise ValueError("CORS_ALLOWED_ORIGINS must be explicit in production.")
+        allowed_methods = _split_csv(self.cors_allow_methods)
+        allowed_headers = _split_csv(self.cors_allow_headers)
+        if not allowed_methods or "*" in allowed_methods:
+            raise ValueError("CORS_ALLOW_METHODS must be explicit in production.")
+        if not allowed_headers or "*" in allowed_headers:
+            raise ValueError("CORS_ALLOW_HEADERS must be explicit in production.")
         for origin in allowed_origins:
             _require_nonlocal_url("CORS_ALLOWED_ORIGINS", origin, schemes={"https"})
         _require_production_frontend_url(self.frontend_url)
@@ -504,6 +537,8 @@ class Settings(BaseSettings):
     @staticmethod
     def _validate_production_database_url_security(name: str, value: str) -> None:
         parsed = urlsplit(value)
+        if not parsed.username or not parsed.password:
+            raise ValueError(f"{name} must include external-provider credentials.")
         if parsed.password and _has_unsafe_secret(unquote(parsed.password)):
             raise ValueError(f"{name} must not contain a development password.")
         ssl_values = {
@@ -512,21 +547,28 @@ class Settings(BaseSettings):
             if key.lower() in {"ssl", "sslmode"}
             for item in values
         }
-        if ssl_values & {"disable", "false", "0"}:
+        if ssl_values & {"disable", "false", "0", "allow", "prefer"}:
             raise ValueError(f"{name} must require SSL in production.")
 
     def _validate_production_service_urls(self) -> None:
-        _require_nonlocal_url("REDIS_URL", self.redis_url, schemes={"redis", "rediss"})
+        self._validate_production_redis_url("REDIS_URL", self.redis_url)
         if self.celery_broker_url:
-            _require_nonlocal_url(
-                "CELERY_BROKER_URL", self.celery_broker_url, schemes={"redis", "rediss"}
+            self._validate_production_redis_url(
+                "CELERY_BROKER_URL", self.celery_broker_url
             )
         if self.celery_result_backend:
-            _require_nonlocal_url(
-                "CELERY_RESULT_BACKEND",
-                self.celery_result_backend,
-                schemes={"redis", "rediss"},
+            self._validate_production_redis_url(
+                "CELERY_RESULT_BACKEND", self.celery_result_backend
             )
+
+    @staticmethod
+    def _validate_production_redis_url(name: str, value: str) -> None:
+        _require_nonlocal_url(name, value, schemes={"rediss"})
+        parsed = urlsplit(value)
+        if not parsed.password:
+            raise ValueError(f"{name} must include external-provider credentials.")
+        if _has_unsafe_secret(unquote(parsed.password)):
+            raise ValueError(f"{name} must not contain a development password.")
 
     def _validate_production_providers(self) -> None:
         marketplace = self.marketplace

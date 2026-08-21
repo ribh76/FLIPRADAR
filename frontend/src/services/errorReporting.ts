@@ -1,11 +1,15 @@
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const enabled = import.meta.env.VITE_ERROR_REPORTING_ENABLED === "true";
+const environment = import.meta.env.VITE_APP_ENV ?? "development";
+const release = import.meta.env.VITE_APP_RELEASE ?? "unknown";
 
 type ErrorPayload = {
   name: string;
   message: string;
   stack?: string;
   url: string;
+  environment: string;
+  release: string;
 };
 
 function payloadFor(error: unknown): ErrorPayload {
@@ -15,6 +19,8 @@ function payloadFor(error: unknown): ErrorPayload {
     message: normalized.message.slice(0, 1000),
     stack: normalized.stack?.slice(0, 8000),
     url: window.location.href,
+    environment,
+    release,
   };
 }
 

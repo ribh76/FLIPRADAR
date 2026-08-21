@@ -117,11 +117,11 @@ PHASE 8 — EMAIL AND ACCOUNT LIFECYCLE
 PHASE 9 — DATABASE INTEGRITY AND MIGRATION CERTIFICATION 
 1. Create a completely empty PostgreSQL database using the production PostgreSQL major version. -
 2. Run alembic upgrade head from zero and verify every migration completes successfully. -
-3. Boot the API against the newly migrated database. 
-4. Seed or create representative users, sets, listings, portfolio positions, snapshots, and watchlist data. 
-5. Verify foreign-key delete and cascade behavior for user-owned and marketplace data. 
-6. Audit monetary values, prices, quantities, and calculations for appropriate Decimal/numeric storage instead of unsafe floating-point persistence. 
-7. Verify required indexes exist for common search, lookup, portfolio, marketplace, and snapshot queries. 
+3. Boot the API against the newly migrated database. - 
+4. Seed or create representative users, sets, listings, portfolio positions, snapshots, and watchlist data. - 
+5. Verify foreign-key delete and cascade behavior for user-owned and marketplace data. - 
+6. Audit monetary values, prices, quantities, and calculations for appropriate Decimal/numeric storage instead of unsafe floating-point persistence. - 
+7. Verify required indexes exist for common search, lookup, portfolio, marketplace, and snapshot queries. - 
 8. Test forward migration using a copy of representative populated data. -
 
 PHASE 10 — SECRETS AND PRODUCTION CONFIGURATION 
