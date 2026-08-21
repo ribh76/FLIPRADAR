@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useAuth } from "../../auth/AuthProvider";
 import { apiClient, getApiError } from "../../services/apiClient";
 import { Logo } from "../../components/Logo";
 
 type VerificationState = "loading" | "success" | "error";
 
 export function VerifyEmailPage() {
+  const { isAuthenticated } = useAuth();
   const [searchParams] = useSearchParams();
   const [state, setState] = useState<VerificationState>("loading");
   const [message, setMessage] = useState("Verifying your email address...");
@@ -14,8 +16,15 @@ export function VerifyEmailPage() {
     const token = searchParams.get("token");
     const isEmailChange = searchParams.get("flow") === "email-change";
     if (!token) {
-      setState("error");
-      setMessage("Verification link is missing a token.");
+      if (searchParams.get("required") === "1" && isAuthenticated) {
+        setState("error");
+        setMessage(
+          "Check your inbox and open the verification link before using FlipRadar.",
+        );
+      } else {
+        setState("error");
+        setMessage("Verification link is missing a token.");
+      }
       return;
     }
 
@@ -32,7 +41,7 @@ export function VerifyEmailPage() {
         setState("error");
         setMessage(getApiError(error));
       });
-  }, [searchParams]);
+  }, [isAuthenticated, searchParams]);
 
   return (
     <section className="w-full max-w-md rounded-[var(--radius-card)] bg-[var(--color-surface)] p-8 shadow-[var(--shadow-soft)]">

@@ -100,17 +100,17 @@ PHASE 7 — AUTHENTICATION AND ABUSE PROTECTION
 2. Replace or supplement the per-process in-memory limiter with Redis-backed rate limiting for security-sensitive endpoints.  - 
 3. Apply strict endpoint-specific limits to login, registration, password reset, verification, and MFA flows.  - 
 4. Add reasonable protection to expensive marketplace/provider and LLM-backed operations.  - 
-5. Configure trusted proxy handling so client IP detection cannot be trivially spoofed with X-Forwarded-For. 
-6. Add tests for rate-limit enforcement, expiration, and behavior across shared Redis state. 
-7. Verify normal user activity does not trigger the new abuse limits.
+5. Configure trusted proxy handling so client IP detection cannot be trivially spoofed with X-Forwarded-For.  - 
+6. Add tests for rate-limit enforcement, expiration, and behavior across shared Redis state.  - 
+7. Verify normal user activity does not trigger the new abuse limits. - 
 
 PHASE 8 — EMAIL AND ACCOUNT LIFECYCLE 
 1. Select and configure the production transactional email provider. 
 2. Store email credentials only in deployment/environment secret storage. 
-3. Test registration and email-verification delivery end-to-end. 
-4. Decide and enforce whether unverified accounts may authenticate or access protected application functionality. 
-5. Test password-reset requests and reset completion against the deployed frontend URL. 
-6. Test MFA, email-change, account-deletion, and security-notification email flows that are currently implemented. 
+3. Test registration and email-verification delivery end-to-end.  - 
+4. Decide and enforce whether unverified accounts may authenticate or access protected application functionality.  - 
+5. Test password-reset requests and reset completion against the deployed frontend URL.  - 
+6. Test MFA, email-change, account-deletion, and security-notification email flows that are currently implemented.  - 
 7. Ensure email failures produce controlled user-facing behavior and useful server logs. 
 8. Verify production emails do not contain localhost, staging, or development links.
 

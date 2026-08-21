@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const { isAuthenticated, isLoadingUser, isSessionExpired } = useAuth();
+  const { isAuthenticated, isLoadingUser, isSessionExpired, user } = useAuth();
 
   if (isLoadingUser) {
     return (
@@ -22,6 +22,10 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
         state={{ from: location }}
       />
     );
+  }
+
+  if (!user?.is_email_verified) {
+    return <Navigate to="/verify-email?required=1" replace />;
   }
 
   return children;

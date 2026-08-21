@@ -1,6 +1,6 @@
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   apiClient,
   clearAuthSession,
@@ -203,6 +203,22 @@ export function LoginPage() {
               Dev Pass
             </button>
           </div>
+          {mode === "login" ? (
+            <div className="flex flex-wrap justify-between gap-3 text-sm font-semibold">
+              <Link
+                className="text-[var(--color-info)] hover:underline"
+                to="/forgot-password"
+              >
+                Forgot password?
+              </Link>
+              <Link
+                className="text-[var(--color-info)] hover:underline"
+                to="/mfa-reset"
+              >
+                Reset MFA
+              </Link>
+            </div>
+          ) : null}
         </form>
       </div>
     </section>

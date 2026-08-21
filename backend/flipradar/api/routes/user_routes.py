@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from flipradar.api.dependencies.auth import AuthenticatedUser
+from flipradar.api.dependencies.auth import UnverifiedAuthenticatedUser
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
     AccountActionResponse,
@@ -29,7 +29,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
     summary="Get authenticated user",
     description="Return the profile for the authenticated access token.",
 )
-async def get_current_user_profile(current_user: AuthenticatedUser) -> User:
+async def get_current_user_profile(current_user: UnverifiedAuthenticatedUser) -> User:
     return current_user
 
 
@@ -41,7 +41,7 @@ async def get_current_user_profile(current_user: AuthenticatedUser) -> User:
 )
 async def update_current_user_settings(
     payload: AccountSettingsUpdate,
-    current_user: AuthenticatedUser,
+    current_user: UnverifiedAuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
 ) -> User:
     return await auth_service.update_account_settings(db, current_user, payload)
@@ -55,7 +55,7 @@ async def update_current_user_settings(
 )
 async def update_current_user_mfa_settings(
     payload: MfaSettingsUpdate,
-    current_user: AuthenticatedUser,
+    current_user: UnverifiedAuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
 ) -> MfaSettingsResponse:
     return await auth_service.update_mfa_settings(db, current_user, payload)
@@ -69,7 +69,7 @@ async def update_current_user_mfa_settings(
 )
 async def change_current_user_password(
     payload: PasswordChangeRequest,
-    current_user: AuthenticatedUser,
+    current_user: UnverifiedAuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
 ) -> AccountActionResponse:
     return await auth_service.change_password(db, current_user, payload)
@@ -83,7 +83,7 @@ async def change_current_user_password(
 )
 async def request_current_user_account_deletion(
     payload: AccountDeletionRequest,
-    current_user: AuthenticatedUser,
+    current_user: UnverifiedAuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
 ) -> AccountDeletionResponse:
     return await auth_service.request_account_deletion(db, current_user, payload)
@@ -97,7 +97,7 @@ async def request_current_user_account_deletion(
 )
 async def request_current_user_email_change(
     payload: EmailChangeRequest,
-    current_user: AuthenticatedUser,
+    current_user: UnverifiedAuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
 ) -> AccountActionResponse:
     return await auth_service.request_email_change(db, current_user, payload)
@@ -110,7 +110,7 @@ async def request_current_user_email_change(
     description="Return active refresh-token sessions for the authenticated user.",
 )
 async def list_current_user_sessions(
-    current_user: AuthenticatedUser,
+    current_user: UnverifiedAuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
 ) -> list[RefreshSessionResponse]:
     return await auth_service.list_active_sessions(db, current_user)
@@ -124,7 +124,7 @@ async def list_current_user_sessions(
 )
 async def revoke_current_user_session(
     session_id: UUID,
-    current_user: AuthenticatedUser,
+    current_user: UnverifiedAuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
 ) -> AccountActionResponse:
     return await auth_service.revoke_session(db, current_user, session_id)
@@ -137,7 +137,7 @@ async def revoke_current_user_session(
     description="Revoke every active refresh-token session for the authenticated user.",
 )
 async def revoke_all_current_user_sessions(
-    current_user: AuthenticatedUser,
+    current_user: UnverifiedAuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
 ) -> AccountActionResponse:
     return await auth_service.revoke_all_sessions(db, current_user)

@@ -87,6 +87,18 @@ describe("routing authentication", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders password and MFA recovery entry points", async () => {
+    renderRoute("/forgot-password");
+    expect(
+      await screen.findByRole("heading", { name: "Reset your password" }),
+    ).toBeInTheDocument();
+
+    renderRoute("/mfa-reset");
+    expect(
+      await screen.findByRole("heading", { name: "Reset MFA" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders protected route content when authenticated", async () => {
     authState.isAuthenticated = true;
     authState.user = {
@@ -102,6 +114,23 @@ describe("routing authentication", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText("Workspace overview and shortcuts."),
+    ).toBeInTheDocument();
+  });
+
+  it("requires email verification before rendering protected routes", async () => {
+    authState.isAuthenticated = true;
+    authState.user = {
+      display_name: "Collector",
+      is_email_verified: false,
+      username: "collector",
+    };
+
+    renderRoute("/dashboard");
+
+    expect(
+      await screen.findByText(
+        "Check your inbox and open the verification link before using FlipRadar.",
+      ),
     ).toBeInTheDocument();
   });
 

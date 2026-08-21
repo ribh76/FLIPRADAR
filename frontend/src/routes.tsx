@@ -6,6 +6,8 @@ import {
 } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./features/auth/LoginPage";
+import { ForgotPasswordPage } from "./features/auth/ForgotPasswordPage";
+import { MfaResetPage } from "./features/auth/MfaResetPage";
 import { ResetPasswordPage } from "./features/auth/ResetPasswordPage";
 import { VerifyEmailPage } from "./features/auth/VerifyEmailPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
@@ -78,7 +80,9 @@ export const appRoutes: RouteObject[] = [
         children: [
           { path: "/login", element: <LoginPage /> },
           { path: "/register", element: <LoginPage /> },
+          { path: "/forgot-password", element: <ForgotPasswordPage /> },
           { path: "/reset-password", element: <ResetPasswordPage /> },
+          { path: "/mfa-reset", element: <MfaResetPage /> },
           { path: "/verify-email", element: <VerifyEmailPage /> },
           { path: "/unauthorized", element: <UnauthorizedPage /> },
         ],

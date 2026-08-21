@@ -174,4 +174,20 @@ async def get_current_user(
     return user
 
 
-AuthenticatedUser = Annotated[User, Depends(get_current_user)]
+async def get_verified_user(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """Return an authenticated account that has completed email verification."""
+    if not current_user.is_email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email verification is required to access this resource",
+        )
+    return current_user
+
+
+# Application routes use the verified identity by default. Account recovery and
+# lifecycle routes opt into UnverifiedAuthenticatedUser so a newly registered
+# account can still resend verification, inspect its profile, and secure itself.
+AuthenticatedUser = Annotated[User, Depends(get_verified_user)]
+UnverifiedAuthenticatedUser = Annotated[User, Depends(get_current_user)]

@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from flipradar.api.dependencies.auth import AuthenticatedUser
+from flipradar.api.dependencies.auth import UnverifiedAuthenticatedUser
 from flipradar.api.dependencies.database import get_db_session
 from flipradar.api.schemas import (
     EmailChangeConfirmRequest,
@@ -128,7 +128,7 @@ async def confirm_email_change(
     description="Send another verification email for the authenticated user, with throttling.",
 )
 async def resend_verification(
-    current_user: AuthenticatedUser,
+    current_user: UnverifiedAuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
 ) -> ResendVerificationResponse:
     logger.info("request started route=resend_verification user_id=%s", current_user.id)
@@ -192,7 +192,7 @@ async def refresh_tokens(
 )
 async def logout_user(
     payload: LogoutRequest,
-    current_user: AuthenticatedUser,
+    current_user: UnverifiedAuthenticatedUser,
     db: AsyncSession = Depends(get_db_session),
 ) -> Response:
     logger.info("request started route=logout_user")
@@ -207,5 +207,5 @@ async def logout_user(
     summary="Get current user",
     description="Return the profile for the authenticated JWT bearer token.",
 )
-async def get_me(current_user: AuthenticatedUser) -> User:
+async def get_me(current_user: UnverifiedAuthenticatedUser) -> User:
     return await auth_service.get_user_profile(current_user)

@@ -935,8 +935,54 @@ def auth_headers(client: TestClient, username: str | None = None) -> dict:
         },
     )
     assert response.status_code == 201, response.text
+
+    async def verify_registered_user() -> None:
+        override = client.app.dependency_overrides[get_db_session]
+        session_factory = next(
+            value.cell_contents
+            for value in (override.__closure__ or ())
+            if isinstance(value.cell_contents, async_sessionmaker)
+        )
+        async with session_factory() as db:
+            user = await repositories.get_user_by_username_or_email(
+                db, resolved_username
+            )
+            assert user is not None
+            await repositories.mark_user_email_verified(db, user, datetime.now(UTC))
+            await db.commit()
+
+    client.portal.call(verify_registered_user)
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+def test_unverified_user_cannot_access_application_routes(client: TestClient):
+    response = client.post(
+        "/auth/register",
+        json={
+            "username": "unverified-access",
+            "email": "unverified-access@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+    assert response.status_code == 201, response.text
+    headers = bearer_headers(response.json()["access_token"])
+
+    for path in (
+        "/inventory",
+        "/notifications",
+        "/portfolio",
+        "/saved-searches",
+        "/watchlist",
+    ):
+        protected = client.get(path, headers=headers)
+        assert protected.status_code == 403, protected.text
+        assert protected.json()["detail"] == (
+            "Email verification is required to access this resource"
+        )
+
+    assert client.get("/users/me", headers=headers).status_code == 200
+    assert client.post("/auth/resend-verification", headers=headers).status_code == 429
 
 
 def bearer_headers(access_token: str) -> dict:
@@ -2548,7 +2594,7 @@ def test_users_me_works_with_token(client: TestClient):
     body = response.json()
     assert body["username"] == "usersprofile"
     assert body["display_name"] == "usersprofile"
-    assert body["is_email_verified"] is False
+    assert body["is_email_verified"] is True
     assert "hashed_password" not in body
 
 

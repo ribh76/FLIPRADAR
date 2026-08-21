@@ -81,6 +81,10 @@ type PasswordResetConfirmRequest = {
   password: string;
 };
 
+type EmailRequest = {
+  email: string;
+};
+
 type AccountDeletionResponse = ApiMessage & {
   deletion_scheduled_at: string;
 };
@@ -302,9 +306,24 @@ export const apiClient = {
         }),
       );
     },
+    requestPasswordReset(payload: EmailRequest) {
+      return requestData(
+        api.post<ApiMessage>("/auth/password-reset/request", payload),
+      );
+    },
     confirmPasswordReset(payload: PasswordResetConfirmRequest) {
       return requestData(
         api.post<ApiMessage>("/auth/password-reset/confirm", payload),
+      );
+    },
+    requestMfaReset(payload: EmailRequest) {
+      return requestData(
+        api.post<ApiMessage>("/auth/mfa/reset/request", payload),
+      );
+    },
+    confirmMfaReset(token: string) {
+      return requestData(
+        api.post<ApiMessage>("/auth/mfa/reset/confirm", { token }),
       );
     },
     logout: logoutCurrentSession,
