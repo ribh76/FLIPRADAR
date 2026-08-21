@@ -35,6 +35,7 @@ from flipradar.services import (
     portfolio_service,
     recommendation_service,
 )
+from flipradar.services.email_service import EmailSendResult
 from flipradar.services.errors import ServiceProviderError, ServiceProviderTimeoutError
 from flipradar.services.llm_portfolio_analysis_service import (
     PortfolioLlmNarrativeResult,
@@ -1707,6 +1708,40 @@ def test_register_sends_registration_email(
     ]
 
 
+def test_registration_returns_retryable_error_when_verification_delivery_fails(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+):
+    async def failed_verification_email(**kwargs):
+        del kwargs
+        return EmailSendResult(attempted=True, sent=False, reason="send_failed")
+
+    monkeypatch.setattr(
+        auth_service, "send_verification_email", failed_verification_email
+    )
+
+    response = client.post(
+        "/auth/register",
+        json={
+            "username": "deliveryfailure",
+            "email": "deliveryfailure@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+
+    assert response.status_code == 503
+    assert (
+        response.json()["detail"] == "We couldn't deliver the email. Please try again."
+    )
+    assert "email delivery failed email_type=verification" in caplog.text
+    login_response = client.post(
+        "/auth/login",
+        json={"username_or_email": "deliveryfailure", "password": VALID_PASSWORD},
+    )
+    assert login_response.status_code == 401
+
+
 def test_verify_email_rejects_reused_token(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ):
@@ -1956,6 +1991,37 @@ def test_password_reset_request_for_unknown_email_is_generic(
         "If an account exists for that email, a reset link has been sent"
     )
     assert reset_urls == []
+
+
+def test_password_reset_delivery_failure_is_generic_and_logged(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+):
+    client.post(
+        "/auth/register",
+        json={
+            "username": "resetdeliveryfailure",
+            "email": "resetdeliveryfailure@example.com",
+            "password": VALID_PASSWORD,
+        },
+    )
+
+    async def failed_reset_email(**kwargs):
+        del kwargs
+        return EmailSendResult(attempted=True, sent=False, reason="send_failed")
+
+    monkeypatch.setattr(auth_service, "send_password_reset_email", failed_reset_email)
+    response = client.post(
+        "/auth/password-reset/request",
+        json={"email": "resetdeliveryfailure@example.com"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == (
+        "If an account exists for that email, a reset link has been sent"
+    )
+    assert "email delivery failed email_type=password_reset" in caplog.text
 
 
 def test_user_model_extends_base():
@@ -2729,6 +2795,35 @@ def test_account_deletion_schedules_removal_and_sends_confirmation_email(
     assert emailed_scheduled_at.replace(tzinfo=None) == scheduled_at.replace(
         tzinfo=None
     )
+
+
+def test_account_deletion_reports_confirmation_delivery_failure(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+):
+    async def failed_deletion_email(**kwargs):
+        del kwargs
+        return EmailSendResult(attempted=True, sent=False, reason="send_failed")
+
+    monkeypatch.setattr(
+        auth_service,
+        "send_account_deletion_confirmation_email",
+        failed_deletion_email,
+    )
+    headers = auth_headers(client, "deletiondeliveryfailure")
+
+    response = client.post(
+        "/users/me/deletion-request",
+        headers=headers,
+        json={"current_password": VALID_PASSWORD},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["message"].endswith(
+        "We could not deliver the confirmation email."
+    )
+    assert "email delivery failed email_type=account_deletion" in caplog.text
 
 
 def test_email_change_request_sends_new_confirmation_and_old_security_notice(

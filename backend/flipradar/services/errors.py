@@ -42,6 +42,15 @@ class ServiceProviderUnavailableError(ServiceError):
         super().__init__(message=message, status_code=503)
 
 
+class ServiceEmailDeliveryError(ServiceError):
+    """A required transactional email could not be accepted for delivery."""
+
+    def __init__(
+        self, message: str = "We couldn't deliver the email. Please try again."
+    ) -> None:
+        super().__init__(message=message, status_code=503)
+
+
 class ServiceProviderTimeoutError(ServiceError):
     def __init__(self, message: str) -> None:
         super().__init__(message=message, status_code=504)

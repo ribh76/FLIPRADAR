@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import logging
 import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -90,6 +91,7 @@ from flipradar.database.repositories import (
 from flipradar.domain.models import User
 from flipradar.domain.models.refresh_token import RefreshTokenSession
 from flipradar.services.email_service import (
+    EmailSendResult,
     send_account_deletion_confirmation_email,
     send_email_change_confirmation_email,
     send_mfa_access_code_email,
@@ -99,6 +101,9 @@ from flipradar.services.email_service import (
     send_security_email,
     send_verification_email,
 )
+from flipradar.services.errors import ServiceEmailDeliveryError
+
+logger = logging.getLogger(__name__)
 
 EMAIL_VERIFICATION_PURPOSE = "email_verification"
 PASSWORD_RESET_PURPOSE = "password_reset"
@@ -113,6 +118,42 @@ MFA_SECURITY_QUESTIONS = {
     "favorite_teacher": "What was the last name of your favorite teacher?",
     "birth_city": "In what city were you born?",
 }
+
+
+def _email_was_sent(result: EmailSendResult | None) -> bool:
+    """Treat legacy test fakes that return None as successful delivery."""
+    return result is None or result.sent
+
+
+def _log_email_delivery_failure(
+    result: EmailSendResult | None, *, email_type: str
+) -> None:
+    if _email_was_sent(result):
+        return
+    logger.error(
+        "email delivery failed email_type=%s attempted=%s reason=%s",
+        email_type,
+        result.attempted,
+        result.reason or "unknown",
+    )
+
+
+def _require_email_delivery(result: EmailSendResult | None, *, email_type: str) -> None:
+    _log_email_delivery_failure(result, email_type=email_type)
+    if result is not None and result.attempted and not result.sent:
+        raise ServiceEmailDeliveryError()
+
+
+async def _send_security_notification(
+    *, to_address: str, username: str, event_label: str
+) -> bool:
+    result = await send_security_email(
+        to_address=to_address,
+        username=username,
+        event_label=event_label,
+    )
+    _log_email_delivery_failure(result, email_type="security_notification")
+    return _email_was_sent(result)
 
 
 def _invalid_refresh_token() -> HTTPException:
@@ -196,9 +237,10 @@ async def _issue_mfa_challenge(db: AsyncSession, user: User) -> MfaChallengeResp
         security_question_id=question_id,
         expires_at=expires_at,
     )
-    await send_mfa_access_code_email(
+    result = await send_mfa_access_code_email(
         to_address=user.email, username=user.username, code=code
     )
+    _require_email_delivery(result, email_type="mfa_access_code")
     return MfaChallengeResponse(
         challenge_token=token,
         expires_at=expires_at,
@@ -324,22 +366,26 @@ async def _issue_account_token(
     return token
 
 
-async def _send_email_verification_token(db: AsyncSession, user: User) -> None:
+async def _send_email_verification_token(
+    db: AsyncSession, user: User
+) -> EmailSendResult | None:
     token = await _issue_account_token(
         db, user=user, purpose=EMAIL_VERIFICATION_PURPOSE, mark_sent=True
     )
-    await send_verification_email(
+    return await send_verification_email(
         to_address=user.email,
         username=user.username,
         verification_url=_verification_url(token),
     )
 
 
-async def _send_password_reset_token(db: AsyncSession, user: User) -> None:
+async def _send_password_reset_token(
+    db: AsyncSession, user: User
+) -> EmailSendResult | None:
     token = await _issue_account_token(
         db, user=user, purpose=PASSWORD_RESET_PURPOSE, mark_sent=True
     )
-    await send_password_reset_email(
+    return await send_password_reset_email(
         to_address=user.email,
         username=user.username,
         reset_url=_password_reset_url(token),
@@ -348,7 +394,7 @@ async def _send_password_reset_token(db: AsyncSession, user: User) -> None:
 
 async def _send_email_change_token(
     db: AsyncSession, user: User, new_email: str
-) -> None:
+) -> EmailSendResult | None:
     token = await _issue_account_token(
         db,
         user=user,
@@ -356,7 +402,7 @@ async def _send_email_change_token(
         mark_sent=True,
         extra_claims={"new_email": new_email},
     )
-    await send_email_change_confirmation_email(
+    return await send_email_change_confirmation_email(
         to_address=new_email,
         username=user.username,
         new_email=new_email,
@@ -388,8 +434,14 @@ async def register_user(db: AsyncSession, payload: UserCreate) -> TokenResponse:
             status_code=status.HTTP_409_CONFLICT, detail="User already exists"
         ) from exc
 
-    await _send_email_verification_token(db, user)
-    await send_registration_email(to_address=user.email, username=user.username)
+    _require_email_delivery(
+        await _send_email_verification_token(db, user),
+        email_type="verification",
+    )
+    _log_email_delivery_failure(
+        await send_registration_email(to_address=user.email, username=user.username),
+        email_type="registration",
+    )
     return await _token_response(db, user)
 
 
@@ -438,7 +490,7 @@ async def verify_mfa_challenge(
             )
             user = await get_user_by_id(db, user_id)
             if user is not None:
-                await send_security_email(
+                await _send_security_notification(
                     to_address=user.email,
                     username=user.username,
                     event_label="MFA sign-in challenge was rate limited",
@@ -463,7 +515,7 @@ async def verify_mfa_challenge(
             )
             user = await get_user_by_id(db, user_id)
             if user is not None:
-                await send_security_email(
+                await _send_security_notification(
                     to_address=user.email,
                     username=user.username,
                     event_label="MFA sign-in challenge was rate limited",
@@ -515,7 +567,7 @@ async def update_mfa_settings(
             },
         )
     user = await update_user_mfa_enabled(db, current_user, payload.enabled)
-    await send_security_email(
+    await _send_security_notification(
         to_address=user.email,
         username=user.username,
         event_label=(
@@ -535,12 +587,15 @@ async def request_mfa_reset(
         token = await _issue_account_token(
             db, user=user, purpose=MFA_RESET_PURPOSE, mark_sent=True
         )
-        await send_mfa_reset_email(
-            to_address=user.email,
-            username=user.username,
-            reset_url=_mfa_reset_url(token),
+        _log_email_delivery_failure(
+            await send_mfa_reset_email(
+                to_address=user.email,
+                username=user.username,
+                reset_url=_mfa_reset_url(token),
+            ),
+            email_type="mfa_reset",
         )
-        await send_security_email(
+        await _send_security_notification(
             to_address=user.email,
             username=user.username,
             event_label="An MFA reset was requested",
@@ -581,12 +636,15 @@ async def confirm_mfa_reset(
     await revoke_active_refresh_token_sessions_for_user(
         db, user_id=user.id, revoked_at=now, reason="mfa_reset"
     )
-    await send_security_email(
+    security_email_sent = await _send_security_notification(
         to_address=user.email,
         username=user.username,
         event_label="Multi-factor authentication was reset",
     )
-    return PasswordResetResponse(message="MFA was reset; sign in again to configure it")
+    message = "MFA was reset; sign in again to configure it"
+    if not security_email_sent:
+        message += ". We could not deliver the security notification."
+    return PasswordResetResponse(message=message)
 
 
 async def get_user_profile(user: User) -> User:
@@ -616,12 +674,15 @@ async def change_password(
     await update_user_password_hash(
         db, current_user, hash_password(payload.new_password)
     )
-    await send_security_email(
+    security_email_sent = await _send_security_notification(
         to_address=current_user.email,
         username=current_user.username,
         event_label="Your password was changed",
     )
-    return AccountActionResponse(message="Password changed successfully")
+    message = "Password changed successfully"
+    if not security_email_sent:
+        message += ". We could not deliver the security notification."
+    return AccountActionResponse(message=message)
 
 
 async def request_account_deletion(
@@ -641,13 +702,17 @@ async def request_account_deletion(
         requested_at=now,
         scheduled_at=scheduled_at,
     )
-    await send_account_deletion_confirmation_email(
+    confirmation_email = await send_account_deletion_confirmation_email(
         to_address=current_user.email,
         username=current_user.username,
         deletion_scheduled_at=scheduled_at.isoformat(),
     )
+    _log_email_delivery_failure(confirmation_email, email_type="account_deletion")
+    message = "Account deletion confirmed. Your user data is scheduled for removal in 24 hours."
+    if not _email_was_sent(confirmation_email):
+        message += " We could not deliver the confirmation email."
     return AccountDeletionResponse(
-        message="Account deletion confirmed. Your user data is scheduled for removal in 24 hours.",
+        message=message,
         deletion_scheduled_at=scheduled_at,
     )
 
@@ -736,8 +801,11 @@ async def request_email_change(
             status_code=status.HTTP_409_CONFLICT, detail="Email already exists"
         ) from exc
 
-    await _send_email_change_token(db, current_user, new_email)
-    await send_security_email(
+    _require_email_delivery(
+        await _send_email_change_token(db, current_user, new_email),
+        email_type="email_change_confirmation",
+    )
+    await _send_security_notification(
         to_address=current_user.email,
         username=current_user.username,
         event_label=f"Email change requested for {new_email}",
@@ -839,7 +907,10 @@ async def request_password_reset(
             detail="Please wait before requesting another password reset email",
         )
 
-    await _send_password_reset_token(db, user)
+    _log_email_delivery_failure(
+        await _send_password_reset_token(db, user),
+        email_type="password_reset",
+    )
     return PasswordResetResponse(
         message="If an account exists for that email, a reset link has been sent"
     )
@@ -884,12 +955,15 @@ async def confirm_password_reset(
         revoked_at=now,
         reason="password_reset_complete",
     )
-    await send_security_email(
+    security_email_sent = await _send_security_notification(
         to_address=user.email,
         username=user.username,
         event_label="Your password was reset",
     )
-    return PasswordResetResponse(message="Password reset successfully")
+    message = "Password reset successfully"
+    if not security_email_sent:
+        message += ". We could not deliver the security notification."
+    return PasswordResetResponse(message=message)
 
 
 async def resend_verification_email(
@@ -912,7 +986,10 @@ async def resend_verification_email(
             detail="Please wait before requesting another verification email",
         )
 
-    await _send_email_verification_token(db, current_user)
+    _require_email_delivery(
+        await _send_email_verification_token(db, current_user),
+        email_type="verification",
+    )
     return ResendVerificationResponse(
         sent=True,
         message="Verification email sent",

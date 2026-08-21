@@ -182,6 +182,15 @@ def _is_localhost(hostname: str | None) -> bool:
     return normalized in _LOCAL_HOSTS or normalized.endswith(".localhost")
 
 
+def _is_nonproduction_hostname(hostname: str | None) -> bool:
+    normalized = (hostname or "").strip().lower().rstrip(".")
+    labels = normalized.split(".")
+    return any(
+        label in {"dev", "development", "stage", "staging", "test", "testing"}
+        for label in labels
+    )
+
+
 def _require_nonlocal_url(name: str, value: str, *, schemes: set[str]) -> None:
     parsed = urlsplit(value)
     if parsed.scheme not in schemes or not parsed.hostname:
@@ -189,6 +198,14 @@ def _require_nonlocal_url(name: str, value: str, *, schemes: set[str]) -> None:
         raise ValueError(f"{name} must be a valid {allowed} URL in production.")
     if _is_localhost(parsed.hostname):
         raise ValueError(f"{name} must not use a localhost URL in production.")
+
+
+def _require_production_frontend_url(value: str) -> None:
+    _require_nonlocal_url("FRONTEND_URL", value, schemes={"https"})
+    if _is_nonproduction_hostname(urlsplit(value).hostname):
+        raise ValueError(
+            "FRONTEND_URL must not use a staging or development hostname in production."
+        )
 
 
 def _has_unsafe_secret(value: str | None) -> bool:
@@ -463,7 +480,7 @@ class Settings(BaseSettings):
             raise ValueError("CORS_ALLOWED_ORIGINS must be explicit in production.")
         for origin in allowed_origins:
             _require_nonlocal_url("CORS_ALLOWED_ORIGINS", origin, schemes={"https"})
-        _require_nonlocal_url("FRONTEND_URL", self.frontend_url, schemes={"https"})
+        _require_production_frontend_url(self.frontend_url)
         self._validate_production_database_urls()
         self._validate_production_service_urls()
         self._validate_production_providers()

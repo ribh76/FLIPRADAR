@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from flipradar.api.route_classification import RouteClassification
 from flipradar.core.settings import Settings
 from flipradar.main import create_app
+from flipradar.services import auth_service
 
 
 def production_settings(**overrides: object) -> Settings:
@@ -60,6 +61,8 @@ def production_settings(**overrides: object) -> Settings:
         ),
         ({"cors_allowed_origins": "https://localhost:5173"}, "localhost"),
         ({"frontend_url": "http://localhost:5173"}, "FRONTEND_URL"),
+        ({"frontend_url": "https://staging.flipradar.example"}, "staging"),
+        ({"frontend_url": "https://app.dev.flipradar.example"}, "development"),
         ({"redis_url": "redis://localhost:6379/0"}, "REDIS_URL"),
         (
             {"alembic_database_url": "postgresql://app:secret@localhost/db"},
@@ -150,6 +153,27 @@ def test_valid_production_configuration_boots_successfully():
 
     with TestClient(create_app(settings)):
         pass
+
+
+def test_production_transactional_email_urls_use_only_the_production_frontend(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    settings = production_settings()
+    monkeypatch.setattr(auth_service, "get_settings", lambda: settings)
+
+    urls = (
+        auth_service._verification_url("verification-token"),
+        auth_service._password_reset_url("reset-token"),
+        auth_service._mfa_reset_url("mfa-reset-token"),
+        auth_service._email_change_url("email-change-token"),
+    )
+
+    for url in urls:
+        assert url.startswith("https://app.flipradar.example/")
+        assert not any(
+            marker in url.lower()
+            for marker in ("localhost", "staging", "development", "dev")
+        )
 
 
 def test_non_production_keeps_operational_routes_for_local_development():
