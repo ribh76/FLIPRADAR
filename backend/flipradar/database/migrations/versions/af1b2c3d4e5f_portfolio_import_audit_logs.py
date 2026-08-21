@@ -1,7 +1,7 @@
 """Add durable audit records for completed portfolio CSV imports.
 
 Revision ID: af1b2c3d4e5f
-Revises: 0f3a9b7d2c6e
+Revises: d0e1f2a3b4c5
 """
 
 from typing import Sequence, Union
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "af1b2c3d4e5f"
-down_revision: Union[str, Sequence[str], None] = "0f3a9b7d2c6e"
+down_revision: Union[str, Sequence[str], None] = "d0e1f2a3b4c5"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

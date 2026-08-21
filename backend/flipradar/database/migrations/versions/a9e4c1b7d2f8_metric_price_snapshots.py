@@ -25,6 +25,14 @@ _METRICS = {
     "fair_market_value": "fair_market_value",
 }
 
+_LEGACY_CONSTRAINT_NAMES = (
+    "pk_price_snapshots",
+    "ck_price_snapshots_condition_allowed",
+    "ck_price_snapshots_currency_uppercase",
+    "fk_price_snapshots_lego_set_id_lego_sets",
+    "fk_price_snapshots_marketplace_id_marketplaces",
+)
+
 
 def _create_new_table() -> None:
     op.create_table(
@@ -73,6 +81,15 @@ def upgrade() -> None:
     legacy = sa.Table("price_snapshots", sa.MetaData(), autoload_with=bind)
     rows = bind.execute(sa.select(legacy)).mappings().all()
     op.rename_table("price_snapshots", "price_snapshots_legacy")
+    if bind.dialect.name == "postgresql":
+        for constraint_name in _LEGACY_CONSTRAINT_NAMES:
+            op.execute(
+                sa.text(
+                    "ALTER TABLE price_snapshots_legacy "
+                    f"RENAME CONSTRAINT {constraint_name} "
+                    f"TO {constraint_name}_legacy"
+                )
+            )
     _create_new_table()
     new = sa.table(
         "price_snapshots",

@@ -111,8 +111,8 @@ PHASE 8 — EMAIL AND ACCOUNT LIFECYCLE
 4. Decide and enforce whether unverified accounts may authenticate or access protected application functionality.  - 
 5. Test password-reset requests and reset completion against the deployed frontend URL.  - 
 6. Test MFA, email-change, account-deletion, and security-notification email flows that are currently implemented.  - 
-7. Ensure email failures produce controlled user-facing behavior and useful server logs. 
-8. Verify production emails do not contain localhost, staging, or development links.
+7. Ensure email failures produce controlled user-facing behavior and useful server logs. -
+8. Verify production emails do not contain localhost, staging, or development links.-
 
 PHASE 9 — DATABASE INTEGRITY AND MIGRATION CERTIFICATION 
 1. Create a completely empty PostgreSQL database using the production PostgreSQL major version. 
