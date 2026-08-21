@@ -7,8 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from flipradar.api.error_handlers import register_exception_handlers
 from flipradar.api.middleware import (
+    EndpointRateLimitMiddleware,
+    RedisRateLimiter,
     RequestContextMiddleware,
-    RollingWindowRateLimitMiddleware,
 )
 from flipradar.api.route_classification import apply_production_route_policy
 from flipradar.api.routes import (
@@ -43,6 +44,10 @@ logger = logging.getLogger(__name__)
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved_settings = settings or get_settings()
+    rate_limiter = RedisRateLimiter(
+        resolved_settings.redis_url,
+        environment=resolved_settings.application.environment,
+    )
     validate_marketplace_provider_configuration(resolved_settings)
     logging_settings = resolved_settings.logging
     setup_logging(
@@ -70,7 +75,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         report_startup_configuration(resolved_settings)
-        yield
+        try:
+            yield
+        finally:
+            await rate_limiter.close()
 
     app = FastAPI(
         title="FlipRadar API",
@@ -117,11 +125,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ],
     )
     app.state.settings = resolved_settings
+    app.state.rate_limiter = rate_limiter
 
     app.add_middleware(
-        RollingWindowRateLimitMiddleware,
-        max_requests=5000,
-        window_seconds=24 * 60 * 60,
+        EndpointRateLimitMiddleware,
+        limiter=rate_limiter,
     )
     app.add_middleware(RequestContextMiddleware)
 

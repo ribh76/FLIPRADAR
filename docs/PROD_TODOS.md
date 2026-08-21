@@ -83,23 +83,23 @@ PHASE 6 — REPRODUCIBLE DEPENDENCIES AND RUNTIME VERSIONS
 1. Choose one supported Python runtime version for local development, CI, and Docker. -
 2. Align Docker, Black, Ruff, Pyright, documentation, and CI with that Python version.  -
 3. Pin or lock all backend production dependencies to reproducible versions.  -
-4. Verify frontend builds exclusively from package-lock.json using npm ci. 
-5. Rebuild backend and frontend from clean dependency caches. 
-6. Run the full test suite against the locked dependency set. 
-7. Build both production Docker images twice from clean environments and verify reproducible successful builds. 
-8. Add dependency update procedures so version upgrades happen intentionally rather than during deployments.
+4. Verify frontend builds exclusively from package-lock.json using npm ci.  - 
+5. Rebuild backend and frontend from clean dependency caches.  - 
+6. Run the full test suite against the locked dependency set.  - 
+7. Build both production Docker images twice from clean environments and verify reproducible successful builds. - 
+8. Add dependency update procedures so version upgrades happen intentionally rather than during deployments. -
 
-======================================================================
+====================================================================== 
 MILESTONE 2 — PROTECT USERS AND DATA Priority: HIGH Goal: Harden
 authentication, database behavior, secrets, and external-service
 handling before real users touch the system.
 ======================================================================
 
 PHASE 7 — AUTHENTICATION AND ABUSE PROTECTION 
-1. Inventory authentication, registration, password-reset, MFA, provider, evaluation, and other expensive public endpoints. 
-2. Replace or supplement the per-process in-memory limiter with Redis-backed rate limiting for security-sensitive endpoints. 
-3. Apply strict endpoint-specific limits to login, registration, password reset, verification, and MFA flows. 
-4. Add reasonable protection to expensive marketplace/provider and LLM-backed operations. 
+1. Inventory authentication, registration, password-reset, MFA, provider, evaluation, and other expensive public endpoints.  - 
+2. Replace or supplement the per-process in-memory limiter with Redis-backed rate limiting for security-sensitive endpoints.  - 
+3. Apply strict endpoint-specific limits to login, registration, password reset, verification, and MFA flows.  - 
+4. Add reasonable protection to expensive marketplace/provider and LLM-backed operations.  - 
 5. Configure trusted proxy handling so client IP detection cannot be trivially spoofed with X-Forwarded-For. 
 6. Add tests for rate-limit enforcement, expiration, and behavior across shared Redis state. 
 7. Verify normal user activity does not trigger the new abuse limits.
