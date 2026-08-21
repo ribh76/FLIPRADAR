@@ -1,5 +1,6 @@
 from enum import StrEnum
 from functools import lru_cache
+from ipaddress import ip_network
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, quote_plus, unquote, urlsplit
@@ -229,6 +230,7 @@ class Settings(BaseSettings):
     error_rate_alert_window_seconds: int = Field(
         default=300, ge=1, alias="ERROR_RATE_ALERT_WINDOW_SECONDS"
     )
+    trusted_proxy_cidrs: str = Field(default="", alias="TRUSTED_PROXY_CIDRS")
 
     database_url_override: str | None = Field(default=None, alias="DATABASE_URL")
     database_host: str = Field(default="localhost", alias="DATABASE_HOST")
@@ -414,6 +416,18 @@ class Settings(BaseSettings):
             return None
         return value
 
+    @field_validator("trusted_proxy_cidrs")
+    @classmethod
+    def trusted_proxy_cidrs_are_networks(cls, value: str) -> str:
+        for cidr in _split_csv(value):
+            try:
+                ip_network(cidr, strict=False)
+            except ValueError as exc:
+                raise ValueError(
+                    "TRUSTED_PROXY_CIDRS must contain valid CIDRs."
+                ) from exc
+        return value
+
     @model_validator(mode="after")
     def validate_environment(self) -> Settings:
         # Mock providers are useful for local fixtures, but must be opted into
@@ -547,6 +561,12 @@ class Settings(BaseSettings):
             debug=self.app_debug,
             frontend_url=self.frontend_url,
         )
+
+    @property
+    def trusted_proxy_networks(self) -> tuple[str, ...]:
+        """Networks allowed to supply a forwarded client-address chain."""
+
+        return tuple(_split_csv(self.trusted_proxy_cidrs))
 
     @property
     def resolved_celery_broker_url(self) -> str:

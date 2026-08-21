@@ -5,6 +5,7 @@ from collections import defaultdict, deque
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
+from ipaddress import IPv4Address, IPv6Address, ip_address, ip_network
 from uuid import uuid4
 
 import redis.asyncio as redis
@@ -141,6 +142,66 @@ class RedisRateLimiter:
         return f"{self._namespace}:{policy.name}:{digest}"
 
 
+class TrustedProxyClientIpResolver:
+    """Resolve client addresses only through explicitly trusted proxies.
+
+    Trusted proxies must append their observed peer address to X-Forwarded-For.
+    Requests that arrive directly, malformed chains, and untrusted peers always
+    use the immediate socket address instead.
+    """
+
+    def __init__(self, trusted_proxy_cidrs: tuple[str, ...] = ()) -> None:
+        self._trusted_networks = tuple(
+            ip_network(cidr, strict=False) for cidr in trusted_proxy_cidrs
+        )
+
+    def resolve(self, request: Request) -> str:
+        direct_peer = self._request_peer(request)
+        if direct_peer is None:
+            return "unknown"
+        if not self._is_trusted(direct_peer):
+            return str(direct_peer)
+
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if not forwarded_for:
+            return str(direct_peer)
+        forwarded_chain = self._parse_forwarded_for(forwarded_for)
+        if forwarded_chain is None:
+            logger.warning("ignoring malformed X-Forwarded-For from trusted proxy")
+            return str(direct_peer)
+
+        # Work right-to-left. Each trusted proxy is removed until the first
+        # non-proxy address remains: that is the client the proxy observed.
+        for address in reversed((*forwarded_chain, direct_peer)):
+            if not self._is_trusted(address):
+                return str(address)
+        return str(direct_peer)
+
+    @staticmethod
+    def _request_peer(request: Request) -> IPv4Address | IPv6Address | None:
+        if request.client is None:
+            return None
+        try:
+            return ip_address(request.client.host)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _parse_forwarded_for(
+        value: str,
+    ) -> tuple[IPv4Address | IPv6Address, ...] | None:
+        parts = tuple(part.strip() for part in value.split(","))
+        if not parts or any(not part for part in parts):
+            return None
+        try:
+            return tuple(ip_address(part) for part in parts)
+        except ValueError:
+            return None
+
+    def _is_trusted(self, address: IPv4Address | IPv6Address) -> bool:
+        return any(address in network for network in self._trusted_networks)
+
+
 class RequestContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable):
         request_id = request.headers.get("X-Request-ID") or str(uuid4())
@@ -263,9 +324,16 @@ class EndpointRateLimitMiddleware(BaseHTTPMiddleware):
         ),
     }
 
-    def __init__(self, app, *, limiter: RedisRateLimiter) -> None:
+    def __init__(
+        self,
+        app,
+        *,
+        limiter: RedisRateLimiter,
+        trusted_proxy_cidrs: tuple[str, ...] = (),
+    ) -> None:
         super().__init__(app)
         self._limiter = limiter
+        self._client_ip_resolver = TrustedProxyClientIpResolver(trusted_proxy_cidrs)
 
     async def dispatch(self, request: Request, call_next: Callable):
         if request.url.path in self._EXEMPT_PATHS:
@@ -337,8 +405,7 @@ class EndpointRateLimitMiddleware(BaseHTTPMiddleware):
             )
         return ()
 
-    @staticmethod
-    def _identity(request: Request, policy: RateLimitPolicy) -> str:
+    def _identity(self, request: Request, policy: RateLimitPolicy) -> str:
         if policy.scope is RateLimitScope.GLOBAL:
             return "global"
         if policy.scope is RateLimitScope.CREDENTIAL:
@@ -347,12 +414,7 @@ class EndpointRateLimitMiddleware(BaseHTTPMiddleware):
                 # A hash avoids retaining credentials in Redis while grouping a
                 # legitimate authenticated session independently of its IP.
                 return f"credential:{hashlib.sha256(authorization[7:].encode()).hexdigest()}"
-        forwarded_for = request.headers.get("X-Forwarded-For")
-        if forwarded_for:
-            return f"client:{forwarded_for.split(',', 1)[0].strip()}"
-        if request.client is not None:
-            return f"client:{request.client.host}"
-        return "client:unknown"
+        return f"client:{self._client_ip_resolver.resolve(request)}"
 
 
 # Compatibility name retained for callers that used the original middleware.

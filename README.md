@@ -56,7 +56,7 @@ python3.14 -m venv venv
 ./venv/bin/python -m pip install -r backend/requirements-dev.txt
 cp backend/.env.example backend/.env
 cd backend
-../venv/bin/python -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload
+../venv/bin/python -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload --no-proxy-headers
 ```
 
 The backend runtime is Python 3.14.2. `.python-version` records it for local

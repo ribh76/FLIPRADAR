@@ -130,6 +130,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         EndpointRateLimitMiddleware,
         limiter=rate_limiter,
+        trusted_proxy_cidrs=resolved_settings.trusted_proxy_networks,
     )
     app.add_middleware(RequestContextMiddleware)
 

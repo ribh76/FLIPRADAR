@@ -44,6 +44,19 @@ Optional integrations such as email, eBay, BrickLink, and LLM providers may be
 disabled in production. If one is enabled, all of its credentials must be
 present and must not be development placeholders; otherwise startup fails.
 
+## Trusted Proxies and Rate Limits
+
+`TRUSTED_PROXY_CIDRS` is an optional comma-separated list of reverse-proxy CIDRs.
+It is empty by default, so `X-Forwarded-For` is ignored and limits use the direct
+peer address. When configured, FlipRadar accepts a forwarded chain only when the
+direct peer belongs to one of these networks, then selects the rightmost
+non-proxy address. Configure each trusted proxy to append its observed client
+address; do not include public client networks.
+
+The supplied Uvicorn commands use `--no-proxy-headers` so this application
+policy, rather than server-level header rewriting, remains the single source of
+truth for client identity.
+
 ## Anthropic
 
 FlipRadar's LLM integration currently supports Anthropic only. Set
@@ -70,5 +83,5 @@ The FastAPI app is built by `flipradar.main:create_app`. Uvicorn should use fact
 
 ```bash
 cd backend
-../venv/bin/python -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload
+../venv/bin/python -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload --no-proxy-headers
 ```

@@ -32,7 +32,7 @@ Runtime settings are grouped in `flipradar.core.settings.Settings`. See [docs/ru
 
 ```bash
 cd backend
-../venv/bin/python -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload
+../venv/bin/python -m uvicorn flipradar.main:create_app --factory --host 127.0.0.1 --port 8000 --reload --no-proxy-headers
 ```
 
 Shortcut:
@@ -49,7 +49,7 @@ Swagger UI is available at `http://127.0.0.1:8000/docs`.
 The backend image is defined in `backend/Dockerfile`. In Docker Compose, the backend waits for PostgreSQL, runs Alembic migrations, seeds demo data, and starts:
 
 ```bash
-python -m uvicorn flipradar.main:create_app --factory --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn flipradar.main:create_app --factory --host 0.0.0.0 --port 8000 --reload --no-proxy-headers
 ```
 
 The backend health check uses `GET /db-health`.
