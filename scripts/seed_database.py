@@ -6,6 +6,7 @@ safe to run repeatedly; every record has a stable demo key or timestamp.
 """
 
 import asyncio
+import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -26,6 +27,7 @@ from flipradar.domain.models import (
     PortfolioAnalysis,
     PortfolioAnalyticsSnapshot,
     PortfolioHoldingAnalytics,
+    Portfolio,
     PortfolioItem,
     PriceSnapshot,
     SetPartRequirement,
@@ -34,6 +36,9 @@ from flipradar.domain.models import (
     WatchlistPriceHistory,
 )
 from flipradar.services.part_catalog_service import synchronize_parts
+from flipradar.services.errors import ServiceProviderUnavailableError
+
+logger = logging.getLogger(__name__)
 
 DEMO_NOW = datetime(2026, 8, 10, 16, 0, tzinfo=UTC)
 DEMO_EMAIL = "demo@flipradar.com"
@@ -315,7 +320,12 @@ async def seed() -> None:
 
         # Keep representative part records synchronized through the same path
         # used by catalog retrieval.
-        await synchronize_parts(session, "3001")
+        try:
+            await synchronize_parts(session, "3001")
+        except ServiceProviderUnavailableError:
+            logger.warning(
+                "skipping optional part catalog seed because BrickLink is unavailable"
+            )
 
         # Three points per set make 90-day trends, while both conditions cover valuation paths.
         for index, row in enumerate(DEMO_SETS):
@@ -468,6 +478,16 @@ async def seed() -> None:
             is_email_verified=True,
             email_verified_at=DEMO_NOW - timedelta(days=30),
         )
+        default_portfolio = await _one_or_create(
+            session,
+            Portfolio,
+            [Portfolio.user_id == user.id, Portfolio.is_default.is_(True)],
+            user_id=user.id,
+            name="Demo Collection",
+            description="Representative seeded LEGO holdings.",
+            currency="USD",
+            is_default=True,
+        )
         # A small owned-parts inventory and BOM make the rebuild workflow usable
         # immediately after a development seed.
         elements = (
@@ -517,9 +537,11 @@ async def seed() -> None:
                 PortfolioItem,
                 [
                     PortfolioItem.user_id == user.id,
+                    PortfolioItem.portfolio_id == default_portfolio.id,
                     PortfolioItem.lego_set_id == sets[number].id,
                 ],
                 user_id=user.id,
+                portfolio_id=default_portfolio.id,
                 lego_set_id=sets[number].id,
                 quantity=quantity,
                 purchase_price=Decimal(price),

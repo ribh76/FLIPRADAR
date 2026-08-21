@@ -1,3 +1,4 @@
+from decimal import Decimal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -10,7 +11,7 @@ class InventoryElementResponse(BaseModel):
     part_name: str
     color: str
     image_url: str | None = None
-    estimated_unit_cost: float | None = None
+    estimated_unit_cost: Decimal | None = None
 
 
 class InventoryItemResponse(BaseModel):
@@ -41,7 +42,7 @@ class ChecklistLineResponse(BaseModel):
     )
     purchase_item_id: UUID | None = None
     purchased: bool = False
-    actual_unit_cost: float | None = None
+    actual_unit_cost: Decimal | None = None
 
 
 class MissingPartsChecklistResponse(BaseModel):
@@ -50,15 +51,15 @@ class MissingPartsChecklistResponse(BaseModel):
     required_parts: int
     owned_parts: int
     missing_parts: int
-    completeness_percent: float
-    estimated_replacement_cost: float
-    completed_set_value: float | None = None
-    completeness_adjusted_value: float | None = None
-    purchase_price: float | None = None
-    projected_net_value: float | None = None
+    completeness_percent: Decimal
+    estimated_replacement_cost: Decimal
+    completed_set_value: Decimal | None = None
+    completeness_adjusted_value: Decimal | None = None
+    purchase_price: Decimal | None = None
+    projected_net_value: Decimal | None = None
     lines: list[ChecklistLineResponse]
 
 
 class PurchaseItemUpdate(BaseModel):
     purchased: bool
-    actual_unit_cost: float | None = Field(default=None, ge=0)
+    actual_unit_cost: Decimal | None = Field(default=None, ge=0)

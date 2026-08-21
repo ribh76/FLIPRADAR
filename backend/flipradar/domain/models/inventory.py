@@ -1,6 +1,7 @@
 """User-owned parts and the set bill-of-materials used for rebuild checklists."""
 
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID as PyUUID
 from uuid import uuid4
 
@@ -10,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    Numeric,
     UniqueConstraint,
     Uuid,
     func,
@@ -135,8 +137,10 @@ class ReplacementPurchaseItem(Base):
         ForeignKey("elements.id", ondelete="RESTRICT"), nullable=False
     )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
-    estimated_unit_cost: Mapped[float] = mapped_column(nullable=False, default=0)
-    actual_unit_cost: Mapped[float | None] = mapped_column()
+    estimated_unit_cost: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, default=Decimal("0.00")
+    )
+    actual_unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     purchased: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

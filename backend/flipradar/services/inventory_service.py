@@ -1,5 +1,6 @@
 """Inventory and missing-parts checklist calculations."""
 
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from sqlalchemy import select
@@ -32,7 +33,7 @@ def _element_response(element: Element) -> dict:
             else (element.part.image_urls[0] if element.part.image_urls else None)
         ),
         "estimated_unit_cost": (
-            float(element.part.market_price)
+            element.part.market_price
             if element.part.market_price is not None
             else None
         ),
@@ -256,19 +257,33 @@ async def checklist(db: AsyncSession, user_id: UUID, set_number: str) -> dict:
     owned_parts = sum(
         min(line["adjusted_quantity"], line["owned_quantity"]) for line in lines
     )
-    completeness_percent = (owned_parts / required_parts * 100) if required_parts else 0
+    completeness_percent = (
+        (Decimal(owned_parts) / Decimal(required_parts) * Decimal("100")).quantize(
+            Decimal("0.1"), rounding=ROUND_HALF_UP
+        )
+        if required_parts
+        else Decimal("0.0")
+    )
     estimated_replacement_cost = sum(
-        line["missing_quantity"]
-        * (line["substitute_element"] or line["element"])["estimated_unit_cost"]
-        for line in lines
-        if (line["substitute_element"] or line["element"])["estimated_unit_cost"]
-        is not None
+        (
+            line["missing_quantity"]
+            * (line["substitute_element"] or line["element"])["estimated_unit_cost"]
+            for line in lines
+            if (line["substitute_element"] or line["element"])["estimated_unit_cost"]
+            is not None
+        ),
+        Decimal("0.00"),
+    )
+    estimated_replacement_cost = estimated_replacement_cost.quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
     )
     completed_set_value = (
-        float(completed_snapshot) if completed_snapshot is not None else None
+        Decimal(completed_snapshot) if completed_snapshot is not None else None
     )
     completeness_adjusted_value = (
-        completed_set_value * completeness_percent / 100
+        (completed_set_value * completeness_percent / Decimal("100")).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
         if completed_set_value is not None
         else None
     )
@@ -278,21 +293,18 @@ async def checklist(db: AsyncSession, user_id: UUID, set_number: str) -> dict:
         "required_parts": required_parts,
         "owned_parts": owned_parts,
         "missing_parts": sum(line["missing_quantity"] for line in lines),
-        "completeness_percent": round(completeness_percent, 1),
-        "estimated_replacement_cost": round(estimated_replacement_cost, 2),
+        "completeness_percent": completeness_percent,
+        "estimated_replacement_cost": estimated_replacement_cost,
         "completed_set_value": completed_set_value,
-        "completeness_adjusted_value": (
-            round(completeness_adjusted_value, 2)
-            if completeness_adjusted_value is not None
-            else None
-        ),
-        "purchase_price": float(purchase_price) if purchase_price is not None else None,
+        "completeness_adjusted_value": completeness_adjusted_value,
+        "purchase_price": Decimal(purchase_price) if purchase_price is not None else None,
         "projected_net_value": (
-            round(
+            (
                 completed_set_value
                 - estimated_replacement_cost
-                - float(purchase_price),
-                2,
+                - Decimal(purchase_price)
+            ).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
             )
             if completed_set_value is not None and purchase_price is not None
             else None
@@ -368,13 +380,13 @@ async def add_missing_parts_to_purchase_list(
                     requirement_id=line["requirement_id"],
                     element_id=element["id"],
                     quantity=line["missing_quantity"],
-                    estimated_unit_cost=element["estimated_unit_cost"] or 0,
+                    estimated_unit_cost=element["estimated_unit_cost"] or Decimal("0.00"),
                 )
             )
         elif not item.purchased:
             item.element_id = element["id"]
             item.quantity = line["missing_quantity"]
-            item.estimated_unit_cost = element["estimated_unit_cost"] or 0
+            item.estimated_unit_cost = element["estimated_unit_cost"] or Decimal("0.00")
     await db.commit()
     return await checklist(db, user_id, set_number)
 
@@ -384,7 +396,7 @@ async def update_purchase_item(
     user_id: UUID,
     purchase_item_id: UUID,
     purchased: bool,
-    actual_unit_cost: float | None,
+    actual_unit_cost: Decimal | None,
 ) -> dict:
     item = (
         await db.execute(
