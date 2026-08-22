@@ -35,7 +35,10 @@ def _is_async_url(url: str) -> bool:
 
 def _configure_url() -> str:
     url = _database_url()
-    config.set_main_option("sqlalchemy.url", url)
+    # Alembic stores this in ConfigParser, where a literal percent starts an
+    # interpolation token. Database URLs commonly contain percent-encoded
+    # passwords or connection options, so preserve them for SQLAlchemy.
+    config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
     return url
 
 
@@ -113,7 +116,7 @@ async def run_async_migrations() -> None:
 
 def run_sync_migrations() -> None:
     url = _sync_database_url(_configure_url())
-    config.set_main_option("sqlalchemy.url", url)
+    config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

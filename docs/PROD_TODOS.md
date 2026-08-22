@@ -157,31 +157,22 @@ Priority: P0 — Do this now
 - Backend Black,  Backend Ruff,  Pyright, Backend pytest, PostgreSQL/Alembic migration test 
 - Frontend ESLint, Frontend Prettier, Frontend TypeScript, Frontend Vitest, Frontend production build, Backend Docker build, Frontend Docker build, Release-container certification
 2. Create one authoritative list of current CI failures.
-    * Ignore old failure counts once the new run exists.
-    * Group failures by root cause rather than by individual failing test.
-    * Mark each failure as:
-        * application bug
-        * stale test
-        * environment/config problem
-        * dependency/tooling problem
-* 3. Fix backend test failures first.
-    * Prioritize failures that affect auth, database behavior, marketplace/provider behavior, portfolio operations, startup configuration, or API responses.
-    * Do not weaken assertions merely to make CI green.
-* 4. Fix static-analysis and formatting failures.
-    * Ruff
-    * Black
-    * Pyright
-    * ESLint
-    * Prettier
-    * TypeScript
-* 5. Fix frontend test/build failures.
-    * Vitest must pass.
-    * Production Vite build must succeed from a clean dependency install.
-* 6. Verify migrations from an empty PostgreSQL database.
-    * alembic upgrade head
-    * No manually created tables.
-    * No dependency on development seed state.
-* 7. Verify both production Docker images build cleanly.
+- Ignore old failure counts once the new run exists.
+- Group failures by root cause rather than by individual failing test.
+- Mark each failure as: application bug, stale test, environment/config problem, dependency/tooling problem
+3. Fix backend test failures first.
+- Prioritize failures that affect auth, database behavior, marketplace/provider behavior, portfolio operations, startup configuration, or API responses.
+- Do not weaken assertions merely to make CI green.
+4. Fix static-analysis and formatting failures.
+- Ruff, Black, Pyright, ESLint, Prettier, TypeScript
+5. Fix frontend test/build failures.
+- Vitest must pass.
+- Production Vite build must succeed from a clean dependency install.
+6. Verify migrations from an empty PostgreSQL database.
+- alembic upgrade head
+- No manually created tables.
+- No dependency on development seed state.
+7. Verify both production Docker images build cleanly.
 * 8. Run release-container certification.
     * Production backend image
     * Production frontend image
