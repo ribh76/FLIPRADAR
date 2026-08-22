@@ -567,7 +567,9 @@ async def get_portfolio_holding_detail(
     holding_value = holding["current_total_value"]
     share = (
         _money((holding_value / portfolio_total) * 100)
-        if holding_value is not None and (portfolio_total > 0)
+        if holding_value is not None
+        and portfolio_total is not None
+        and portfolio_total > 0
         else None
     )
     valued_holdings = sorted(

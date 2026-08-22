@@ -22,7 +22,9 @@ router = APIRouter(prefix="/inventory", tags=["Inventory"])
 @router.get(
     "",
     response_model=list[InventoryItemResponse],
-    **route_metadata(RouteClassification.PUBLIC, "List the authenticated user's inventory."),
+    **route_metadata(
+        RouteClassification.PUBLIC, "List the authenticated user's inventory."
+    ),
 )
 async def get_inventory(
     current_user: AuthenticatedUser, db: AsyncSession = Depends(get_db_session)
@@ -33,7 +35,9 @@ async def get_inventory(
 @router.put(
     "/items/{element_id}",
     response_model=InventoryItemResponse,
-    **route_metadata(RouteClassification.PUBLIC, "Set an owned inventory item's quantity."),
+    **route_metadata(
+        RouteClassification.PUBLIC, "Set an owned inventory item's quantity."
+    ),
 )
 async def update_inventory_item(
     element_id: UUID,
@@ -54,7 +58,10 @@ async def update_inventory_item(
 @router.get(
     "/checklists/{set_number}",
     response_model=MissingPartsChecklistResponse,
-    **route_metadata(RouteClassification.PUBLIC, "Build the authenticated user's missing-parts checklist."),
+    **route_metadata(
+        RouteClassification.PUBLIC,
+        "Build the authenticated user's missing-parts checklist.",
+    ),
 )
 async def get_checklist(
     set_number: str,
@@ -72,7 +79,10 @@ async def get_checklist(
 @router.patch(
     "/checklists/{set_number}/requirements/{requirement_id}",
     response_model=MissingPartsChecklistResponse,
-    **route_metadata(RouteClassification.PUBLIC, "Update an authenticated user's checklist adjustment."),
+    **route_metadata(
+        RouteClassification.PUBLIC,
+        "Update an authenticated user's checklist adjustment.",
+    ),
 )
 async def adjust_checklist(
     requirement_id: UUID,
@@ -99,7 +109,10 @@ async def adjust_checklist(
 @router.post(
     "/checklists/{set_number}/purchase-list",
     response_model=MissingPartsChecklistResponse,
-    **route_metadata(RouteClassification.PUBLIC, "Add an authenticated user's missing parts to a purchase list."),
+    **route_metadata(
+        RouteClassification.PUBLIC,
+        "Add an authenticated user's missing parts to a purchase list.",
+    ),
 )
 async def create_replacement_purchase_list(
     set_number: str,
@@ -119,7 +132,9 @@ async def create_replacement_purchase_list(
 @router.patch(
     "/purchase-list/{purchase_item_id}",
     response_model=MissingPartsChecklistResponse,
-    **route_metadata(RouteClassification.PUBLIC, "Update an authenticated user's purchase-list item."),
+    **route_metadata(
+        RouteClassification.PUBLIC, "Update an authenticated user's purchase-list item."
+    ),
 )
 async def update_replacement_purchase(
     purchase_item_id: UUID,

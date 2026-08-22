@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from statistics import median
 from typing import Any
@@ -77,7 +77,7 @@ def _latest_by_metric(snapshots: list, condition: str | None) -> dict[str, Any]:
 
 
 def _trend_from_snapshots(snapshots: list, condition: str | None) -> dict[str, Any]:
-    fair_values_by_day: dict[datetime.date, list[Decimal]] = defaultdict(list)
+    fair_values_by_day: dict[date, list[Decimal]] = defaultdict(list)
     for snapshot in snapshots:
         if snapshot.metric_type != "fair_market_value":
             continue

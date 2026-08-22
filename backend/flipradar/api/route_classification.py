@@ -102,11 +102,9 @@ def apply_production_route_policy(app: FastAPI, environment: AppEnvironment) -> 
         schema = original_openapi()
         for path, operations in list(schema["paths"].items()):
             for method, operation in list(operations.items()):
-                if (
-                    isinstance(operation, dict)
-                    and operation.get(_CLASSIFICATION_KEY)
-                    in {item.value for item in _PRODUCTION_EXCLUDED}
-                ):
+                if isinstance(operation, dict) and operation.get(
+                    _CLASSIFICATION_KEY
+                ) in {item.value for item in _PRODUCTION_EXCLUDED}:
                     del operations[method]
             if not operations:
                 del schema["paths"][path]

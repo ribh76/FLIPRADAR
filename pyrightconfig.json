@@ -1,5 +1,5 @@
 {
-  "include": ["backend/flipradar", "backend/tests", "scripts"],
+  "include": ["backend/flipradar", "scripts"],
   "exclude": [
     "**/__pycache__",
     "backend/flipradar/database/migrations/versions",

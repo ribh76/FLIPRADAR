@@ -59,7 +59,8 @@ async def evaluate_listing_url(
         else (existing.last_seen_at if existing else None)
     )
     if (
-        existing_seen_at
+        existing is not None
+        and existing_seen_at
         and existing_seen_at >= datetime.now(UTC) - RECENT_EVALUATION_WINDOW
     ):
         return existing

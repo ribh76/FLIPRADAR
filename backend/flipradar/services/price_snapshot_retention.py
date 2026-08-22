@@ -57,7 +57,7 @@ def _build_rollups(snapshots: list, period: str) -> list[dict]:
                 "metric_type": key[4],
                 "period": period,
                 "period_start": key[5],
-                "average_value": (sum(values) / len(values)).quantize(
+                "average_value": (sum(values) / Decimal(len(values))).quantize(
                     Decimal("0.01"), rounding=ROUND_HALF_UP
                 ),
                 "low_value": min(values),

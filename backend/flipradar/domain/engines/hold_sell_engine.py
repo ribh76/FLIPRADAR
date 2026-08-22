@@ -174,7 +174,7 @@ def decide_sell_or_hold(
         purchase_price * quantity if purchase_price and purchase_price > 0 else None
     )
     profit = total_estimated_net_value - cost_basis if cost_basis is not None else None
-    profit_pct = profit / cost_basis if cost_basis else None
+    profit_pct = profit / cost_basis if profit is not None and cost_basis else None
 
     if profit_pct is None:
         gain_signal, gain_code, gain_statement = (

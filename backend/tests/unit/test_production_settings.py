@@ -203,7 +203,7 @@ def test_production_transactional_email_urls_use_only_the_production_frontend(
 
 
 def test_non_production_keeps_operational_routes_for_local_development():
-    app = create_app(Settings(app_env="development"))
+    app = create_app(Settings.model_validate({"APP_ENV": "development"}))
     schema = app.openapi()
 
     assert (

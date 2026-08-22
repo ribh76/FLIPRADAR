@@ -757,7 +757,7 @@ async def blacklist_mfa_token(
 
 async def clear_mfa_token_blacklist(db: AsyncSession) -> int:
     result = await db.execute(delete(MfaTokenBlacklist))
-    return int(result.rowcount or 0)
+    return int(cast(CursorResult[Any], result).rowcount or 0)
 
 
 async def replace_mfa_security_questions(
@@ -1640,7 +1640,7 @@ async def reassign_portfolio_items(
         )
         .values(portfolio_id=target_portfolio_id)
     )
-    return int(result.rowcount or 0)
+    return int(cast(CursorResult[Any], result).rowcount or 0)
 
 
 async def delete_portfolio(db: AsyncSession, portfolio: Portfolio) -> None:

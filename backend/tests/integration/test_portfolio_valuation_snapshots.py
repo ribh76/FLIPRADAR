@@ -248,11 +248,16 @@ async def test_dashboard_read_reuses_one_valuation_pass_and_handles_missing_hist
     db_session: AsyncSession,
 ):
     user, _lego_set = await _seed_user_and_set(db_session)
+    portfolio = await portfolio_service.get_default_portfolio_for_user(
+        db_session, user.id
+    )
+    assert portfolio is not None
     portfolio_dashboard_cache.clear()
 
     dashboard = await portfolio_service.get_portfolio_dashboard(
         db_session,
         user.id,
+        portfolio_id=portfolio.id,
         limit=25,
         offset=0,
         condition=None,
@@ -266,7 +271,7 @@ async def test_dashboard_read_reuses_one_valuation_pass_and_handles_missing_hist
     assert dashboard["portfolio"]["data"] == []
     assert dashboard["summary"]["total_items"] == 0
     assert dashboard["history"] is None
-    assert "unavailable" in dashboard["history_unavailable"]
+    assert "not yet available" in dashboard["history_unavailable"]
 
 
 @pytest.mark.asyncio

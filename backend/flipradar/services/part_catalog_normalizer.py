@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any, cast
 
 from flipradar.services.errors import ServiceIncompleteDataError
 
@@ -130,11 +130,8 @@ def _identifier_for(raw: Mapping[str, Any], kind: str) -> str | None:
 
 
 def _known_year_range(raw: Mapping[str, Any]) -> tuple[int | None, int | None]:
-    years = (
-        raw.get("known_year_range")
-        if isinstance(raw.get("known_year_range"), Mapping)
-        else {}
-    )
+    years_raw = raw.get("known_year_range")
+    years = cast(Mapping[str, Any], years_raw) if isinstance(years_raw, Mapping) else {}
     first = raw.get("first_known_year", years.get("first"))
     last = raw.get("last_known_year", years.get("last"))
     try:

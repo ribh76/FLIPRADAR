@@ -75,6 +75,8 @@ class OfficialListingProviderClient:
         self, listing_id: str, canonical_url: str, settings: ProviderSettings
     ) -> ProviderListing:
         # eBay Browse API's getItem endpoint is the official item-detail source.
+        if not settings.api_key or not settings.api_secret:
+            raise ProviderRetrievalError("eBay API credentials are not configured")
         token_response = requests.post(
             "https://api.ebay.com/identity/v1/oauth2/token",
             auth=(settings.api_key, settings.api_secret),
@@ -127,7 +129,9 @@ class OfficialListingProviderClient:
         endpoint = f"https://api.bricklink.com/api/store/v1/inventories/{listing_id}"
         response = requests.get(
             endpoint,
-            headers=_bricklink_oauth_header("GET", endpoint, settings),
+            headers={
+                "Authorization": _bricklink_oauth_header("GET", endpoint, settings)
+            },
             timeout=settings.timeout_seconds,
         )
         if response.status_code == 404:

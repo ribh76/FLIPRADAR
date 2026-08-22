@@ -130,6 +130,8 @@ def _log_email_delivery_failure(
 ) -> None:
     if _email_was_sent(result):
         return
+    if result is None:
+        return
     logger.error(
         "email delivery failed email_type=%s attempted=%s reason=%s",
         email_type,
@@ -483,6 +485,8 @@ async def verify_mfa_challenge(
         or _aware_utc(challenge.expires_at) <= now
         or not hmac.compare_digest(challenge.code_hash, _mfa_code_hash(payload.code))
     ):
+        if challenge is None:
+            raise _invalid_mfa_challenge()
         failures = await increment_mfa_challenge_failures(db, challenge)
         if failures >= get_settings().auth.mfa_max_attempts:
             await blacklist_mfa_token(

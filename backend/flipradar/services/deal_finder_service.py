@@ -251,7 +251,10 @@ async def _refresh_universe(
                 "deal refresh failed set_number=%s", lego_set.set_number, exc_info=True
             )
     _last_refresh_at[universe_size] = now
-    _deal_cache.pop(universe_size, None)
+    for cache_key in [
+        key for key in _deal_cache if key.startswith(f"{universe_size}:")
+    ]:
+        _deal_cache.pop(cache_key, None)
     return {"provider_errors": errors}
 
 

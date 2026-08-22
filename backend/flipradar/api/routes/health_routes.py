@@ -40,13 +40,22 @@ class HealthResponse(BaseModel):
 async def _readiness_response(db: AsyncSession) -> HealthResponse:
     database = await health_service.database_health(db)
     status_value = "healthy" if database["status"] == "healthy" else "unhealthy"
+    database_status = database.get("status")
+    database_latency = database.get("latency_ms")
     return HealthResponse(
         status=status_value,
         service="FlipRadar API",
         timestamp=datetime.now(UTC),
         checks={
             "application": HealthCheck(status="healthy"),
-            "database": HealthCheck(**database),
+            "database": HealthCheck(
+                status=(
+                    database_status if isinstance(database_status, str) else "unhealthy"
+                ),
+                latency_ms=(
+                    database_latency if isinstance(database_latency, int) else None
+                ),
+            ),
         },
     )
 

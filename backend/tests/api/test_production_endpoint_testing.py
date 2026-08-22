@@ -13,15 +13,23 @@ def production_settings(**overrides: object) -> Settings:
     values: dict[str, object] = {
         "app_env": "production",
         "app_debug": False,
-        "jwt_secret_key": "a" * 48,
+        "app_release": "test-release-20260822",
+        "allow_mock_marketplace_providers": False,
+        "operational_route_username": "",
+        "operational_route_password": "",
+        "jwt_secret_key": "aB7cD9eF2gH4iJ6kL8mN0pQ3rS5tU7vW9xY1zA2bC4dE6fG8hI0jK2lM4nO6pQ8r",
         "database_url_override": (
             "postgresql+asyncpg://app:strong-production-password@db.flipradar.example/flipradar"
         ),
         "database_password": "strong-production-password",
         "database_ssl_mode": "require",
         "cors_allowed_origins": "https://app.flipradar.example",
+        "cors_allow_methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "cors_allow_headers": "Authorization,Content-Type,X-Request-ID",
         "frontend_url": "https://app.flipradar.example",
-        "redis_url": "rediss://redis.flipradar.example/0",
+        "redis_url": "rediss://:redis-production-password@redis.flipradar.example/0",
+        "celery_broker_url": "",
+        "celery_result_backend": "",
         "ebay_api_enabled": False,
         "bricklink_api_enabled": False,
     }
@@ -38,9 +46,7 @@ def _path_with_placeholder_values(path: str, operation: dict) -> str:
         value = (
             str(UUID(int=1))
             if schema.get("format") == "uuid" or name.endswith("_id")
-            else "75192"
-            if name == "set_number"
-            else "1"
+            else "75192" if name == "set_number" else "1"
         )
         path = path.replace(f"{{{name}}}", value)
     return path

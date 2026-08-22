@@ -24,10 +24,10 @@ from flipradar.domain.models import (
     LegoSet,
     Marketplace,
     MarketplaceListing,
+    Portfolio,
     PortfolioAnalysis,
     PortfolioAnalyticsSnapshot,
     PortfolioHoldingAnalytics,
-    Portfolio,
     PortfolioItem,
     PriceSnapshot,
     SetPartRequirement,
@@ -35,8 +35,8 @@ from flipradar.domain.models import (
     WatchlistItem,
     WatchlistPriceHistory,
 )
-from flipradar.services.part_catalog_service import synchronize_parts
 from flipradar.services.errors import ServiceProviderUnavailableError
+from flipradar.services.part_catalog_service import synchronize_parts
 
 logger = logging.getLogger(__name__)
 

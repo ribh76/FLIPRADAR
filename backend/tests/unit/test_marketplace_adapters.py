@@ -51,7 +51,11 @@ class FixtureBricklinkClient:
         return f"{set_number}-1"
 
     def get_price_guide(self, _item_type: str, _number: str, condition: str) -> dict:
-        return {"currency_code": "USD", "price_detail": [{"unit_price": "99.99"}], "condition": condition}
+        return {
+            "currency_code": "USD",
+            "price_detail": [{"unit_price": "99.99"}],
+            "condition": condition,
+        }
 
 
 def _provider(*, usable: bool) -> ProviderSettings:
@@ -59,11 +63,19 @@ def _provider(*, usable: bool) -> ProviderSettings:
 
 
 def test_live_provider_adapters_produce_normalizable_listing_contract():
-    ebay_listing = EbayMarketplaceAdapter._listing({
-        "itemId": "v1|1|0", "title": "LEGO 42071", "itemWebUrl": "https://www.ebay.com/itm/1",
-        "condition": "New", "price": {"value": "42.00", "currency": "USD"}, "shippingOptions": [],
-    })
-    bricklink_listing = BricklinkMarketplaceAdapter(FixtureBricklinkClient()).fetch_listings("42071")[0]
+    ebay_listing = EbayMarketplaceAdapter._listing(
+        {
+            "itemId": "v1|1|0",
+            "title": "LEGO 42071",
+            "itemWebUrl": "https://www.ebay.com/itm/1",
+            "condition": "New",
+            "price": {"value": "42.00", "currency": "USD"},
+            "shippingOptions": [],
+        }
+    )
+    bricklink_listing = BricklinkMarketplaceAdapter(
+        FixtureBricklinkClient()
+    ).fetch_listings("42071")[0]
 
     assert ebay_listing["external_listing_id"] == "v1|1|0"
     assert ebay_listing["currency"] == "USD"
@@ -73,7 +85,9 @@ def test_live_provider_adapters_produce_normalizable_listing_contract():
 
 def test_marketplace_adapter_selection_uses_provider_configuration():
     adapters = marketplace_service.configured_marketplace_adapters(
-        MarketplaceApiSettings(ebay=_provider(usable=True), bricklink=_provider(usable=False))
+        MarketplaceApiSettings(
+            ebay=_provider(usable=True), bricklink=_provider(usable=False)
+        )
     )
 
     assert [adapter.marketplace for adapter in adapters] == ["ebay"]
@@ -81,7 +95,9 @@ def test_marketplace_adapter_selection_uses_provider_configuration():
 
 @pytest.mark.asyncio
 async def test_marketplace_refresh_rejects_when_no_provider_is_available(monkeypatch):
-    monkeypatch.setattr(marketplace_service, "configured_marketplace_adapters", lambda: ())
+    monkeypatch.setattr(
+        marketplace_service, "configured_marketplace_adapters", lambda: ()
+    )
 
     with pytest.raises(ServiceProviderUnavailableError):
         await marketplace_service._fetch_marketplace_listings("42071")

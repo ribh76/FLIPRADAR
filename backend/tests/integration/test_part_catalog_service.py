@@ -1,3 +1,4 @@
+import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -5,7 +6,64 @@ from sqlalchemy.pool import StaticPool
 
 from flipradar.database import Base
 from flipradar.domain.models import Color, Element, Part, PartCategory
+from flipradar.integrations import bricklink_client
 from flipradar.services.part_catalog_service import PartCatalogService
+
+
+def _catalog_records() -> list[dict]:
+    return [
+        {
+            "source": {"name": "BrickLink catalog", "url": "https://example.test"},
+            "category": {"id": "26", "name": "Bricks"},
+            "color": {"id": "5", "name": "Red"},
+            "part": {
+                "part_num": "3001",
+                "name": "Brick 2 x 4",
+                "aliases": ["basic brick"],
+                "variants": [{"identifier": "3001a"}, {"identifier": "3001b"}],
+                "image_urls": ["https://example.test/3001-red.png"],
+                "first_known_year": 1958,
+                "market_price": "0.18",
+                "market_price_currency": "USD",
+            },
+            "element": {
+                "element_id": "300121",
+                "name": "Brick 2 x 4 Red",
+                "first_known_year": 1958,
+            },
+        },
+        {
+            "source": {"name": "BrickLink catalog", "url": "https://example.test"},
+            "category": {"id": "26", "name": "Bricks"},
+            "color": {"id": "1", "name": "White"},
+            "part": {
+                "part_num": "3001",
+                "name": "Brick 2 x 4",
+                "aliases": ["basic brick"],
+                "variants": [{"identifier": "3001a"}, {"identifier": "3001b"}],
+                "image_urls": ["https://example.test/3001-white.png"],
+                "first_known_year": 1958,
+                "market_price": "0.18",
+                "market_price_currency": "USD",
+            },
+            "element": {
+                "element_id": "300101",
+                "name": "Brick 2 x 4 White",
+                "first_known_year": 1958,
+            },
+        },
+    ]
+
+
+def _configure_catalog_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        type(bricklink_client.client), "configured", property(lambda _self: True)
+    )
+    monkeypatch.setattr(
+        bricklink_client.client,
+        "get_part_catalog_records",
+        lambda _query: _catalog_records(),
+    )
 
 
 @pytest_asyncio.fixture
@@ -20,8 +78,9 @@ async def db_session():
 
 
 async def test_part_catalog_sync_merges_duplicate_parts_and_keeps_color_elements(
-    db_session: AsyncSession,
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ):
+    _configure_catalog_provider(monkeypatch)
     service = PartCatalogService()
 
     first = await service.synchronize(db_session, "3001")
@@ -47,8 +106,9 @@ async def test_part_catalog_sync_merges_duplicate_parts_and_keeps_color_elements
 
 
 async def test_catalog_refresh_replaces_quality_flags_when_provider_data_improves(
-    db_session: AsyncSession,
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ):
+    _configure_catalog_provider(monkeypatch)
     service = PartCatalogService()
     await service.synchronize(db_session, "3001")
     part = (await db_session.execute(select(Part))).scalar_one()
@@ -62,8 +122,9 @@ async def test_catalog_refresh_replaces_quality_flags_when_provider_data_improve
 
 
 async def test_part_lookup_supports_exact_text_fuzzy_and_catalog_filters(
-    db_session: AsyncSession,
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ):
+    _configure_catalog_provider(monkeypatch)
     service = PartCatalogService()
     await service.synchronize(db_session, "3001")
 

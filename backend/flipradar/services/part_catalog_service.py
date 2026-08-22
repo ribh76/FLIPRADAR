@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import Callable
 from copy import copy
+from typing import Any, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -164,7 +165,7 @@ def _search_response(
 ) -> dict:
     results: list[Part] = []
     for match in page.matches:
-        part = copy(match.part)
+        part = cast(Any, copy(match.part))
         part.match_type = match.relevance.match_type
         part.match_confidence = match.relevance.confidence
         part.match_explanation = match.relevance.explanation

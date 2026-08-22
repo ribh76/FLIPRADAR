@@ -218,28 +218,22 @@ async def test_insert_price_snapshot_and_fetch_latest_by_set_number(
         marketplace_id=marketplace.id,
         condition="new",
         currency="USD",
-        low_price=Decimal("110.00"),
-        median_price=Decimal("135.00"),
-        average_price=Decimal("138.50"),
-        high_price=Decimal("175.00"),
-        fair_market_value=Decimal("140.00"),
-        listing_count=9,
+        metric_type="fair_market_value",
+        value=Decimal("140.00"),
+        sample_size=9,
         source_payload={"source": "pytest", "age": "older"},
-        snapshot_at=datetime.now(UTC) - timedelta(days=1),
+        retrieval_time=datetime.now(UTC) - timedelta(days=1),
     )
     latest_snapshot = PriceSnapshot(
         lego_set_id=lego_set.id,
         marketplace_id=marketplace.id,
         condition="new",
         currency="USD",
-        low_price=Decimal("120.00"),
-        median_price=Decimal("150.00"),
-        average_price=Decimal("151.25"),
-        high_price=Decimal("190.00"),
-        fair_market_value=Decimal("152.00"),
-        listing_count=12,
+        metric_type="fair_market_value",
+        value=Decimal("152.00"),
+        sample_size=12,
         source_payload={"source": "pytest", "age": "latest"},
-        snapshot_at=datetime.now(UTC),
+        retrieval_time=datetime.now(UTC),
     )
     logger.info(
         "test insert snapshots started set_number=%s marketplace=%s snapshot_count=2",
@@ -261,7 +255,7 @@ async def test_insert_price_snapshot_and_fetch_latest_by_set_number(
     )
     assert fetched_snapshot is not None
     assert fetched_snapshot.id == latest_snapshot.id
-    assert fetched_snapshot.fair_market_value == Decimal("152.00")
+    assert fetched_snapshot.value == Decimal("152.00")
     assert fetched_snapshot.source_payload is not None
     assert fetched_snapshot.source_payload["age"] == "latest"
 
@@ -281,33 +275,33 @@ async def test_repository_functions_fetch_snapshots_and_create_recommendation(
             marketplace_id=marketplace.id,
             condition="new",
             currency="USD",
-            median_price=Decimal("130.00"),
-            fair_market_value=Decimal("131.00"),
-            listing_count=7,
+            metric_type="fair_market_value",
+            value=Decimal("131.00"),
+            sample_size=7,
             source_payload={"order": "oldest"},
-            snapshot_at=datetime.now(UTC) - timedelta(days=2),
+            retrieval_time=datetime.now(UTC) - timedelta(days=2),
         ),
         PriceSnapshot(
             lego_set_id=lego_set.id,
             marketplace_id=marketplace.id,
             condition="new",
             currency="USD",
-            median_price=Decimal("140.00"),
-            fair_market_value=Decimal("142.00"),
-            listing_count=9,
+            metric_type="fair_market_value",
+            value=Decimal("142.00"),
+            sample_size=9,
             source_payload={"order": "middle"},
-            snapshot_at=datetime.now(UTC) - timedelta(days=1),
+            retrieval_time=datetime.now(UTC) - timedelta(days=1),
         ),
         PriceSnapshot(
             lego_set_id=lego_set.id,
             marketplace_id=marketplace.id,
             condition="new",
             currency="USD",
-            median_price=Decimal("150.00"),
-            fair_market_value=Decimal("152.00"),
-            listing_count=12,
+            metric_type="fair_market_value",
+            value=Decimal("152.00"),
+            sample_size=12,
             source_payload={"order": "latest"},
-            snapshot_at=datetime.now(UTC),
+            retrieval_time=datetime.now(UTC),
         ),
     ]
     db_session.add_all(snapshots)
@@ -396,6 +390,8 @@ def test_listing_normalizer_handles_marketplace_payload_shapes():
             "price": Decimal("150.00"),
             "shipping_price": Decimal("12.50"),
             "condition": "used",
+            "is_complete": None,
+            "is_sealed": False,
             "title": "LEGO test eBay listing",
             "listing_url": "https://www.ebay.com/itm/ebay-1",
             "seller": "ebay-seller",
@@ -417,6 +413,8 @@ def test_listing_normalizer_handles_marketplace_payload_shapes():
             "price": Decimal("140.00"),
             "shipping_price": Decimal("10.00"),
             "condition": "new",
+            "is_complete": None,
+            "is_sealed": False,
             "title": "LEGO test BrickLink listing",
             "listing_url": "https://www.bricklink.com/test",
             "seller": "bricklink-seller",
@@ -440,6 +438,14 @@ def test_listing_normalizer_handles_marketplace_payload_shapes():
 async def test_marketplace_service_updates_listings_and_snapshot(
     db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ):
+    monkeypatch.setattr(
+        marketplace_service,
+        "configured_marketplace_adapters",
+        lambda _marketplace=None: (
+            marketplace_service.ebay_adapter,
+            marketplace_service.bricklink_adapter,
+        ),
+    )
     lego_set = make_random_lego_set()
     db_session.add(lego_set)
     await db_session.flush()
@@ -500,22 +506,22 @@ async def test_marketplace_service_updates_listings_and_snapshot(
     }
     assert {tuple(listing.exclusion_flags or []) for listing in listings} == {()}
     assert snapshot.id is not None
-    assert snapshot.listing_count == 6
-    assert snapshot.condition == "used"
-    assert snapshot.low_price == Decimal("125.00")
-    assert snapshot.high_price == Decimal("130.00")
-    assert snapshot.average_price == Decimal("127.50")
-    assert snapshot.median_price == Decimal("127.50")
-    assert snapshot.fair_market_value == Decimal("127.50")
-    assert snapshot.source_payload is not None
-    assert snapshot.source_payload["marketplaces"] == ["bricklink"]
 
     saved_snapshots = await db_session.execute(
         select(PriceSnapshot).where(PriceSnapshot.lego_set_id == lego_set.id)
     )
     snapshots = list(saved_snapshots.scalars())
-    assert len(snapshots) == 2
-    assert sum(item.listing_count for item in snapshots) == 12
+    assert len(snapshots) == 5
+    fair_value_snapshots = [
+        item for item in snapshots if item.metric_type == "fair_market_value"
+    ]
+    assert len(fair_value_snapshots) == 1
+    fair_snapshot = fair_value_snapshots[0]
+    assert fair_snapshot.condition == "new"
+    assert fair_snapshot.value == Decimal("112.50")
+    assert fair_snapshot.sample_size == 6
+    assert fair_snapshot.source_payload is not None
+    assert fair_snapshot.source_payload["marketplaces"] == ["ebay"]
 
 
 @pytest.mark.asyncio
@@ -649,9 +655,9 @@ async def test_portfolio_summary_batches_snapshot_queries(db_session: AsyncSessi
                 marketplace_id=marketplace.id,
                 condition="new",
                 currency="USD",
-                median_price=Decimal("100.00") + index,
-                fair_market_value=Decimal("100.00") + index,
-                listing_count=10,
+                metric_type="fair_market_value",
+                value=Decimal("100.00") + index,
+                sample_size=10,
             )
         )
         db_session.add(

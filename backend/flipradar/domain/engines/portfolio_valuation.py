@@ -33,9 +33,7 @@ def calculate_holding_valuation(
     market_value = _money(Decimal(quantity) * unit_market_value)
     gain_loss = _money(market_value - cost_basis)
     gain_loss_percent = (
-        _money(gain_loss / cost_basis * Decimal("100"))
-        if cost_basis > 0
-        else None
+        _money(gain_loss / cost_basis * Decimal("100")) if cost_basis > 0 else None
     )
     return HoldingValuation(cost_basis, market_value, gain_loss, gain_loss_percent)
 
@@ -45,17 +43,25 @@ def calculate_portfolio_totals(
 ) -> dict[str, Decimal | None]:
     """Aggregate values and returns without converting currency to floats."""
     total_cost_basis = _money(
-        sum((holding.cost_basis for holding in holdings), Decimal("0.00"))
+        sum(
+            (holding.cost_basis or Decimal("0.00") for holding in holdings),
+            Decimal("0.00"),
+        )
     )
-    valued_holdings = [holding for holding in holdings if holding.market_value is not None]
+    valued_holdings = [
+        holding for holding in holdings if holding.market_value is not None
+    ]
     total_market_value = _money(
         sum(
-            (holding.market_value for holding in valued_holdings),
+            (holding.market_value or Decimal("0.00") for holding in valued_holdings),
             Decimal("0.00"),
         )
     )
     valued_cost_basis = _money(
-        sum((holding.cost_basis for holding in valued_holdings), Decimal("0.00"))
+        sum(
+            (holding.cost_basis or Decimal("0.00") for holding in valued_holdings),
+            Decimal("0.00"),
+        )
     )
     total_gain_loss = _money(total_market_value - valued_cost_basis)
     total_gain_loss_percent = (

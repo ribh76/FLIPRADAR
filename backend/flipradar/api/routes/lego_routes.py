@@ -126,9 +126,7 @@ async def synchronize_part_catalog(
     provider: str = Query(default="bricklink", min_length=1, max_length=40),
     db: AsyncSession = Depends(get_db_session),
 ) -> dict:
-    results = await part_catalog_service.synchronize_parts(
-        db, query, provider=provider
-    )
+    results = await part_catalog_service.synchronize_parts(db, query, provider=provider)
     return {
         "provider": provider.strip().lower(),
         "synchronized": len(results),

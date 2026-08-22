@@ -33,9 +33,7 @@ def _element_response(element: Element) -> dict:
             else (element.part.image_urls[0] if element.part.image_urls else None)
         ),
         "estimated_unit_cost": (
-            element.part.market_price
-            if element.part.market_price is not None
-            else None
+            element.part.market_price if element.part.market_price is not None else None
         ),
     }
 
@@ -297,15 +295,15 @@ async def checklist(db: AsyncSession, user_id: UUID, set_number: str) -> dict:
         "estimated_replacement_cost": estimated_replacement_cost,
         "completed_set_value": completed_set_value,
         "completeness_adjusted_value": completeness_adjusted_value,
-        "purchase_price": Decimal(purchase_price) if purchase_price is not None else None,
+        "purchase_price": (
+            Decimal(purchase_price) if purchase_price is not None else None
+        ),
         "projected_net_value": (
             (
                 completed_set_value
                 - estimated_replacement_cost
                 - Decimal(purchase_price)
-            ).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
+            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if completed_set_value is not None and purchase_price is not None
             else None
         ),
@@ -380,7 +378,8 @@ async def add_missing_parts_to_purchase_list(
                     requirement_id=line["requirement_id"],
                     element_id=element["id"],
                     quantity=line["missing_quantity"],
-                    estimated_unit_cost=element["estimated_unit_cost"] or Decimal("0.00"),
+                    estimated_unit_cost=element["estimated_unit_cost"]
+                    or Decimal("0.00"),
                 )
             )
         elif not item.purchased:

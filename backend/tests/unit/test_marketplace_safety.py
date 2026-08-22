@@ -19,13 +19,21 @@ def _production_settings(**overrides: object) -> Settings:
     values: dict[str, object] = {
         "app_env": "production",
         "app_debug": False,
-        "jwt_secret_key": "x" * 48,
-        "database_url_override": "postgresql+asyncpg://db.flipradar.example/flipradar",
+        "app_release": "test-release-20260822",
+        "allow_mock_marketplace_providers": False,
+        "operational_route_username": "",
+        "operational_route_password": "",
+        "jwt_secret_key": "xY7zA9bC2dE4fG6hI8jK0lM3nO5pQ7rS9tU1vW2xY4zA6bC8dE0fG2hI4jK6lM8n",
+        "database_url_override": "postgresql+asyncpg://app:strong-production-password@db.flipradar.example/flipradar",
         "database_password": "strong-production-password",
         "database_ssl_mode": "require",
         "cors_allowed_origins": "https://app.flipradar.example",
+        "cors_allow_methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "cors_allow_headers": "Authorization,Content-Type,X-Request-ID",
         "frontend_url": "https://app.flipradar.example",
-        "redis_url": "rediss://redis.flipradar.example/0",
+        "redis_url": "rediss://:redis-production-password@redis.flipradar.example/0",
+        "celery_broker_url": "",
+        "celery_result_backend": "",
         "ebay_api_enabled": False,
         "bricklink_api_enabled": False,
     }
@@ -54,7 +62,14 @@ def test_mock_marketplace_access_defaults_to_local_development_and_test_only(
     )
     assert (
         Settings(
-            app_env="staging", allow_mock_marketplace_providers=None
+            app_env="staging",
+            app_debug=False,
+            app_release="test-release-20260822",
+            jwt_secret_key="xY7zA9bC2dE4fG6hI8jK0lM3nO5pQ7rS9tU1vW2xY4zA6bC8dE0fG2hI4jK6lM8n",
+            cors_allowed_origins="https://staging.flipradar.example",
+            cors_allow_methods="GET,POST,PUT,PATCH,DELETE,OPTIONS",
+            cors_allow_headers="Authorization,Content-Type,X-Request-ID",
+            allow_mock_marketplace_providers=None,
         ).allow_mock_marketplace_providers
         is False
     )

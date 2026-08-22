@@ -33,9 +33,9 @@ class FakeRedis:
 
 class FakeRetryTask:
     def __init__(self):
-        self.kwargs = None
+        self.kwargs: dict[str, object] | None = None
 
-    def retry(self, **kwargs):
+    def retry(self, **kwargs: object) -> str:
         self.kwargs = kwargs
         return "retried"
 
@@ -92,6 +92,7 @@ def test_failed_batches_retry_after_one_hour(monkeypatch):
         tasks._retry_provider_batch(task, "ebay", {"10316-1": []}, RuntimeError())
         == "retried"
     )
+    assert task.kwargs is not None
     assert task.kwargs["countdown"] == 60 * 60
     assert task.kwargs["args"] == ["ebay", {"10316-1": []}]
 

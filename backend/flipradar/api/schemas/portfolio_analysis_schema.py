@@ -124,9 +124,7 @@ class LlmPortfolioNarrative(BaseModel):
     uncertainties: list[LlmPortfolioUncertainty] = Field(
         default_factory=list, max_length=6
     )
-    prompt_version: Literal[PORTFOLIO_ANALYSIS_PROMPT_VERSION] = (
-        PORTFOLIO_ANALYSIS_PROMPT_VERSION
-    )
+    prompt_version: Literal["portfolio-analysis-v1"] = PORTFOLIO_ANALYSIS_PROMPT_VERSION
 
     model_config = ConfigDict(extra="forbid")
 

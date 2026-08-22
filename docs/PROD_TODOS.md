@@ -151,187 +151,329 @@ PHASE 11 — PRODUCTION CONTAINER CERTIFICATION
 7. Verify graceful startup and shutdown behavior for the API container. - (Automated release certification)
 8. Record final container ports, required environment variables, volumes, and service dependencies. - (Production Configuration Contract)
 
-PHASE 12 — STAGING ENVIRONMENT 
-1. Provision a staging frontend, API service, PostgreSQL database, and Redis instance. 
-2. Configure staging with separate credentials, secrets, databases, and provider configuration from production. 
-3. Deploy the exact production Docker images to staging. 
-4. Run Alembic migrations as an explicit staging release step. 
-5. Configure staging frontend/API URLs, CORS, HTTPS, and proxy behavior. 
-6. Connect staging to safe but realistic marketplace/provider services or credentials. 
-7. Perform account creation, authentication, catalog lookup, marketplace lookup, and portfolio operations in staging. 
-8. Keep staging configuration structurally equivalent to production so deployment differences are minimal.
+Priority: P0 — Do this now
 
-PHASE 13 — OBSERVABILITY AND FAILURE VISIBILITY 
-1. Configure backend Sentry/error reporting for staging. 
-2. Configure frontend error reporting for staging. 
-3. Set APP_RELEASE and equivalent frontend release identifiers during builds/deployments. 
-4. Trigger a controlled backend exception and verify it reaches the error-reporting system. 
-5. Trigger a controlled frontend exception and verify it reaches the error-reporting system. 
-6. Verify logs contain useful request/release context without leaking passwords, tokens, or secrets. 
-7. Add basic alerting for repeated server errors and service-health failures. 
-8. Repeat the configuration for production only after staging verification succeeds.
+1. Run the complete current CI suite from the latest commit.
+- Backend Black,  Backend Ruff,  Pyright, Backend pytest, PostgreSQL/Alembic migration test 
+- Frontend ESLint, Frontend Prettier, Frontend TypeScript, Frontend Vitest, Frontend production build, Backend Docker build, Frontend Docker build, Release-container certification
+2. Create one authoritative list of current CI failures.
+    * Ignore old failure counts once the new run exists.
+    * Group failures by root cause rather than by individual failing test.
+    * Mark each failure as:
+        * application bug
+        * stale test
+        * environment/config problem
+        * dependency/tooling problem
+* 3. Fix backend test failures first.
+    * Prioritize failures that affect auth, database behavior, marketplace/provider behavior, portfolio operations, startup configuration, or API responses.
+    * Do not weaken assertions merely to make CI green.
+* 4. Fix static-analysis and formatting failures.
+    * Ruff
+    * Black
+    * Pyright
+    * ESLint
+    * Prettier
+    * TypeScript
+* 5. Fix frontend test/build failures.
+    * Vitest must pass.
+    * Production Vite build must succeed from a clean dependency install.
+* 6. Verify migrations from an empty PostgreSQL database.
+    * alembic upgrade head
+    * No manually created tables.
+    * No dependency on development seed state.
+* 7. Verify both production Docker images build cleanly.
+* 8. Run release-container certification.
+    * Production backend image
+    * Production frontend image
+    * PostgreSQL
+    * Redis
+    * /health/live
+    * /health/ready
+    * frontend/API communication
 
-PHASE 14 — SECURITY HEADERS AND EDGE CONFIGURATION 
-1. Ensure all staging and production traffic is HTTPS-only. 
-2. Add X-Content-Type-Options and appropriate frame-embedding protection. 
-3. Add an appropriate Referrer-Policy. 
-4. Define and test a Content-Security-Policy compatible with the frontend and required external services. 
-5. Enable HSTS only after HTTPS and domain configuration are confirmed correct. 
-6. Configure sensible API request/body-size and proxy timeout limits. 
-7. Configure caching/compression for versioned frontend static assets. 
-8. Run a final browser/network inspection to verify headers are actually present on deployed responses.
+GATE 1
 
-PHASE 15 — POST-DEPLOYMENT SMOKE TESTS 
-1. Create an automated check for the deployed frontend root page. 
-2. Check backend /health/live. 
-3. Check backend /health/ready and database connectivity. 
-4. Authenticate using a dedicated staging smoke-test account. 
-5. Call /users/me or another simple protected endpoint. 
-6. Perform one representative catalog/set lookup. 
-7. Perform one protected portfolio read/write operation. 
-8. Exercise one real marketplace/provider request without mock fallback. 
-9. Make the smoke suite return a non-zero exit status when any critical check fails.
+STOP until GitHub Actions shows full green.
 
-PHASE 16 — CONTINUOUS DEPLOYMENT WORKFLOW 
-1. Create a deployment workflow separate from CI. 
-2. Require the complete CI workflow to succeed before deployment is eligible. 
-3. Build/tag immutable release images using commit SHA or another unique release identifier. 
-4. Deploy the release to staging first. 
-5. Run database migrations as an explicit controlled release step. 
-6. Run the automated staging smoke suite after deployment. 
-7. Require manual approval through a protected production GitHub Environment before production promotion. 
-8. Promote the same tested release/image artifact to production rather than rebuilding it.
-9. Run production health checks and a safe production smoke suite immediately after promotion. 
-10. Document the rollback procedure for a failed application release.
+Target: all CI checks green / your expected 5/5 green status.
 
-======================================================================
-MILESTONE 4 — PRODUCTION LAUNCH Priority: RELEASE GATE Goal: Deploy the
-smallest reliable FlipRadar production footprint and verify it before
-opening access.
-======================================================================
+No deployment infrastructure work should take priority over this gate.
 
-PHASE 17 — MINIMUM PRODUCTION INFRASTRUCTURE 1. Provision the production
-frontend hosting/runtime. 2. Provision the production FastAPI service.
-3. Provision managed production PostgreSQL with backups enabled. 4.
-Provision managed Redis if required by rate limiting or active runtime
-features. 5. Configure production domains, DNS, HTTPS certificates, and
-API routing. 6. Install production secrets and environment
-configuration. 7. Verify network access rules allow only required
-service-to-service communication. 8. Confirm database backup retention
-and basic restore capability before user data is accepted.
+⸻
 
-PHASE 18 — WORKER AND BACKGROUND-JOB DECISION 1. Inventory every feature
-that requires Celery, Redis queues, scheduled jobs, or watchlist
-workers. 2. Separate launch-critical background functionality from
-features that can remain disabled. 3. Keep nonessential workers disabled
-for the initial production release. 4. If a worker is launch-critical,
-deploy it using the same release/version as the API. 5. Configure worker
-concurrency, retry behavior, timeouts, and queue names conservatively.
-6. Verify failed jobs cannot create duplicate listings, snapshots,
-notifications, or portfolio mutations. 7. Add worker health/error
-monitoring before enabling automated schedules. 8. Document which
-background features are intentionally disabled at launch.
+MILESTONE 2 — LOCK THE KNOWN-GOOD BASELINE
 
-PHASE 19 — RELEASE CANDIDATE 1. Stop merging non-release changes while
-the release candidate is being certified. 2. Run the entire CI suite
-from a clean environment. 3. Deploy the exact release candidate to
-staging. 4. Run all Alembic migrations and the complete staging smoke
-suite. 5. Manually test registration, login, verification, reset,
-marketplace lookup, catalog data, and portfolio functionality. 6. Verify
-production mock-data guards, internal-route protections, rate limits,
-and security headers. 7. Verify Sentry/logging receives release-tagged
-events correctly. 8. Record the approved release commit/image
-identifiers. 9. Approve the release only when no unresolved P0 or P1
-launch blockers remain.
+Priority: P0
 
-PHASE 20 — CONTROLLED PRODUCTION DEPLOYMENT 1. Create or verify the
-production database backup immediately before the release. 2. Promote
-the approved release candidate to production. 3. Run production database
-migrations before routing normal application traffic when required by
-the deployment model. 4. Verify /health/live and /health/ready
-immediately after API startup. 5. Verify the frontend loads correctly
-over the production domain and communicates with the production API. 6.
-Run the safe production smoke-test suite. 7. Verify real marketplace
-data is returned and no mock provider can execute. 8. Verify
-authentication, email, rate limiting, logs, and error reporting are
-functioning. 9. Keep the initial release controlled/private until the
-verification pass is complete. 10. Record the deployed release
-identifier and deployment outcome.
+* 9. Enable branch protection on main.
+    * Do this immediately after CI reaches full green.
+    * Require the relevant CI checks before merge.
+    * Since this is currently a one-developer project, keep the policy lightweight.
+    * Do not create unnecessary reviewer/approval bureaucracy.
+* 10. Add Celery worker and scheduler coverage to release certification.
+    * Determine which scheduled/background tasks are required at launch.
+    * Add a Celery worker to the production-equivalent release stack.
+    * Add Celery Beat if scheduled jobs remain enabled.
+    * Confirm both boot successfully using production-style configuration.
+    * Confirm Redis connectivity.
+    * Confirm one harmless task can execute.
 
-======================================================================
-MILESTONE 5 — STABILIZE BEFORE RESUMING DEVELOPMENT Priority:
-POST-LAUNCH Goal: Prove production is boring before feature development
-starts again.
-======================================================================
+GATE 2
 
-PHASE 21 — FIRST-WEEK PRODUCTION STABILIZATION 1. Review backend errors,
-frontend errors, failed requests, and provider failures daily. 2. Review
-database performance and identify obviously slow or repeatedly executed
-queries. 3. Review authentication failures and rate-limit activity for
-abuse or false positives. 4. Verify marketplace data quality against the
-upstream providers using representative sets/items. 5. Verify portfolio
-valuation results using known manual calculations and representative
-user scenarios. 6. Review email delivery failures, bounces, and broken
-account-lifecycle links. 7. Fix production defects before accepting
-feature work into main. 8. Keep a short production-issues log with
-severity, root cause, fix, and release version.
+The repository now has:
 
-PHASE 22 — CI/CD AND OPERATIONS HARDENING 1. Add automated dependency
-vulnerability scanning for Python and npm dependencies. 2. Enable
-automated dependency-update pull requests with CI validation. 3. Add
-repository secret scanning and review any detected historical exposure.
-4. Add container-image vulnerability scanning to the release pipeline.
-5. Add database backup/restore drills on a reasonable recurring
-schedule. 6. Review deployment duration, failure points, and manual
-steps from the first production releases. 7. Automate safe repetitive
-release steps without removing the production approval gate prematurely.
-8. Update deployment/runbook documentation to reflect what actually
-worked in production.
+Green CI + protected main + production-equivalent application components.
 
-PHASE 23 — REPOSITORY AND DOCUMENTATION CLEANUP 1. Replace
-machine-specific absolute paths in README files with repository-relative
-links. 2. Remove stale setup instructions and development commands that
-no longer match the production-ready toolchain. 3. Clearly mark TODOs.md
-as archived historical planning material or move it into an archive
-directory. 4. Document local development, testing, CI, staging, and
-production workflows separately. 5. Document marketplace provider
-architecture and the rule prohibiting mock providers in production. 6.
-Document required services, environment variables, migrations, and
-release procedures. 7. Remove dead code, obsolete configuration, unused
-mock wiring, and abandoned deployment experiments only after confirming
-they are unused. 8. Run the complete CI suite after repository cleanup
-to ensure documentation/code cleanup did not disturb release behavior.
+⸻
 
-PHASE 24 — DEVELOPMENT REOPENING GATE 1. Require production to remain
-stable through the agreed stabilization window. 2. Require no unresolved
-critical security, data-integrity, authentication, or deployment
-defects. 3. Confirm CI and staging deployments are consistently
-reproducible. 4. Confirm production backups, monitoring, email, provider
-integrations, and rate limits are operating normally. 5. Review deferred
-work from the old TODOs.md and discard items that are no longer
-strategically useful. 6. Create a new post-launch product roadmap based
-on actual production usage rather than the old implementation sequence.
-7. Separate technical-debt work from new product features in the new
-roadmap. 8. Resume feature development only after the
-production-readiness gate is formally considered complete.
+MILESTONE 3 — DEFINE THE REAL PRODUCTION ARCHITECTURE
 
-======================================================================
-EXECUTION ORDER — DO NOT SKIP AHEAD
-======================================================================
+Priority: P0
 
-Milestone 0: Phase 0 -> Phase 1 -> Phase 2
+Target architecture:
 
-Milestone 1: Phase 3 -> Phase 4 -> Phase 5 -> Phase 6
+Vercel
 
-Milestone 2: Phase 7 -> Phase 8 -> Phase 9 -> Phase 10
+* React/Vite frontend
 
-Milestone 3: Phase 11 -> Phase 12 -> Phase 13 -> Phase 14 -> Phase 15 ->
-Phase 16
+Render
 
-Milestone 4: Phase 17 -> Phase 18 -> Phase 19 -> Phase 20
+* FastAPI API service
+* Celery worker
+* Celery Beat/scheduler if required
 
-Milestone 5: Phase 21 -> Phase 22 -> Phase 23 -> Phase 24
+Supabase
 
+* Managed PostgreSQL
+
+Managed Redis
+
+* Render Redis or another compatible managed Redis provider
+* 11. Create the required platform projects/accounts and choose deployment regions.
+    * Select the Supabase region first.
+    * Place Render services geographically close to Supabase where practical.
+    * Create the Vercel project.
+    * Do not configure a custom domain yet unless you want to.
+    * Platform-provided domains are sufficient for the first staging deployment.
+* 12. Establish the environment matrix.
+    At minimum define:
+    Local
+    * local PostgreSQL
+    * local Redis
+    * development credentials
+    Staging
+    * separate Supabase database/project or properly isolated staging database
+    * separate secrets
+    * separate provider configuration
+    * Render staging services
+    * Vercel preview/staging deployment
+    Production
+    * production Supabase database
+    * production secrets
+    * production Render services
+    * Vercel production deployment
+* 13. Translate the existing environment contract into platform variables.
+    * Database URL
+    * Alembic database URL
+    * Redis URL
+    * JWT secrets
+    * CORS origins
+    * frontend API URL
+    * marketplace credentials
+    * email configuration if enabled
+    * Sentry if enabled
+    * APP_ENV
+    * APP_RELEASE
+    No production secret belongs in Git.
+
+GATE 3
+
+Real infrastructure exists and FLIPRADAR has somewhere to deploy.
+
+⸻
+
+MILESTONE 4 — DEPLOY STAGING MANUALLY FIRST
+
+Priority: P0
+
+Do not build the CD pipeline yet.
+
+First prove that the platforms themselves work.
+
+* 14. Deploy PostgreSQL/Supabase and run migrations manually.
+    * Connect using SSL.
+    * Run Alembic through head.
+    * Verify the API can connect.
+    * Verify /health/ready.
+* 15. Deploy the FastAPI service to Render.
+    * Production configuration.
+    * Production Dockerfile/runtime.
+    * Platform environment variables.
+    * HTTPS Render URL.
+    * No localhost dependencies.
+    * No development defaults.
+* 16. Deploy the frontend to Vercel.
+    * Set its staging API URL to the Render API.
+    * Configure API CORS to allow the Vercel staging URL.
+    * Verify frontend routing.
+    * Verify browser → API communication.
+* 17. Deploy background services.
+    * Celery worker.
+    * Celery Beat only if required.
+    * Connect both to the same Redis/backend environment.
+    * Verify task execution.
+* 18. Perform the staging launch smoke test.
+    * Frontend loads.
+    * /health/live returns healthy.
+    * /health/ready returns healthy.
+    * Registration works.
+    * Login works.
+    * Protected user endpoint works.
+    * Catalog/set lookup works.
+    * Portfolio create/read/update works.
+    * At least one real marketplace/provider request works.
+    * Mock marketplace data cannot activate.
+    * One background task executes successfully.
+
+GATE 4
+
+If all of those pass, FLIPRADAR is technically deployable.
+
+That is the point where production becomes a release-management problem rather than a development problem.
+
+⸻
+
+MILESTONE 5 — MINIMUM PRODUCTION OPERATIONS
+
+Priority: P1
+
+* 19. Configure minimum observability and recovery controls.
+    * Backend error reporting.
+    * Frontend error reporting.
+    * Release SHA/version attached to deployments.
+    * Render logs verified.
+    * Database backups enabled.
+    * Know how to roll Render back to the previous deployment.
+    * Know how to roll Vercel back to the previous deployment.
+    * Do not perform destructive database migrations without a rollback strategy.
+* 20. Create the production environment from the proven staging configuration.
+    * Production Supabase database.
+    * Production Render API.
+    * Production worker.
+    * Production scheduler if enabled.
+    * Production Redis.
+    * Vercel production frontend.
+    * Production secrets.
+    * Production CORS.
+    * Production marketplace credentials.
+    * HTTPS everywhere.
+
+A custom domain is not required for this milestone.
+
+The Vercel/Render generated domains can be used for the first controlled production release.
+
+⸻
+
+MILESTONE 6 — CONTROLLED FIRST RELEASE
+
+Priority: RELEASE
+
+* 21. Create a release candidate commit.
+    * CI fully green.
+    * No unrelated feature changes.
+    * Record the Git SHA.
+* 22. Deploy that exact commit to staging one final time.
+    * Run migrations.
+    * Run the smoke test.
+    * Confirm no P0/P1 defects.
+* 23. Promote the release to production.
+    * Run production migrations.
+    * Deploy API.
+    * Deploy worker/scheduler.
+    * Deploy frontend.
+    * Verify health endpoints.
+    * Run safe production smoke tests.
+    * Verify marketplace data is real.
+    * Verify authentication.
+    * Verify database writes.
+    * Verify error reporting.
+* 24. Keep the first release controlled.
+    * Use it yourself first.
+    * Avoid immediately driving meaningful public traffic.
+    * Watch logs/errors.
+    * Fix release-blocking issues before expanding access.
+
+GATE 5 — FLIPRADAR IS LIVE
+
+At this point the application is in production.
+
+⸻
+
+MILESTONE 7 — BUILD CD AFTER DEPLOYMENT WORKS
+
+Priority: P1 — Post first successful deployment
+
+Only automate a release process after the manual process has been proven.
+
+* 25. Create the CD pipeline around the working Supabase + Render + Vercel architecture.
+    * CI remains separate.
+    * CI must succeed first.
+    * Deploy backend to Render.
+    * Run controlled Alembic migrations.
+    * Deploy/update worker services.
+    * Deploy frontend through Vercel.
+    * Attach Git SHA/release metadata.
+    * Execute post-deployment health checks.
+    * Add staging-before-production promotion if the final platform architecture supports it cleanly.
+    * Preserve rollback capability.
+
+⸻
+
+NOT BLOCKING THE FIRST DEPLOYMENT
+
+Move these back into the production-hardening backlog unless testing proves one is currently dangerous:
+
+* Custom domain
+* Perfect DNS architecture
+* Advanced security headers
+* Elaborate CSP tuning
+* Full automated CD
+* Sophisticated alert dashboards
+* Large coverage increases
+* Extensive performance optimization
+* Full disaster-recovery exercises
+* Perfect operational documentation
+* Dependency vulnerability automation
+* Automated backup restore drills
+* Multi-region deployment
+* Autoscaling optimization
+* Kubernetes
+* Complex Git branching strategies
+* Additional product features
+
+These are valid engineering tasks.
+
+They are not all prerequisites for putting the first controlled version of FLIPRADAR online.
+
+⸻
+
+CURRENT EXECUTION ORDER
+
+Right now:
+
+CI failures
+→ Full green
+→ Branch protection
+→ Worker/Beat release certification
+→ Supabase/Render/Vercel provisioning
+→ Manual staging deployment
+→ Staging smoke tests
+→ Production configuration
+→ Controlled production release
+→ CD automation
+→ Remaining PROD_TODOS hardening
+
+Do not jump ahead of the gates.
 ======================================================================
 NON-NEGOTIABLE RELEASE RULES
 ======================================================================

@@ -88,7 +88,7 @@ class LlmRecommendationNarrative(BaseModel):
     summary: str = Field(..., min_length=1, max_length=500)
     facts: list[LlmFactCard] = Field(default_factory=list, max_length=6)
     uncertainties: list[LlmUncertaintyCard] = Field(default_factory=list, max_length=6)
-    prompt_version: Literal[RECOMMENDATION_NARRATIVE_PROMPT_VERSION] = (
+    prompt_version: Literal["recommendation-narrative-v1"] = (
         RECOMMENDATION_NARRATIVE_PROMPT_VERSION
     )
 

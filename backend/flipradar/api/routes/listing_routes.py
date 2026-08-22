@@ -14,7 +14,7 @@ from flipradar.api.schemas import (
 )
 from flipradar.api.schemas.common_schema import collection_response
 from flipradar.domain.models import MarketplaceListing
-from flipradar.services import listing_service
+from flipradar.services import listing_evaluation_service, listing_service
 from flipradar.services.errors import ServiceError
 
 router = APIRouter(tags=["Marketplace/Internal"])
@@ -70,7 +70,7 @@ async def evaluate_listing_url(
         "request started route=evaluate_listing_url set_number=%s", payload.set_number
     )
     try:
-        listing = await listing_service.evaluate_listing_url(db, payload)
+        listing = await listing_evaluation_service.evaluate_listing_url(db, payload)
     except ServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     logger.info(

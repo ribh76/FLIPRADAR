@@ -44,9 +44,7 @@ def _detail_response(metadata: dict, **valuation_fields) -> dict:
     }
 
 
-def _bricklink_detail(
-    set_number: str, metadata_override: dict | None = None
-) -> dict:
+def _bricklink_detail(set_number: str, metadata_override: dict | None = None) -> dict:
     try:
         metadata = metadata_override or bricklink_client.client.get_set_metadata(
             set_number
@@ -57,7 +55,9 @@ def _bricklink_detail(
             status_code=status.HTTP_404_NOT_FOUND, detail="LEGO set not found"
         ) from exc
     except bricklink_client.BricklinkApiError as exc:
-        raise ServiceProviderError(f"BrickLink set detail lookup failed: {exc}") from exc
+        raise ServiceProviderError(
+            f"BrickLink set detail lookup failed: {exc}"
+        ) from exc
 
     return _detail_response(
         metadata,
@@ -112,9 +112,7 @@ async def get_set_detail(db: AsyncSession, set_number: str) -> dict:
         if not bricklink_client.client.configured:
             return _missing_market_data(metadata)
         try:
-            return _bricklink_detail(
-                normalized_set_number, metadata_override=metadata
-            )
+            return _bricklink_detail(normalized_set_number, metadata_override=metadata)
         except HTTPException:
             return _missing_market_data(metadata)
 

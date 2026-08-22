@@ -224,7 +224,8 @@ async def test_portfolio_analysis_derives_labels_before_calling_llm(
     }
     captured: dict = {}
 
-    async def refresh(_db, _user_id):
+    async def refresh(_db, _user_id, *, portfolio_id=None):
+        del portfolio_id
         return analytics
 
     async def narrate(analysis, *, user_key):

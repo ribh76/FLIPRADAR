@@ -353,14 +353,16 @@ def _volatility(returns: list[Decimal]) -> Decimal | None:
     if len(returns) < 2:
         return None
     average = _mean(returns)
-    variance = sum((item - average) ** 2 for item in returns) / len(returns)
+    variance = sum((item - average) ** 2 for item in returns) / Decimal(len(returns))
     return (Decimal(str(sqrt(float(variance)))) * HUNDRED).quantize(
         Decimal("0.01"), rounding=ROUND_HALF_UP
     )
 
 
 def _mean(values: list[Decimal]) -> Decimal:
-    return (sum(values) / len(values)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return (sum(values) / Decimal(len(values))).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
 
 
 def _money(value: Decimal) -> Decimal:

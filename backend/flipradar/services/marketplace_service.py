@@ -189,9 +189,9 @@ async def _fetch_marketplace_listings(set_number: str) -> tuple[list[dict], list
     )
     listings: list[dict] = []
     errors: list[str] = []
-    failures: list[Exception] = []
+    failures: list[BaseException] = []
     for adapter, result in zip(adapters, results, strict=True):
-        if isinstance(result, Exception):
+        if isinstance(result, BaseException):
             errors.append(adapter.marketplace)
             failures.append(result)
         else:

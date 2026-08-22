@@ -17,6 +17,7 @@ from flipradar.database import repositories
 from flipradar.database.repositories import DuplicateRecordError, Pagination
 from flipradar.domain.engines import price_estimator, scoring_engine
 from flipradar.domain.models import WatchlistItem, WatchlistMonitoringPreference
+from flipradar.domain.models.enums import PortfolioCondition
 from flipradar.services import marketplace_service, portfolio_service
 from flipradar.services.errors import ServiceConflictError, ServiceNotFoundError
 
@@ -125,6 +126,8 @@ async def create_watchlist_item(
             raise ServiceNotFoundError("LEGO set not found")
         data["lego_set_id"] = lego_set.id
     else:
+        if payload.listing_id is None:
+            raise ServiceNotFoundError("Marketplace listing not found")
         listing = await repositories.get_listing_for_evaluation(db, payload.listing_id)
         if listing is None:
             raise ServiceNotFoundError("Marketplace listing not found")
@@ -327,7 +330,11 @@ async def move_watchlist_item_to_portfolio(
     )
     if purchase_price is None:
         raise ServiceConflictError("Enter a purchase price before moving this set")
-    condition = item.listing.condition if item.listing else "unknown"
+    condition = PortfolioCondition.UNKNOWN
+    if item.listing and item.listing.condition in {
+        value.value for value in PortfolioCondition
+    }:
+        condition = PortfolioCondition(item.listing.condition)
     portfolio_item = await portfolio_service.add_item_to_portfolio(
         db,
         user_id,

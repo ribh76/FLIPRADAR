@@ -1,4 +1,5 @@
 from time import perf_counter
+from typing import Any
 
 from celery import Celery
 from celery.signals import task_failure, task_prerun, task_retry, task_success
@@ -65,22 +66,22 @@ def _record_task_outcome(task_id: str, task_name: str, outcome: str) -> None:
 
 
 @task_prerun.connect
-def _record_task_start(task_id: str, task: object, **_: object) -> None:
+def _record_task_start(task_id: str, task: Any, **_: object) -> None:
     _task_started_at[task_id] = perf_counter()
     record_metric("worker.job", tags=_task_tags(task.name, outcome="started"))
 
 
 @task_success.connect
-def _record_task_success(result: object, sender: object, **_: object) -> None:
+def _record_task_success(result: object, sender: Any, **_: object) -> None:
     del result
     _record_task_outcome(sender.request.id, sender.name, "success")
 
 
 @task_failure.connect
-def _record_task_failure(task_id: str, sender: object, **_: object) -> None:
+def _record_task_failure(task_id: str, sender: Any, **_: object) -> None:
     _record_task_outcome(task_id, sender.name, "failure")
 
 
 @task_retry.connect
-def _record_task_retry(request: object, sender: object, **_: object) -> None:
+def _record_task_retry(request: Any, sender: Any, **_: object) -> None:
     _record_task_outcome(request.id, sender.name, "retry")

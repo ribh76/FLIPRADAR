@@ -60,7 +60,7 @@ def get_job_health_metrics(provider: str, *, hours: int = 24) -> dict[str, int]:
         for event in METRIC_EVENTS
         for bucket in buckets
     ]
-    totals = dict.fromkeys(METRIC_EVENTS, 0)
+    totals: dict[str, int] = dict.fromkeys(METRIC_EVENTS, 0)
     try:
         client = redis.Redis.from_url(get_settings().redis_url, decode_responses=True)
         values = client.mget(keys)
