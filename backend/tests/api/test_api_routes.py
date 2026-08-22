@@ -1,12 +1,13 @@
 import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 import jwt
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -14,7 +15,9 @@ from sqlalchemy.pool import StaticPool
 
 import flipradar.domain.models  # noqa: F401
 from flipradar.api.schemas.portfolio_analysis_schema import (
+    LlmPortfolioAction,
     LlmPortfolioNarrative,
+    LlmPortfolioObservation,
 )
 from flipradar.core.settings import get_settings
 from flipradar.database import Base, get_db_session, repositories
@@ -1020,7 +1023,8 @@ def auth_headers(client: TestClient, username: str | None = None) -> dict:
     assert response.status_code == 201, response.text
 
     async def verify_registered_user() -> None:
-        override = client.app.dependency_overrides[get_db_session]
+        app = cast(FastAPI, client.app)
+        override = app.dependency_overrides[get_db_session]
         session_factory = next(
             value.cell_contents
             for value in (override.__closure__ or ())
@@ -1034,6 +1038,7 @@ def auth_headers(client: TestClient, username: str | None = None) -> dict:
             await repositories.mark_user_email_verified(db, user, datetime.now(UTC))
             await db.commit()
 
+    assert client.portal is not None
     client.portal.call(verify_registered_user)
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
@@ -4283,24 +4288,24 @@ def test_portfolio_analytics_refresh_persists_holdings_allocations_and_signals(
             narrative=LlmPortfolioNarrative(
                 executive_summary="The calculated portfolio merits careful review.",
                 diversification_observations=[
-                    {
-                        "source_metric": "portfolio.diversification",
-                        "text": "The calculated mix has room for further review.",
-                    }
+                    LlmPortfolioObservation(
+                        source_metric="portfolio.diversification",
+                        text="The calculated mix has room for further review.",
+                    )
                 ],
                 concentration_observations=[
-                    {
-                        "source_metric": "portfolio.concentration",
-                        "text": "The calculated concentration merits attention.",
-                    }
+                    LlmPortfolioObservation(
+                        source_metric="portfolio.concentration",
+                        text="The calculated concentration merits attention.",
+                    )
                 ],
                 prioritized_actions=[
-                    {
-                        "item_key": str(first["portfolio_item_id"]),
-                        "label": first["label"],
-                        "priority": first["priority"],
-                        "text": "Keep this holding under review.",
-                    }
+                    LlmPortfolioAction(
+                        item_key=str(first["portfolio_item_id"]),
+                        label=first["label"],
+                        priority=first["priority"],
+                        text="Keep this holding under review.",
+                    )
                 ],
                 uncertainties=[],
             ),

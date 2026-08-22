@@ -61,6 +61,7 @@ jobs:
           - 5432:5432
     env:
       APP_ENV: test
+      DATABASE_SSL_MODE: disable
       ALEMBIC_DATABASE_URL: postgresql+asyncpg://flipradar_app:flipradar_ci_password@localhost:5432/flipradar
 
     steps:

@@ -1,10 +1,13 @@
 import time
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
 from flipradar.core.settings import MarketplaceApiSettings, ProviderSettings
-from flipradar.integrations.bricklink_client import BricklinkMarketplaceAdapter
+from flipradar.integrations.bricklink_client import (
+    BricklinkClient,
+    BricklinkMarketplaceAdapter,
+)
 from flipradar.integrations.ebay_client import EbayMarketplaceAdapter
 from flipradar.integrations.marketplace_adapter import MarketplaceAdapter
 from flipradar.services import marketplace_service
@@ -74,7 +77,7 @@ def test_live_provider_adapters_produce_normalizable_listing_contract():
         }
     )
     bricklink_listing = BricklinkMarketplaceAdapter(
-        FixtureBricklinkClient()
+        cast(BricklinkClient, FixtureBricklinkClient())
     ).fetch_listings("42071")[0]
 
     assert ebay_listing["external_listing_id"] == "v1|1|0"

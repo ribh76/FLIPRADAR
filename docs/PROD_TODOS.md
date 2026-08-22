@@ -173,14 +173,13 @@ Priority: P0 — Do this now
 - No manually created tables.
 - No dependency on development seed state.
 7. Verify both production Docker images build cleanly.
-* 8. Run release-container certification.
-    * Production backend image
-    * Production frontend image
-    * PostgreSQL
-    * Redis
-    * /health/live
-    * /health/ready
-    * frontend/API communication
+8. Run release-container certification.
+- Production backend image
+- Production frontend image
+- PostgreSQL
+- Redis
+- /health/live- /health/ready
+- frontend/API communication
 
 GATE 1
 
@@ -196,18 +195,18 @@ MILESTONE 2 — LOCK THE KNOWN-GOOD BASELINE
 
 Priority: P0
 
-* 9. Enable branch protection on main.
-    * Do this immediately after CI reaches full green.
-    * Require the relevant CI checks before merge.
-    * Since this is currently a one-developer project, keep the policy lightweight.
-    * Do not create unnecessary reviewer/approval bureaucracy.
-* 10. Add Celery worker and scheduler coverage to release certification.
-    * Determine which scheduled/background tasks are required at launch.
-    * Add a Celery worker to the production-equivalent release stack.
-    * Add Celery Beat if scheduled jobs remain enabled.
-    * Confirm both boot successfully using production-style configuration.
-    * Confirm Redis connectivity.
-    * Confirm one harmless task can execute.
+9. Enable branch protection on main.
+- Do this immediately after CI reaches full green.
+- Require the relevant CI checks before merge.
+- Since this is currently a one-developer project, keep the policy lightweight.
+- Do not create unnecessary reviewer/approval bureaucracy.
+10. Add Celery worker and scheduler coverage to release certification.
+- Determine which scheduled/background tasks are required at launch.
+- Add a Celery worker to the production-equivalent release stack.
+- Add Celery Beat if scheduled jobs remain enabled.
+- Confirm both boot successfully using production-style configuration.
+- Confirm Redis connectivity.
+- Confirm one harmless task can execute.
 
 GATE 2
 

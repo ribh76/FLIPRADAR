@@ -1,6 +1,7 @@
 """Adapter integration tests using provider-shaped HTTP responses, never the network."""
 
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 import requests
@@ -56,28 +57,30 @@ def _provider_settings() -> MarketplaceApiSettings:
 
 
 def test_production_configuration_selects_only_registered_live_adapters():
-    settings = Settings(
-        app_env="production",
-        app_debug=False,
-        app_release="test-release-20260822",
-        allow_mock_marketplace_providers=False,
-        operational_route_username="",
-        operational_route_password="",
-        jwt_secret_key="xY7zA9bC2dE4fG6hI8jK0lM3nO5pQ7rS9tU1vW2xY4zA6bC8dE0fG2hI4jK6lM8n",
-        database_url_override="postgresql+asyncpg://app:strong-production-password@db.flipradar.example/flipradar",
-        database_password="strong-production-password",
-        database_ssl_mode="require",
-        cors_allowed_origins="https://app.flipradar.example",
-        cors_allow_methods="GET,POST,PUT,PATCH,DELETE,OPTIONS",
-        cors_allow_headers="Authorization,Content-Type,X-Request-ID",
-        frontend_url="https://app.flipradar.example",
-        redis_url="rediss://:redis-production-password@redis.flipradar.example/0",
-        celery_broker_url="",
-        celery_result_backend="",
-        ebay_api_enabled=True,
-        ebay_api_key="client-id",
-        ebay_api_secret="client-secret",
-        bricklink_api_enabled=False,
+    settings = Settings.model_validate(
+        {
+            "APP_ENV": "production",
+            "APP_DEBUG": False,
+            "APP_RELEASE": "test-release-20260822",
+            "ALLOW_MOCK_MARKETPLACE_PROVIDERS": False,
+            "OPERATIONAL_ROUTE_USERNAME": "",
+            "OPERATIONAL_ROUTE_PASSWORD": "",
+            "JWT_SECRET_KEY": "xY7zA9bC2dE4fG6hI8jK0lM3nO5pQ7rS9tU1vW2xY4zA6bC8dE0fG2hI4jK6lM8n",
+            "DATABASE_URL": "postgresql+asyncpg://app:strong-production-password@db.flipradar.example/flipradar",
+            "DATABASE_PASSWORD": "strong-production-password",
+            "DATABASE_SSL_MODE": "require",
+            "CORS_ALLOWED_ORIGINS": "https://app.flipradar.example",
+            "CORS_ALLOW_METHODS": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+            "CORS_ALLOW_HEADERS": "Authorization,Content-Type,X-Request-ID",
+            "FRONTEND_URL": "https://app.flipradar.example",
+            "REDIS_URL": "rediss://:redis-production-password@redis.flipradar.example/0",
+            "CELERY_BROKER_URL": "",
+            "CELERY_RESULT_BACKEND": "",
+            "EBAY_API_ENABLED": True,
+            "EBAY_API_KEY": "client-id",
+            "EBAY_API_SECRET": "client-secret",
+            "BRICKLINK_API_ENABLED": False,
+        }
     )
 
     adapters = marketplace_service.configured_marketplace_adapters(settings.marketplace)
@@ -111,7 +114,9 @@ def test_ebay_adapter_successfully_executes_oauth_and_live_search(monkeypatch):
         ),
     )
 
-    listings = EbayMarketplaceAdapter(session=session).fetch_listings("75192")
+    listings = EbayMarketplaceAdapter(
+        session=cast(requests.Session, session)
+    ).fetch_listings("75192")
 
     assert session.token_calls == 1
     assert session.search_calls == 1
@@ -135,7 +140,9 @@ def test_ebay_adapter_surfaces_a_failed_live_search(monkeypatch):
     )
 
     with pytest.raises(EbayApiError, match="search listings"):
-        EbayMarketplaceAdapter(session=session).fetch_listings("75192")
+        EbayMarketplaceAdapter(session=cast(requests.Session, session)).fetch_listings(
+            "75192"
+        )
 
     assert session.token_calls == 1
     assert session.search_calls == 1
