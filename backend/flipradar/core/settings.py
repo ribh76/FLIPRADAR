@@ -469,18 +469,22 @@ class Settings(BaseSettings):
                 AppEnvironment.DEVELOPMENT,
                 AppEnvironment.TEST,
             }
+        if self.app_env in {AppEnvironment.STAGING, AppEnvironment.PRODUCTION}:
+            self._validate_release_environment()
         if self.app_env == AppEnvironment.PRODUCTION:
             self._validate_production()
         return self
 
-    def _validate_production(self) -> None:
+    def _validate_release_environment(self) -> None:
         if self.app_debug:
-            raise ValueError("APP_DEBUG must be false in production.")
+            raise ValueError("APP_DEBUG must be false in staging and production.")
         if self.app_release.strip().lower() in {"", "unknown", "local", "development"}:
-            raise ValueError("APP_RELEASE must identify the production release.")
+            raise ValueError(
+                "APP_RELEASE must identify the staging or production release."
+            )
         if self.allow_mock_marketplace_providers:
             raise ValueError(
-                "ALLOW_MOCK_MARKETPLACE_PROVIDERS must be false in production."
+                "ALLOW_MOCK_MARKETPLACE_PROVIDERS must be false in staging and production."
             )
         if (
             _has_unsafe_secret(self.jwt_secret_key)
@@ -488,9 +492,26 @@ class Settings(BaseSettings):
             or not _has_sufficient_secret_complexity(self.jwt_secret_key)
         ):
             raise ValueError(
-                "JWT_SECRET_KEY must be a unique, randomly generated production secret "
+                "JWT_SECRET_KEY must be a unique, randomly generated release secret "
                 "of at least 64 characters."
             )
+        allowed_origins = _split_csv(self.cors_allowed_origins)
+        if not allowed_origins or any("*" in origin for origin in allowed_origins):
+            raise ValueError(
+                "CORS_ALLOWED_ORIGINS must be explicit in staging and production."
+            )
+        allowed_methods = _split_csv(self.cors_allow_methods)
+        allowed_headers = _split_csv(self.cors_allow_headers)
+        if not allowed_methods or "*" in allowed_methods:
+            raise ValueError(
+                "CORS_ALLOW_METHODS must be explicit in staging and production."
+            )
+        if not allowed_headers or "*" in allowed_headers:
+            raise ValueError(
+                "CORS_ALLOW_HEADERS must be explicit in staging and production."
+            )
+
+    def _validate_production(self) -> None:
         if (
             _has_unsafe_secret(self.database_password)
             or self.database_password == "flipradar_dev_password"
@@ -503,14 +524,6 @@ class Settings(BaseSettings):
                 "Operational route credentials must not be set in production."
             )
         allowed_origins = _split_csv(self.cors_allowed_origins)
-        if not allowed_origins or any("*" in origin for origin in allowed_origins):
-            raise ValueError("CORS_ALLOWED_ORIGINS must be explicit in production.")
-        allowed_methods = _split_csv(self.cors_allow_methods)
-        allowed_headers = _split_csv(self.cors_allow_headers)
-        if not allowed_methods or "*" in allowed_methods:
-            raise ValueError("CORS_ALLOW_METHODS must be explicit in production.")
-        if not allowed_headers or "*" in allowed_headers:
-            raise ValueError("CORS_ALLOW_HEADERS must be explicit in production.")
         for origin in allowed_origins:
             _require_nonlocal_url("CORS_ALLOWED_ORIGINS", origin, schemes={"https"})
         _require_production_frontend_url(self.frontend_url)

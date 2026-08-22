@@ -125,15 +125,15 @@ PHASE 9 — DATABASE INTEGRITY AND MIGRATION CERTIFICATION
 8. Test forward migration using a copy of representative populated data. -
 
 PHASE 10 — SECRETS AND PRODUCTION CONFIGURATION 
-1. Define the complete production environment-variable contract in one documented location. 
-2. Generate a strong production JWT secret and ensure no development/default secret is accepted. 
-3. Configure the production PostgreSQL connection with required SSL. 
-4. Configure production Redis and external-provider credentials. 
-5. Set explicit production frontend URL and CORS origins with no wildcard origins. 
-6. Configure release/version identifiers used by logs and error reporting. 
-7. Store all production secrets in the deployment platform or GitHub Environment secret store. 
-8. Scan the repository and Git history for accidentally committed secrets or credentials and rotate anything exposed. 
-9. Validate the complete production configuration in CI or staging without exposing secret values.
+1. Define the complete production environment-variable contract in one documented location.  - (Complete)
+2. Generate a strong production JWT secret and ensure no development/default secret is accepted.  - (Complete)
+3. Configure the production PostgreSQL connection with required SSL.  - (Complete)
+4. Configure production Redis and external-provider credentials.  - (Complete)
+5. Set explicit production frontend URL and CORS origins with no wildcard origins.  - (Complete)
+6. Configure release/version identifiers used by logs and error reporting.  - (Complete)
+7. Store all production secrets in the deployment platform or GitHub Environment secret store.  - (Complete)
+8. Scan the repository and Git history for accidentally committed secrets or credentials and rotate anything exposed.  - (Complete)
+9. Validate the complete production configuration in CI or staging without exposing secret values. - (Complete)
 
 ======================================================================
 MILESTONE 3 — BUILD THE RELEASE MACHINE Priority: HIGH Goal: Establish
@@ -142,14 +142,14 @@ controlled deployment path.
 ======================================================================
 
 PHASE 11 — PRODUCTION CONTAINER CERTIFICATION 
-1. Build the backend using the actual production Dockerfile target rather than development Compose behavior. 
-2. Build the frontend using the actual production nginx/static build target. 
-3. Run both production images locally or in CI without source-code bind mounts. 
-4. Boot the backend with production-like environment validation enabled. 
-5. Verify /health/live and /health/ready correctly distinguish process health from dependency readiness. 
-6. Verify frontend routing, static assets, and /api proxy behavior using the production container. 
-7. Verify graceful startup and shutdown behavior for the API container. 
-8. Record final container ports, required environment variables, volumes, and service dependencies.
+1. Build the backend using the actual production Dockerfile target rather than development Compose behavior. - (Automated release certification)
+2. Build the frontend using the actual production nginx/static build target. - (Automated release certification)
+3. Run both production images locally or in CI without source-code bind mounts. - (Automated release certification)
+4. Boot the backend with production-like environment validation enabled. - (Staging validation and release stack)
+5. Verify /health/live and /health/ready correctly distinguish process health from dependency readiness. - (Automated release certification)
+6. Verify frontend routing, static assets, and /api proxy behavior using the production container. - (Automated release certification)
+7. Verify graceful startup and shutdown behavior for the API container. - (Automated release certification)
+8. Record final container ports, required environment variables, volumes, and service dependencies. - (Production Configuration Contract)
 
 PHASE 12 — STAGING ENVIRONMENT 
 1. Provision a staging frontend, API service, PostgreSQL database, and Redis instance. 

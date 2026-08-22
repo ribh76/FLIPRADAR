@@ -165,3 +165,17 @@ jobs:
           push: false
           cache-from: type=gha,scope=frontend-image
           cache-to: type=gha,mode=max,scope=frontend-image
+
+  certify-release-containers:
+    name: Certify release containers
+    needs:
+      - build-backend-image
+      - build-frontend-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build and certify production-equivalent stack
+        run: ./scripts/verify_release_containers.sh

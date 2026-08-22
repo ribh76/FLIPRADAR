@@ -91,3 +91,38 @@ API with secret-store values injected. Validate `/health/live`, `/health/ready`,
 the HTTPS frontend origin, CORS preflight from `https://app.flipradar.com`, and
 the release tag in API logs and error reports. Never print environment values in
 CI logs.
+
+## Release container certification
+
+`docker-compose.release.yml` is the production-equivalent local and CI stack.
+It builds the backend's `production` target and the frontend's Nginx/static
+`production` target without source-code bind mounts. It uses local Postgres and
+Redis only for certification; deployment environments must provide separate
+managed dependencies and secret-store values.
+
+Run the complete release check with:
+
+```bash
+make certify-release-containers
+```
+
+The check builds immutable local images, runs migrations as a separate release
+step, then verifies API liveness/readiness behavior, SPA fallback routing,
+fingerprinted static assets, the Nginx `/api` proxy, and API SIGTERM shutdown.
+It creates an isolated temporary Compose project and removes only that project's
+volumes when complete.
+
+For an operator-managed staging deployment, copy
+`deploy/staging.env.example` to the ignored `deploy/staging.env`, inject the
+real staging secrets, and use the matching immutable image references. Then run:
+
+1. `docker compose --env-file deploy/staging.env -f docker-compose.staging.yml --profile migrations run --rm migrations`
+2. `docker compose --env-file deploy/staging.env -f docker-compose.staging.yml up -d backend frontend`
+3. Run the deployment smoke checks through the public frontend URL.
+
+`docker-compose.staging.yml` has no build instructions, source mounts, database,
+or Redis service: it deploys only the exact pre-built images against external
+staging dependencies. Its environment template includes the release identifier,
+Sentry/error-rate settings, and the explicit CORS contract needed for staging.
+Promotion must use the exact tag already certified in staging; do not rebuild an
+image for production.

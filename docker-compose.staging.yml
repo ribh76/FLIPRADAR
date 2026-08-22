@@ -1,0 +1,45 @@
+name: flipradar-staging
+
+# Operator deployment definition. This never builds images and has no local
+# database or Redis service: supply external staging dependencies through the
+# ignored deploy/staging.env file. The backend service name is deliberately
+# stable because the production Nginx image proxies /api/ to `backend`.
+services:
+  migrations:
+    image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE to an immutable backend image reference.}
+    profiles: ["migrations"]
+    env_file:
+      - ${STAGING_ENV_FILE:-./deploy/staging.env}
+    environment: &staging_environment
+      APP_ENV: staging
+      APP_DEBUG: "false"
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+
+  backend:
+    image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE to an immutable backend image reference.}
+    env_file:
+      - ${STAGING_ENV_FILE:-./deploy/staging.env}
+    environment: *staging_environment
+    restart: unless-stopped
+    stop_grace_period: 35s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?Set FRONTEND_IMAGE to the matching immutable frontend image reference.}
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s

@@ -33,8 +33,9 @@ from flipradar.core.observability import (
     configure_error_rate_alerting,
     configure_exception_monitoring,
 )
-from flipradar.core.settings import Settings, get_settings
+from flipradar.core.settings import AppEnvironment, Settings, get_settings
 from flipradar.core.startup import report_startup_configuration
+from flipradar.database.connection import dispose_engine
 from flipradar.services.marketplace_service import (
     validate_marketplace_provider_configuration,
 )
@@ -75,10 +76,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         report_startup_configuration(resolved_settings)
+        logger.info("application startup complete")
         try:
             yield
         finally:
+            logger.info("application shutdown started")
             await rate_limiter.close()
+            # The test suite owns a shared in-memory engine across app
+            # lifespans. Release processes own their engine and must dispose it
+            # before the container exits.
+            if resolved_settings.application.environment is not AppEnvironment.TEST:
+                await dispose_engine()
+            logger.info("application shutdown complete")
 
     app = FastAPI(
         title="FlipRadar API",

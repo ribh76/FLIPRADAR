@@ -1,0 +1,116 @@
+name: flipradar-release
+
+# Production-equivalent local/CI certification stack. It intentionally has no
+# source-code bind mounts and does not run migrations as an API side effect.
+# Run the `migrations` profile explicitly before starting application services.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: flipradar
+      POSTGRES_USER: flipradar_app
+      POSTGRES_PASSWORD: flipradar_release_certification_password
+    volumes:
+      - release_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flipradar_app -d flipradar"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - release_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  migrations:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: production
+    image: flipradar-backend:${RELEASE_TAG:-local}
+    profiles: ["migrations"]
+    environment: &api_environment
+      APP_ENV: staging
+      APP_DEBUG: "false"
+      APP_RELEASE: ${RELEASE_TAG:-local-release}
+      FRONTEND_URL: http://localhost:${FRONTEND_PORT:-8080}
+      LOG_LEVEL: INFO
+      SQLALCHEMY_LOG_LEVEL: WARNING
+      UVICORN_ACCESS_LOG_LEVEL: INFO
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: flipradar
+      DATABASE_USER: flipradar_app
+      DATABASE_PASSWORD: flipradar_release_certification_password
+      DATABASE_SSL_MODE: disable
+      DATABASE_POOL_SIZE: "5"
+      DATABASE_MAX_OVERFLOW: "10"
+      JWT_SECRET_KEY: release-certification-secret-4X3q7Vb9N2mK8pL5rT1wY6dF0sHcJzA9vKe
+      JWT_ALGORITHM: HS256
+      CORS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-8080}
+      CORS_ALLOW_CREDENTIALS: "true"
+      CORS_ALLOW_METHODS: GET,POST,PUT,PATCH,DELETE,OPTIONS
+      CORS_ALLOW_HEADERS: Authorization,Content-Type,X-Request-ID
+      EMAIL_ENABLED: "false"
+      EBAY_API_ENABLED: "false"
+      BRICKLINK_API_ENABLED: "false"
+      LLM_ENABLED: "false"
+      ALLOW_MOCK_MARKETPLACE_PROVIDERS: "false"
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: production
+    image: flipradar-backend:${RELEASE_TAG:-local}
+    environment: *api_environment
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stop_grace_period: 35s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: production
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_APP_ENV: staging
+        VITE_APP_RELEASE: ${RELEASE_TAG:-local-release}
+    image: flipradar-frontend:${RELEASE_TAG:-local}
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  release_postgres_data:
+  release_redis_data:

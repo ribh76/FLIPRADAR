@@ -14,6 +14,14 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 FROM base AS build
 
+ARG VITE_API_BASE_URL=/api
+ARG VITE_APP_ENV=production
+ARG VITE_APP_RELEASE=unknown
+
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+    VITE_APP_ENV=${VITE_APP_ENV} \
+    VITE_APP_RELEASE=${VITE_APP_RELEASE}
+
 RUN npm run build
 
 FROM nginx:1.27-alpine AS production

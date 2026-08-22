@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -7,8 +9,8 @@ from flipradar.main import create_app
 from flipradar.services import auth_service
 
 
-def production_settings(**overrides: object) -> Settings:
-    values: dict[str, object] = {
+def production_settings(**overrides: Any) -> Settings:
+    values: dict[str, Any] = {
         "app_env": "production",
         "app_debug": False,
         "app_release": "test-release-20260821",
@@ -201,7 +203,7 @@ def test_production_transactional_email_urls_use_only_the_production_frontend(
 
 
 def test_non_production_keeps_operational_routes_for_local_development():
-    app = create_app(Settings(APP_ENV="development"))
+    app = create_app(Settings(app_env="development"))
     schema = app.openapi()
 
     assert (

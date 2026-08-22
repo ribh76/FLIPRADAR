@@ -1,7 +1,7 @@
 PYTHON ?= ./venv/bin/python
 PYTHON_VERSION := 3.14.2
 
-.PHONY: dev start stop inspect reset setup migrate-seed reset-db reset-demo-data refresh-prices prune-prices snapshot-portfolios quality format format-check backend-quality frontend-quality check-python
+.PHONY: dev start stop inspect reset setup migrate-seed reset-db reset-demo-data refresh-prices prune-prices snapshot-portfolios quality format format-check backend-quality frontend-quality check-python certify-release-containers
 
 check-python:
 	@test "$$($(PYTHON) -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')" = "$(PYTHON_VERSION)" || { echo "Python $(PYTHON_VERSION) is required; run make setup or set PYTHON to that interpreter." >&2; exit 1; }
@@ -67,3 +67,6 @@ frontend-quality:
 	npm run typecheck --prefix frontend
 	npm run test:coverage --prefix frontend
 	npm run build --prefix frontend
+
+certify-release-containers:
+	./scripts/verify_release_containers.sh
