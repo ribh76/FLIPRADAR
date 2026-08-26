@@ -2,7 +2,7 @@
 
 The backend is a FastAPI API backed by async SQLAlchemy, Alembic migrations, and PostgreSQL in normal development.
 
-For the complete Docker stack, see [local development](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/local-development.md). For the seeded account and demo scenarios, see [demo data](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/demo-data.md).
+For the complete Docker stack, see [local development](../docs/local-development.md). For the seeded account and demo scenarios, see [demo data](../docs/demo-data.md).
 
 ## Setup
 
@@ -26,7 +26,7 @@ Required environment variables are documented in `.env.example`. For local devel
 
 `flipradar/core/settings.py` loads environment values from `backend/.env`.
 
-Runtime settings are grouped in `flipradar.core.settings.Settings`. See [docs/runtime-configuration.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/runtime-configuration.md) for supported environments, production validation, and optional integration behavior.
+Runtime settings are grouped in `flipradar.core.settings.Settings`. See [runtime configuration](../docs/runtime-configuration.md) for supported environments, production validation, and optional integration behavior.
 
 ## Run
 
@@ -144,4 +144,4 @@ make format
 - `POST /marketplace/update/{set_number}`
 
 For how cost basis, estimated value, confidence, freshness, and limitations are
-presented, see [the documentation index](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/README.md).
+presented, see [the documentation index](../docs/README.md).

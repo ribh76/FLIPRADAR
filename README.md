@@ -1,6 +1,10 @@
 # FlipRadar
 
-FlipRadar is a LEGO collecting and resale analysis app. It combines a FastAPI backend, a React/Vite frontend, pricing and recommendation engines, marketplace integrations, and a repeatable local demo.
+FlipRadar is a LEGO collecting and resale analysis application. It helps users
+evaluate sets, track portfolios, compare market data, and turn pricing evidence
+into buy, pass, watch, hold, or sell guidance. The project pairs a FastAPI API
+with a React/Vite web app, PostgreSQL-backed data, marketplace integrations,
+and a seeded local demo.
 
 ## Project Structure
 
@@ -12,15 +16,15 @@ FlipRadar is a LEGO collecting and resale analysis app. It combines a FastAPI ba
 
 ## Main Workflows
 
-Backend setup and commands live in [backend/README.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/backend/README.md).
+Backend setup and commands live in [backend/README.md](backend/README.md).
 
-Frontend setup and commands live in [frontend/README.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/frontend/README.md).
+Frontend setup and commands live in [frontend/README.md](frontend/README.md).
 
-Documentation is indexed in [docs/README.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/README.md).
+Documentation is indexed in [docs/README.md](docs/README.md).
 
-Local Docker development is documented in [docs/local-development.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/local-development.md).
+Local Docker development is documented in [docs/local-development.md](docs/local-development.md).
 
-Runtime configuration is documented in [docs/runtime-configuration.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/runtime-configuration.md).
+Runtime configuration is documented in [docs/runtime-configuration.md](docs/runtime-configuration.md).
 
 Run the complete local quality gate before CI integration:
 
@@ -83,11 +87,11 @@ The Vite dev server proxies `/api/*` requests to `http://127.0.0.1:8000`.
 The Docker stack automatically migrates and seeds representative local data.
 Use the controlled local demo credentials without copying them into telemetry.
 The seeded data includes catalog sets, price trends, listings, a portfolio,
-watchlist observations, and a saved analysis. See [Demo Data](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/demo-data.md) for scenarios and reset instructions.
+watchlist observations, and a saved analysis. See [Demo Data](docs/demo-data.md) for scenarios and reset instructions.
 
 To rebuild the disposable local demo baseline, run `make reset-demo-data` and
 confirm with `RESET`.
 
 ## Product Scope
 
-The current V1 direction includes account auth, LEGO set lookup, stored market snapshots, buy/pass/watch/hold/sell guidance, portfolio tracking, and set detail views. The full roadmap is maintained in [docs/TODOs.md](/Users/rbbla1/Documents/dev/building_side/FlipRadar/docs/TODOs.md).
+The current V1 direction includes account auth, LEGO set lookup, stored market snapshots, buy/pass/watch/hold/sell guidance, portfolio tracking, and set detail views. The full roadmap is maintained in [docs/TODOs.md](docs/TODOs.md).
